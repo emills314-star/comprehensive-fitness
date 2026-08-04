@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `AGENTS.md` is the binding working agreement for coding agents in this repo — read it before changing code. It defines the integration-owned documentation loop, the explicit-authorization publishing policy, the privacy review required before every commit, truthful completion states, and the status labels (`IMPLEMENTED` / `PARTIALLY IMPLEMENTED` / `PLANNED` / `ASSUMPTION` / `NEEDS REVIEW`) that must be preserved in docs. Prompt silence never authorizes committing, merging, accepting visual baselines, deploying, publishing, or pushing.
 
+> **Zero-based redesign pointer (2026-08-01):** Product intent is authoritative under `docs/redesign/final/`; implementation status is tracked in `docs/redesign/STATUS.md` and `docs/redesign/implementation/`. The current app has only Today and Progress as persistent destinations, one fixed light presentation, stable routine targets, direct pain/illness exception handling, no workout cloud-copy upload, and no live planner/analytics/research/prescription product. Older architecture and private-pipeline notes below remain repository-structure or historical-compatibility guidance; they do not override the final redesign or authorize deleted features.
+
 The living documents in `docs/` are authoritative for intent; code proves only current behavior. Route changes to the right doc:
 
 | Change | Document |

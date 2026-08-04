@@ -1,6 +1,6 @@
 # Redesign Migration Blueprint: Dual Track
 
-> **Status:** HISTORICAL production-migration proposal; IMPLEMENTED non-production architecture specification and interaction lab
+> **Status:** HISTORICAL production-migration proposal; the non-production React/Vite specification and lab were removed at redesign M8
 > **Winner:** Dual Track
 > **Superseded production path:** The later Evidence & Change migration governs current production UI work through `docs/UI_UX.md` and `docs/ROADMAP.md`. This document does not authorize a React cutover, require legacy appearance parity, or impose its phase order on that migration.
 > **Retained scope:** UI-neutral capability, safety, data-integrity, privacy, accessibility, explicit-submission, consent-separation, and recovery invariants remain useful design evidence.
@@ -21,7 +21,7 @@ Existing domain + persistence + APIs
           Dual Track React shell
 ```
 
-The repository now contains the proposed boundary in `redesign/src/contract.ts`, a synthetic fixture in `redesign/src/fixtures.ts`, and an interactive presentation proof in `redesign/src/components/DualTrackPrototype.tsx`. These are non-production and do not read or mutate canonical app data.
+The repository formerly contained the proposed typed boundary, synthetic fixture, and interactive presentation proof under `redesign/src/`. M8 removed that concept-only code and toolchain after the final redesign package and implemented production shell superseded this proposal. The boundary description below remains historical architecture evidence only.
 
 ## Read models
 
@@ -143,7 +143,7 @@ Cross-cutting gates cover keyboard-only use, axe, reduced motion, 200% text, for
 - Adapter tests prove mapping and error semantics.
 - Component tests prove interaction state without duplicating domain formulas.
 - Playwright proves end-to-end parity and platform recovery.
-- Contract tests in `scripts/test-redesign-contracts.js` enforce 15 directions, 22 capability classifications, the weighted ranking, and at least four structural differences across all 105 concept pairs.
+- The removed concept contract test enforced 15 directions, 22 capability classifications, the weighted ranking, and at least four structural differences across all 105 concept pairs while the comparison lab was active.
 
 ## Safety invariants
 
@@ -161,12 +161,8 @@ Before cutover, log adapter command type, result class, recovery state, and timi
 
 ## Acceptance checklist
 
-- [x] Separate React/TypeScript/Vite non-production entry exists.
-- [x] Typed read-model, command, and effect boundary is specified.
-- [x] Synthetic Dual Track workout, planning, progress, and data journeys are interactive.
-- [x] Concept/ranking/uniqueness contract test exists.
-- [ ] Production adapter implemented against existing modules.
-- [ ] Full parity Playwright suite passes against canonical persistence.
-- [ ] Service worker and Capacitor package the new entry.
-- [ ] Hosted and native gates pass.
-- [ ] Main entry cut over and legacy presentation retired.
+- [x] Historical React/TypeScript/Vite entry and typed boundary were evaluated.
+- [x] Synthetic Dual Track journeys and uniqueness scoring informed the decision.
+- [x] The final zero-based redesign documents superseded this proposed cutover.
+- [x] M8 removed the concept-only entry, tests, configs, and dependencies.
+- [ ] Hosted and physical-device acceptance for the implemented production redesign remains external.

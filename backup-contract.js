@@ -5,17 +5,29 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const BACKUP_SCHEMA_VERSION = "comprehensive-fitness-backup/2.0.0";
-  const SUPPORTED_APP_DATA_VERSIONS = new Set([1, 2]);
+  const BACKUP_SCHEMA_VERSION = "comprehensive-fitness-backup/3.0.0";
+  const LEGACY_BACKUP_SCHEMA_VERSION = "comprehensive-fitness-backup/2.0.0";
+  const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([LEGACY_BACKUP_SCHEMA_VERSION, BACKUP_SCHEMA_VERSION]);
+  const SUPPORTED_APP_DATA_VERSIONS = new Set([1, 2, 3]);
   const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
   const MAX_COLLECTION_ITEMS = 100000;
   const MAX_DEPTH = 24;
   const MAX_STRING_LENGTH = 10 * 1024 * 1024;
+  const BACKUP_JSON_INDENT = 2;
   const FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
   const TOP_LEVEL_KEYS = new Set([
-    "backupSchemaVersion", "appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets",
+    "backupSchemaVersion", "appDataVersion", "domainMigrationVersion", "activeWorkoutDraft", "sessions", "exercises", "sets",
     "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides",
     "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"
+  ]);
+  const ACTIVE_WORKOUT_DRAFT_CONTRACT_VERSION = "comprehensive-fitness-active-draft/2.0.0";
+  const LEGACY_PLANNING_SESSION_KEYS = new Set(["mesocycleId"]);
+  const LEGACY_PLANNING_TEMPLATE_KEYS = new Set(["mesocycleId", "mesocycleRevision", "trainingDayId"]);
+  const LEGACY_PLANNING_TEMPLATE_EXERCISE_KEYS = new Set(["mesocycleSlotId", "assignmentId"]);
+  const LEGACY_PLANNING_SETTINGS_KEYS = new Set([
+    "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase",
+    "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment",
+    "excludedExerciseIds", "goal", "trainingStatus"
   ]);
   const SAFE_ID = /^[^\s<>"'&`=]{1,160}$/;
 
@@ -37,7 +49,9 @@
       return value;
     }
     if (typeof value === "string") {
-      if (value.length > MAX_STRING_LENGTH) fail(path + " contains an oversized text value.");
+      const isRetainedRawImportText = /^backup\.rawImports\[\d+\]\.originalText$/.test(path);
+      const maximumLength = isRetainedRawImportText ? MAX_BACKUP_BYTES : MAX_STRING_LENGTH;
+      if (value.length > maximumLength) fail(path + " contains an oversized text value.");
       return value;
     }
     if (Array.isArray(value)) {
@@ -80,7 +94,6 @@
     const exerciseIds = uniqueIdSet(backup.exercises, "exercises");
     uniqueIdSet(backup.sets, "sets");
     uniqueIdSet(backup.templates, "templates");
-    if (backup.mesocycles.length) uniqueIdSet(backup.mesocycles, "mesocycles");
 
     backup.exercises.forEach((exercise, index) => {
       if (exercise.sessionId != null && exercise.sessionId !== "") {
@@ -101,22 +114,94 @@
         nestedIds.add(id);
       });
     });
-    if (backup.activeMesocycleId) {
-      validateId(backup.activeMesocycleId, "activeMesocycleId");
-      if (!backup.mesocycles.some((item) => item.id === backup.activeMesocycleId)) fail("activeMesocycleId references an unknown mesocycle.");
-    }
+  }
+
+  function validateActiveWorkoutDraft(draft) {
+    if (!isPlainObject(draft)) fail("activeWorkoutDraft must be an object.");
+    if (draft.contractVersion !== ACTIVE_WORKOUT_DRAFT_CONTRACT_VERSION || Number(draft.version) !== 2) fail("activeWorkoutDraft must use the current v2 contract.");
+    validateId(draft.workoutId, "activeWorkoutDraft.workoutId");
+    if (!Number.isSafeInteger(draft.dataRevision) || draft.dataRevision < 0) fail("activeWorkoutDraft.dataRevision must be a non-negative integer.");
+    if (draft.draftSequence != null && (!Number.isSafeInteger(draft.draftSequence) || draft.draftSequence < 0)) fail("activeWorkoutDraft.draftSequence must be a non-negative integer.");
+    if (!isPlainObject(draft.session) || draft.session.id !== draft.workoutId) fail("activeWorkoutDraft.session must match workoutId.");
+    if (!Array.isArray(draft.exercises) || !Array.isArray(draft.sets) || !Array.isArray(draft.resolvedActions)) fail("activeWorkoutDraft must contain exercises, sets, and resolvedActions arrays.");
+    const exerciseIds = new Set();
+    draft.exercises.forEach((exercise, index) => {
+      if (!isPlainObject(exercise)) fail("activeWorkoutDraft.exercises[" + index + "] must be an object.");
+      const exerciseId = validateId(exercise.id, "activeWorkoutDraft.exercises[" + index + "].id");
+      if (exerciseIds.has(exerciseId)) fail("activeWorkoutDraft.exercises contains duplicate ids.");
+      if (exercise.sessionId !== draft.workoutId) fail("activeWorkoutDraft.exercises must belong to workoutId.");
+      exerciseIds.add(exerciseId);
+    });
+    const setIds = new Set();
+    draft.sets.forEach((set, index) => {
+      if (!isPlainObject(set)) fail("activeWorkoutDraft.sets[" + index + "] must be an object.");
+      const setId = validateId(set.id, "activeWorkoutDraft.sets[" + index + "].id");
+      if (setIds.has(setId)) fail("activeWorkoutDraft.sets contains duplicate ids.");
+      validateId(set.exerciseId, "activeWorkoutDraft.sets[" + index + "].exerciseId");
+      if (!exerciseIds.has(set.exerciseId)) fail("activeWorkoutDraft.sets references an unknown exercise.");
+      setIds.add(setId);
+    });
+    if (draft.timer != null && !isPlainObject(draft.timer)) fail("activeWorkoutDraft.timer must be an object or null.");
+    draft.resolvedActions.forEach((action, index) => {
+      if (!isPlainObject(action)) fail("activeWorkoutDraft.resolvedActions[" + index + "] must be an object.");
+    });
+  }
+
+  function omitKeys(record, keys) {
+    if (!isPlainObject(record)) return record;
+    const output = Object.create(null);
+    Object.keys(record).forEach((key) => {
+      if (!keys.has(key)) output[key] = cloneSafe(record[key], key);
+    });
+    return output;
+  }
+
+  function stripLegacyPlanningState(validatedBackup) {
+    const decoded = cloneSafe(validatedBackup);
+    delete decoded.mesocycles;
+    delete decoded.activeMesocycleId;
+    // These retired top-level domains are accepted only so old backups can be
+    // read. They must not cross the compatibility boundary into current data
+    // or be recreated by a new export.
+    delete decoded.recommendationHistory;
+    delete decoded.manualOverrides;
+    delete decoded.personalEvidencePackage;
+    decoded.sessions = decoded.sessions.map((session) => omitKeys(session, LEGACY_PLANNING_SESSION_KEYS));
+    decoded.templates = decoded.templates.map((template) => {
+      const preserved = omitKeys(template, LEGACY_PLANNING_TEMPLATE_KEYS);
+      preserved.exercises = preserved.exercises.map((exercise) => omitKeys(exercise, LEGACY_PLANNING_TEMPLATE_EXERCISE_KEYS));
+      return preserved;
+    });
+    decoded.settings = omitKeys(decoded.settings, LEGACY_PLANNING_SETTINGS_KEYS);
+    return decoded;
+  }
+
+  function backupSchemaVersionFor(appDataVersion) {
+    return appDataVersion >= 3 ? BACKUP_SCHEMA_VERSION : LEGACY_BACKUP_SCHEMA_VERSION;
+  }
+
+  function serializeBackupDocument(backup) {
+    return JSON.stringify(backup, null, BACKUP_JSON_INDENT);
+  }
+
+  function backupDocumentByteLength(backup) {
+    return new TextEncoder().encode(serializeBackupDocument(backup)).byteLength;
   }
 
   function validateAndSanitizeBackup(input, options = {}) {
     const byteLength = Number(options.byteLength || 0);
     if (byteLength > MAX_BACKUP_BYTES) fail("file exceeds the 50 MiB import limit.");
     if (!isPlainObject(input)) fail("the root must be an object.");
-    if (input.backupSchemaVersion != null && input.backupSchemaVersion !== BACKUP_SCHEMA_VERSION) {
+    if (input.backupSchemaVersion != null && !SUPPORTED_BACKUP_SCHEMA_VERSIONS.has(input.backupSchemaVersion)) {
       fail("unsupported backup schema version.");
     }
     const appDataVersion = Number(input.appDataVersion);
     if (!SUPPORTED_APP_DATA_VERSIONS.has(appDataVersion)) {
-      fail("appDataVersion must be 1 or 2.");
+      fail("appDataVersion must be 1, 2, or 3.");
+    }
+    const expectedBackupSchemaVersion = backupSchemaVersionFor(appDataVersion);
+    if (input.backupSchemaVersion != null && input.backupSchemaVersion !== expectedBackupSchemaVersion) {
+      fail("backup schema version is incompatible with appDataVersion.");
     }
     const selected = Object.create(null);
     Object.keys(input).forEach((key) => {
@@ -125,20 +210,87 @@
     });
     const backup = cloneSafe(selected);
     ["sessions", "exercises", "sets", "templates"].forEach((key) => requireEntityArray(backup, key));
-    ["mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"].forEach((key) => {
+    ["recommendationHistory", "manualOverrides"].forEach((key) => {
+      if (backup[key] != null) requireEntityArray(backup, key);
+    });
+    ["rawImports", "migrationAudit"].forEach((key) => {
       if (backup[key] == null) backup[key] = [];
       requireEntityArray(backup, key);
     });
+    if (backup.mesocycles != null) requireEntityArray(backup, "mesocycles");
+    if (backup.activeWorkoutDraft != null) {
+      if (appDataVersion < 3) fail("activeWorkoutDraft requires appDataVersion 3.");
+      validateActiveWorkoutDraft(backup.activeWorkoutDraft);
+    }
     if (!isPlainObject(backup.settings)) fail("settings must be an object.");
-    backup.backupSchemaVersion = BACKUP_SCHEMA_VERSION;
+    backup.backupSchemaVersion = expectedBackupSchemaVersion;
     backup.appDataVersion = appDataVersion;
     validateRelationships(backup);
     return backup;
   }
 
-  function createBackupExport(data) {
-    return validateAndSanitizeBackup({ ...data, backupSchemaVersion: BACKUP_SCHEMA_VERSION });
+  function createBackupExport(data, options = {}) {
+    const appDataVersion = Number(data?.appDataVersion);
+    const activeWorkoutDraft = options.activeWorkoutDraft ?? null;
+    const validated = validateAndSanitizeBackup({
+      ...data,
+      ...(activeWorkoutDraft ? { activeWorkoutDraft } : {}),
+      backupSchemaVersion: backupSchemaVersionFor(appDataVersion)
+    });
+    const exportable = stripLegacyPlanningState(validated);
+    const byteLength = backupDocumentByteLength(exportable);
+    if (byteLength > MAX_BACKUP_BYTES) fail("export exceeds the 50 MiB round-trip limit.");
+    return exportable;
   }
 
-  return { BACKUP_SCHEMA_VERSION, MAX_BACKUP_BYTES, validateAndSanitizeBackup, createBackupExport };
+  function serializeBackupExport(data, options = {}) {
+    return serializeBackupDocument(createBackupExport(data, options));
+  }
+
+  function decodeLegacyBackup(input, options = {}) {
+    return stripLegacyPlanningState(validateAndSanitizeBackup(input, options));
+  }
+
+  function discardObsoletePlanningState(input) {
+    if (!isPlainObject(input)) fail("the planning-state input must be an object.");
+    const decoded = Object.assign(Object.create(null), input);
+    delete decoded.mesocycles;
+    delete decoded.activeMesocycleId;
+    delete decoded.recommendationHistory;
+    delete decoded.manualOverrides;
+    delete decoded.personalEvidencePackage;
+    const omitTrustedKeys = (record, keys) => {
+      if (!isPlainObject(record)) return record;
+      const output = Object.create(null);
+      Object.keys(record).forEach((key) => {
+        if (!keys.has(key)) output[key] = record[key];
+      });
+      return output;
+    };
+    if (Array.isArray(input.sessions)) {
+      decoded.sessions = input.sessions.map((session) => omitTrustedKeys(session, LEGACY_PLANNING_SESSION_KEYS));
+    }
+    if (Array.isArray(input.templates)) {
+      decoded.templates = input.templates.map((template) => {
+        const preserved = omitTrustedKeys(template, LEGACY_PLANNING_TEMPLATE_KEYS);
+        if (Array.isArray(template?.exercises)) {
+          preserved.exercises = template.exercises.map((exercise) => omitTrustedKeys(exercise, LEGACY_PLANNING_TEMPLATE_EXERCISE_KEYS));
+        }
+        return preserved;
+      });
+    }
+    if (isPlainObject(input.settings)) decoded.settings = omitTrustedKeys(input.settings, LEGACY_PLANNING_SETTINGS_KEYS);
+    return decoded;
+  }
+
+  return {
+    BACKUP_SCHEMA_VERSION,
+    LEGACY_BACKUP_SCHEMA_VERSION,
+    MAX_BACKUP_BYTES,
+    validateAndSanitizeBackup,
+    decodeLegacyBackup,
+    discardObsoletePlanningState,
+    createBackupExport,
+    serializeBackupExport
+  };
 });

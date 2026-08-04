@@ -1,0 +1,56 @@
+{
+  "appDataVersion": 2,
+  "settings": {
+    "weightUnit": "lb",
+    "availableEquipment": [
+      "machine"
+    ]
+  },
+  "templates": [
+    {
+      "id": "synthetic-routine-m1",
+      "name": "Synthetic Stable Routine",
+      "exercises": [
+        {
+          "id": "synthetic-heavy-variant",
+          "name": "Synthetic Press — Heavy",
+          "sets": 3,
+          "reps": 6,
+          "repMin": 5,
+          "repMax": 7,
+          "targetRpe": 8.5,
+          "restSeconds": 180,
+          "standardWorkloadOverride": false
+        },
+        {
+          "id": "synthetic-light-variant",
+          "name": "Synthetic Press — Light",
+          "sets": 3,
+          "reps": 10,
+          "repMin": 8,
+          "repMax": 12,
+          "targetRpe": 7,
+          "restSeconds": 90,
+          "standardWorkloadOverride": true,
+          "standardRoleWorkload": {
+            "setStructure": "top_set_backoff",
+            "topSet": {
+              "count": 1,
+              "repRange": {
+                "min": 8,
+                "max": 10
+              }
+            },
+            "backoffSets": {
+              "count": 2,
+              "repRange": {
+                "min": 10,
+                "max": 12
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

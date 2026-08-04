@@ -13,6 +13,8 @@ const APP_ROOT = process.env.APP_CONTRACT_ROOT
 const html = readApplicationContractSource(APP_ROOT);
 const publicExercises = require(path.join(APP_ROOT, "research_database", "exports", "json", "exercise_database.json"));
 const prescriptionApi = require(path.join(APP_ROOT, "prescription-engine.js"));
+const exceptionApi = require(path.join(APP_ROOT, "exception-resolver.js"));
+const backupContract = require(path.join(APP_ROOT, "backup-contract.js"));
 const {
   BACKUP_BOUNDARIES,
   buildEntityCollectionCase,
@@ -90,7 +92,7 @@ function publicResearchData() {
   };
 }
 
-test("safety substitution catalog identity uses an exact unambiguous public record", () => {
+test("ordinary substitution identity uses an exact unambiguous public record without hidden exclusion state", () => {
   const resolve = evaluateFunction("exactResearchCatalogIdentity", {
     normalizePrescriptionIdentity: (value) => String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim()
   });
@@ -101,9 +103,7 @@ test("safety substitution catalog identity uses an exact unambiguous public reco
   assert.equal(resolve("Cambered Barbell Bench Press", catalog), "ex_cambered_barbell_bench_press", "Exact catalog names must not collapse through broader aliases");
   assert.equal(resolve("camber bar bench press", catalog), null, "Aliases must not resolve a safety-locked UI choice");
   assert.equal(resolve("Barbell Bench Press", [...catalog, { exercise_id: "ex_duplicate", exercise_name: "barbell-bench press" }]), null, "Duplicate normalized catalog names must fail closed");
-  const contextSource = functionSource("safetySubstituteContext");
-  assert.match(contextSource, /equipmentCompatible\(record, configuredEquipment\)\.eligible/, "Safety candidate eligibility must evaluate every mapped catalog record against current equipment rather than an arbitrary top-five rank cutoff");
-  assert.doesNotMatch(contextSource, /rankExercisePool/, "Safety substitution eligibility must not discard evidence-linked alternatives merely because they fall outside a presentation ranking limit");
+  assert.doesNotMatch(html, /function safetySubstituteContext|data\.settings\.excludedExerciseIds/, "Deleted global exercise exclusions must not remain as a hidden logging constraint");
 });
 
 function deriveEngineSafetySubstitute(engine, blockedSnapshot, muscleGroupId, availableEquipment) {
@@ -143,75 +143,43 @@ function deriveEngineSafetySubstitute(engine, blockedSnapshot, muscleGroupId, av
   };
 }
 
-test("readiness adapter preserves explicit safety inputs without inventing fatigue", () => {
-  const source = functionSource("prescriptionReadiness");
+test("explicit safety adapter preserves recorded inputs without inventing detector evidence", () => {
+  const source = functionSource("explicitSafetyCandidate");
   collectAssertions([
-    ["illness passthrough", () => assertContains(source, /\billness\s*:\s*(?:Boolean\s*\()?\s*recovery\.illness/, "prescriptionReadiness must pass the explicit illness value")],
-    ["pain passthrough", () => assertContains(source, /\bpain\s*:\s*(?:Boolean\s*\()?\s*recovery\.pain/, "prescriptionReadiness must pass an explicit pain value independently of free text")],
-    ["affected muscle passthrough", () => assertContains(source, /\baffectedMuscle\s*:\s*recovery\.affectedMuscle/, "prescriptionReadiness must identify the affected muscle")],
-    ["note is not fatigue", () => assert.doesNotMatch(source, /fatigue\s*:\s*recovery\.outsideBandNote/, "A free-text note must not fabricate a fatigue score")],
-    ["note is not persistence", () => assert.doesNotMatch(source, /consecutiveLowReadinessDays\s*:\s*recovery\.outsideBandNote/, "A free-text note must not fabricate multiple low-readiness days")],
-    ["note is not energy availability", () => assert.doesNotMatch(source, /energyAvailabilityLow\s*:[^\n]*outsideBandNote/, "A free-text note must not infer low energy availability")]
+    ["explicit input only", () => assertContains(source, /if \(!hasDirectIllness && !hasDirectPain\) return null/, "No directly recorded pain or illness must produce a safety candidate")],
+    ["reason separation", () => {
+      assertContains(source, /hasDirectIllness[\s\S]*?reasonCode:\s*"explicit_illness"/, "Direct illness must retain its recorded reason code");
+      assertContains(source, /hasDirectPain[\s\S]*?reasonCode:\s*"explicit_pain_or_injury"/, "Direct pain must retain its recorded reason code");
+    }],
+    ["recorded provenance", () => assertContains(source, /provenance:\s*"recorded"/, "The safety candidate must identify direct user provenance")],
+    ["note is not fatigue", () => assert.doesNotMatch(source, /fatigue|outsideBandNote|consecutiveLowReadinessDays|energyAvailabilityLow/, "A free-text note must not fabricate fatigue, persistence, or energy-availability evidence")],
+    ["no normal target", () => assert.doesNotMatch(source, /\b(?:sets|reps|repRange|targetRpe|weight|load)\s*:/, "The safety adapter must not create a normal prescription")]
   ]);
 });
 
-test("safety adapters distinguish workout illness from affected-exercise pain and erase executable targets", () => {
-  const readiness = evaluateFunction("prescriptionReadiness", {
-    cleanRecovery: (value) => ({
-      sleepHours: "", sleepQuality: "", hrv: "", restingHr: "", soreness: "",
-      nutritionStatus: "", proteinStatus: "", outsideBandNote: "", illness: false,
-      pain: false, affectedMuscle: "", ...value
-    }),
-    readinessBaseline: () => ({}),
-    data: { settings: { nutritionPhase: "maintenance" } }
+test("explicit safety candidates are structural, deterministic, and do not erase loggable targets", () => {
+  const candidateFor = evaluateFunction("explicitSafetyCandidate", {
+    exceptionResolverApi: exceptionApi,
+    cleanRecovery: (value) => ({ illness: false, pain: false, ...value }),
+    isoNow: () => "2026-07-14T12:00:00.000Z",
+    passedExceptionQualification: () => Object.fromEntries(exceptionApi.QUALIFICATION_FIELDS.map((field) => [field, true]))
   });
-  const illnessReadiness = plain(readiness({ illness: true, pain: false, affectedMuscle: "" }, []));
-  const painReadiness = plain(readiness({ illness: false, pain: true, affectedMuscle: "chest" }, []));
-  assert.equal(illnessReadiness.illness, true, "Illness must remain an explicit whole-workout safety input");
-  assert.equal(illnessReadiness.pain, false, "Illness must not fabricate pain");
-  assert.equal(painReadiness.illness, false, "Pain must not fabricate illness");
-  assert.equal(painReadiness.pain, true, "Pain must remain an explicit affected-exercise safety input");
-  assert.equal(painReadiness.affectedMuscle, "chest", "Pain scope must preserve the affected muscle");
-
-  const converter = evaluateFunction("legacyTargetFromSnapshot", {
-    data: { settings: { weightUnit: "lb" } },
-    inferResistanceType: () => "external",
-    convertWeightValue: (value) => value,
-    isBodyweightResistance: () => false,
-    progressionProfileForExercise: () => ({ increment: 5 }),
-    legacyRecommendationFromSnapshot: () => ({}),
-    targetText: () => ""
-  });
-  const blocked = (reason, scope) => ({
-    recommendationId: `blocked-${reason}`,
-    basePrescription: {},
-    finalPrescription: {
-      exerciseId: "ex_barbell_bench_press",
-      recommendationType: reason === "illness" ? "hold" : "substitute",
-      executionBlocked: true,
-      workingSets: { min: 0, target: 0, max: 0 },
-      repRange: { min: 6, target: 8, max: 10 },
-      targetRpe: { min: 7, max: 8 },
-      restSeconds: { min: 120, target: 180, max: 240 },
-      setStructure: "straight_sets",
-      userExplanation: "Synthetic safety fixture",
-      confidence: "high",
-      safetyRestriction: { schemaVersion: "hard-safety/1.0.0", status: "blocked", reason, scope }
+  assert.equal(candidateFor({ id: "session" }, {}), null, "No explicit safety input must remain silent");
+  const illness = plain(candidateFor({ id: "session" }, { illness: true }));
+  const pain = plain(candidateFor({ id: "session" }, { pain: true, affectedMuscle: "chest" }));
+  for (const [candidate, reason] of [[illness, "explicit_illness"], [pain, "explicit_pain_or_injury"]]) {
+    assert.equal(candidate.category, "pain_or_illness");
+    assert.deepEqual(candidate.scope, { type: "session" });
+    assert.equal(candidate.action.code, "stop_or_skip_work");
+    assert.deepEqual(candidate.reasonCodes, [reason]);
+    assert.equal(candidate.evidence[0].provenance, "recorded");
+    for (const field of ["sets", "reps", "repRange", "targetRpe", "weight", "load"]) {
+      assert.equal(candidate.action.parameters[field], undefined, `Safety candidate must not erase or replace loggable ${field}`);
     }
-  });
-  for (const [reason, scope] of [["illness", "workout"], ["pain", "exercise"]]) {
-    const target = plain(converter(blocked(reason, scope), { name: "Bench Press", resistanceType: "external" }));
-    assert.equal(target.executionBlocked, true, `${reason} must remain explicitly non-executable in the app target`);
-    assert.equal(target.safetyRestriction?.scope, scope, `${reason} must retain its ${scope} safety scope`);
-    for (const field of ["sets", "reps", "repLow", "repHigh", "weight", "addedLoad", "assistanceLoad"]) {
-      assert.equal(Number(target[field] || 0), 0, `Blocked ${reason} target leaked executable ${field}`);
-    }
-    assert.deepEqual(target.warmups || [], [], `Blocked ${reason} target leaked warm-ups`);
-    assert.deepEqual(target.executableActions || [], [], `Blocked ${reason} target leaked executable actions`);
   }
 });
 
-test("hard-safety mutation policy blocks illness, unsited pain, matching pain, and unresolved taxonomy", () => {
+test("workout mutation authorization stays fail-closed without treating safety actions as logging blocks", () => {
   const policyName = firstFunctionName([
     "workoutMutationSafetyDecision",
     "workoutSafetyMutationDecision",
@@ -222,54 +190,38 @@ test("hard-safety mutation policy blocks illness, unsited pain, matching pain, a
     "add-exercise", "add-set", "add-warmup-set", "duplicate-set",
     "toggle-set", "toggle-skip-set", "start-timer"
   ];
-  const decision = (action, recovery, exercise = null, exerciseMuscles = [], taxonomyResolved = true) => plain(decide(action, {
+  const decision = (action, recovery, exercise = null, exerciseMuscles = [], taxonomyResolved = true, authorization = { authorized: true, authorizationMode: "active_workout" }) => plain(decide(action, {
+    authorization,
     recovery,
     exercise,
     exerciseMuscles,
     taxonomyResolved
   }));
-  const expectBlocked = (result, scope, reason, label) => {
-    assert.equal(result?.allowed, false, `${label} must refuse the mutation`);
-    assert.equal(result?.scope, scope, `${label} must expose ${scope} scope`);
-    assert.equal(result?.reason, reason, `${label} must expose the ${reason} restriction`);
-  };
 
   for (const action of executableActions) {
-    expectBlocked(
-      decision(action, { illness: true, pain: false, affectedMuscle: "" }),
-      "workout",
-      "illness",
-      `illness ${action}`
-    );
-    expectBlocked(
-      decision(action, { illness: false, pain: true, affectedMuscle: "" }),
-      "workout",
-      "pain",
-      `pain without an affected area ${action}`
-    );
+    assert.equal(decision(action, { illness: true, pain: false, affectedMuscle: "" })?.allowed, true, `Recorded illness must not prevent ${action}`);
+    assert.equal(decision(action, { illness: false, pain: true, affectedMuscle: "" })?.allowed, true, `Recorded pain must not prevent ${action}`);
   }
 
   const chestPain = { illness: false, pain: true, affectedMuscle: "Chest" };
-  expectBlocked(
-    decision("add-set", chestPain, { id: "bench", name: "Barbell Bench Press" }, ["Chest", "Triceps"], true),
-    "exercise",
-    "pain",
-    "localized matching exercise"
-  );
   assert.equal(
-    decision("add-set", chestPain, { id: "leg-press", name: "Leg Press" }, ["Quadriceps", "Glutes"], true)?.allowed,
+    decision("add-set", chestPain, { id: "bench", name: "Barbell Bench Press" }, ["Chest", "Triceps"], true)?.allowed,
     true,
-    "A catalog-resolved exercise outside the affected area must remain usable"
+    "A resolved safety action must still permit recording actual work for the named exercise"
   );
-  expectBlocked(
-    decision("add-set", chestPain, { id: "unknown", name: "Unmapped Synthetic Movement" }, [], false),
-    "exercise",
-    "pain",
-    "unresolved exercise taxonomy"
+  const unauthorized = decision(
+    "add-set",
+    chestPain,
+    { id: "bench", name: "Barbell Bench Press" },
+    ["Chest"],
+    true,
+    { authorized: false, reason: "unauthorized_workout_target", message: "Synthetic authorization failure" }
   );
+  assert.equal(unauthorized?.allowed, false, "A real authorization/data-integrity failure must remain fail-closed");
+  assert.equal(unauthorized?.reason, "unauthorized_workout_target");
 });
 
-test("Lift render and mutation dispatch paths both enforce the hard-safety policy", () => {
+test("Lift render and mutation dispatch paths share authorization without disabling safety-action logging", () => {
   const guardPattern = /workoutMutationSafetyDecision|workoutSafetyMutationDecision|workoutMutationSafetyPolicy|assertWorkoutMutationAllowed|guardWorkoutMutation/;
   const renderSources = [functionSource("renderWorkout"), functionSource("renderExercise"), functionSource("renderSet")].join("\n");
   const namedMutators = ["addExercise", "addSet", "toggleSetCompletion", "toggleSetSkipped", "startTimer"];
@@ -278,9 +230,10 @@ test("Lift render and mutation dispatch paths both enforce the hard-safety polic
   const clickEnd = html.indexOf('root.addEventListener("change"', clickStart);
   const clickHandler = html.slice(clickStart, clickEnd > clickStart ? clickEnd : clickStart + 40000);
   collectAssertions([
-    ["blocked controls", () => assertContains(renderSources, guardPattern, "Blocked Lift controls must be omitted or disabled from the same executable policy used by mutations")],
-    ["delegated event guard", () => assertContains(clickHandler, guardPattern, "Forged click events must be refused before reaching Add Exercise/Set/Warm-up/Duplicate/toggle/timer handlers")],
-    ...namedMutators.map((name) => [name, () => assertContains(functionSource(name), guardPattern, `${name} must independently refuse blocked data mutations`)]),
+    ["authorization controls", () => assertContains(renderSources, guardPattern, "Lift controls must share the authorization policy used by mutations")],
+    ["delegated event guard", () => assertContains(clickHandler, guardPattern, "Forged click events must be authorized before reaching Add Exercise/Set/Warm-up/Duplicate/toggle/timer handlers")],
+    ...namedMutators.map((name) => [name, () => assertContains(functionSource(name), guardPattern, `${name} must independently enforce target authorization`)]),
+    ["no safety disable copy", () => assert.doesNotMatch(renderSources, /blocked by the current workout safety restriction|data-safety-reason/, "A resolved safety action must not disable normal logging controls")],
     ["all mutation actions remain covered", () => executableMutationActions().forEach((action) => assertContains(clickHandler, new RegExp(`(?:action\\s*===\\s*["']${action}["']|["']${action}["'])`), `Missing ${action} mutation path`))]
   ]);
 });
@@ -289,203 +242,7 @@ function executableMutationActions() {
   return ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
 }
 
-test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-compatible, and auditable", () => {
-  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
-  const originalId = "ex_barbell_bench_press";
-  const availableEquipment = ["all"];
-  const blocked = engine.prescribeExercise({
-    exerciseId: originalId,
-    muscleGroupId: "chest",
-    readiness: { pain: true, affectedMuscle: "chest" },
-    availableEquipment,
-    trainingGoal: "hypertrophy",
-    experienceLevel: "intermediate",
-    nutritionPhase: "maintenance",
-    createdAt: "2026-07-14T12:00:00.000Z"
-  });
-  assert.equal(blocked.finalPrescription?.executionBlocked, true, "The real engine fixture must begin with a non-executable pain restriction");
-  assert.equal(blocked.finalPrescription?.safetyRestriction?.status, "blocked", "The real engine fixture must expose a typed blocked safety restriction");
-  const derived = deriveEngineSafetySubstitute(engine, blocked, "chest", availableEquipment);
-  const substituteId = derived.candidate.exerciseId;
-  const substituteResearchId = derived.candidate.researchExerciseId || substituteId;
-  if (blocked.finalPrescription.preferredReplacementExerciseId) {
-    assert.equal(substituteId, blocked.finalPrescription.preferredReplacementExerciseId, "The test must exercise the engine's preferred safe replacement when one is emitted");
-  }
-  assert.ok(derived.allowedSafetySubstituteIds.includes(substituteId), "The selected substitute must belong to the engine-derived eligible substitution set");
-  const options = {
-    allowedSafetySubstituteIds: derived.allowedSafetySubstituteIds,
-    exerciseCatalog: [derived.catalogRecord],
-    availableEquipment,
-    createdAt: "2026-07-14T12:05:00.000Z"
-  };
-  const substitute = { exerciseId: substituteId, researchExerciseId: substituteResearchId, reason: "Synthetic pain-free alternative" };
-
-  assert.throws(
-    () => engine.applyManualOverride(blocked, substitute, options),
-    /pain-free confirmation|painFreeConfirmed/i,
-    "A substitute without explicit painFreeConfirmed=true must remain blocked"
-  );
-  assert.throws(
-    () => engine.applyManualOverride(blocked, { ...substitute, exerciseId: originalId, researchExerciseId: originalId, painFreeConfirmed: true }, options),
-    /allowed|different exercise|painful original/i,
-    "The painful original cannot be re-labelled as its own safe alternative"
-  );
-  assert.throws(
-    () => engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, { ...options, availableEquipment: ["bodyweight"] }),
-    /equipment/i,
-    "An equipment-incompatible alternative must remain blocked"
-  );
-
-  const resolved = engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, options);
-  assert.equal(blocked.finalPrescription.executionBlocked, true, "Resolving an alternative must not mutate the original blocked snapshot");
-  assert.equal(blocked.finalPrescription.exerciseId, originalId, "The original blocked identity must remain unchanged");
-  assert.equal(resolved.finalPrescription.executionBlocked, false, "Only the validated substitute may become executable");
-  assert.equal(resolved.finalPrescription.exerciseId, substituteId);
-  assert.equal(resolved.finalPrescription.safetyRestriction.originalExerciseId, originalId);
-  assert.equal(resolved.finalPrescription.safetyRestriction.painFreeConfirmed, true);
-  assert.equal(resolved.manualOverrides.at(-1)?.previousFinalPrescription?.executionBlocked, true, "Override lineage must retain the prior non-executable prescription");
-  assert.equal(resolved.manualOverrides.at(-1)?.previousFinalPrescription?.exerciseId, originalId, "Override lineage must retain the painful original identity");
-
-  const frontendOverride = functionSource("applyPrescriptionOverride");
-  collectAssertions([
-    ["explicit confirmation", () => assertContains(frontendOverride, /painFreeConfirmed/, "The UI adapter must forward explicit pain-free confirmation")],
-    ["engine candidate allowlist", () => assertContains(frontendOverride, /allowedSafetySubstituteIds/, "The UI adapter must pass an engine-validated safety-substitute allowlist")],
-    ["equipment restrictions", () => assertContains(frontendOverride, /availableEquipment/, "The UI adapter must preserve current equipment restrictions")],
-    ["catalog identity", () => assertContains(frontendOverride, /researchExerciseId|exerciseCatalog|trustedExerciseCatalog/, "The UI adapter must pass a coherent catalog/research identity")]
-  ]);
-});
-
-test("engine hard-constraint rejections stay typed and never enter legacy target fallback", () => {
-  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
-  const baseRequest = {
-    exerciseId: "ex_barbell_bench_press",
-    muscleGroupId: "chest",
-    availableEquipment: ["all"],
-    trainingGoal: "hypertrophy",
-    experienceLevel: "intermediate",
-    nutritionPhase: "maintenance",
-    createdAt: "2026-07-14T12:00:00.000Z"
-  };
-  const isTypedRejection = (value) => {
-    const detail = value?.error || value;
-    const code = String(detail?.code || value?.code || "");
-    const typed = detail?.hardConstraint === true || detail?.type === "hard_constraint_rejection" || detail?.kind === "hard_constraint_rejection" || /^HARD_CONSTRAINT_/i.test(code);
-    const blocked = detail?.executionBlocked === true || detail?.executable === false || detail?.status === "blocked" || value?.executionBlocked === true || value?.executable === false;
-    return typed && blocked;
-  };
-  const capture = (fn) => {
-    try { return { value: fn(), error: null }; }
-    catch (error) { return { value: null, error }; }
-  };
-  const adapterContext = (adapterEngine) => ({
-    prescriptionEngine: adapterEngine,
-    prescriptionEvidenceStatus: { state: "ready" },
-    prescriptionExerciseIdentity: () => baseRequest.exerciseId,
-    normalizePrescriptionIdentity: (value) => String(value || "").trim().toLowerCase(),
-    prescriptionMuscleGroup: () => baseRequest.muscleGroupId,
-    todayIso: () => "2026-07-14",
-    prescriptionHistoryForExercise: () => [],
-    prescriptionReadiness: () => ({}),
-    currentMesocycle: () => null,
-    prescriptionScopeHistories: () => ({ muscleExerciseHistories: [], programMuscleHistories: [] }),
-    musclesForExercise: () => [{ muscle: "Chest" }],
-    appMuscleFromPrescriptionGroup: () => "Chest",
-    weeklyMuscleVolume: () => [],
-    startOfWeekIso: (value) => value,
-    prescriptionSnapshotCache: new Map(),
-    analysisRevision: 1,
-    data: { settings: { trainingGoal: "hypertrophy", experienceLevel: "intermediate", nutritionPhase: "maintenance" } },
-    JSON
-  });
-  const adapterProbe = (adapterEngine, options) => capture(() => evaluateFunction("unifiedPrescriptionSnapshot", adapterContext(adapterEngine))(
-    { name: "Barbell Bench Press" },
-    { fresh: true, ...options }
-  ));
-  const coachProbe = (outcome) => {
-    let legacyCalls = 0;
-    const coach = evaluateFunction("coachTargetForTemplateExercise", {
-      unifiedPrescriptionSnapshot: () => {
-        if (outcome.error) throw outcome.error;
-        return outcome.value;
-      },
-      strongHistoryFallbackForTemplateExercise: () => null,
-      legacyTargetFromSnapshot: () => { legacyCalls += 1; return { sets: 3, executable: true }; },
-      progressionProfileForExercise: () => { legacyCalls += 1; throw new Error("LEGACY_FALLBACK_REACHED"); },
-      todayIso: () => "2026-07-14"
-    });
-    const result = capture(() => coach({ name: "Barbell Bench Press" }, {}));
-    return { legacyCalls, result };
-  };
-
-  const realEngineScenarios = [
-    {
-      reason: "excluded_exercise",
-      options: { excludedExerciseIds: [baseRequest.exerciseId], availableEquipment: ["all"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 45 },
-      engineProbe: capture(() => engine.prescribeExercise({ ...baseRequest, excludedExerciseIds: [baseRequest.exerciseId] })),
-      engineMessage: /excluded/i
-    },
-    {
-      reason: "unavailable_equipment",
-      options: { excludedExerciseIds: [], availableEquipment: ["bodyweight"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 45 },
-      engineProbe: capture(() => engine.prescribeExercise({ ...baseRequest, availableEquipment: ["bodyweight"] })),
-      engineMessage: /equipment|compatible/i
-    }
-  ];
-  const failures = [];
-  for (const scenario of realEngineScenarios) {
-    const outcome = adapterProbe(engine, scenario.options);
-    const coach = coachProbe(outcome);
-    for (const [label, assertion] of [
-      [`${scenario.reason} real engine rejection`, () => {
-        assert.ok(scenario.engineProbe.error, `Real engine unexpectedly accepted ${scenario.reason}`);
-        assert.match(String(scenario.engineProbe.error.message || scenario.engineProbe.error), scenario.engineMessage);
-      }],
-      [`${scenario.reason} typed adapter`, () => assert.equal(isTypedRejection(outcome.error || outcome.value), true, `${scenario.reason} was swallowed into null or an untyped error`)],
-      [`${scenario.reason} no legacy fallback`, () => assert.equal(coach.legacyCalls, 0, `${scenario.reason} entered legacy workout target construction`)],
-      [`${scenario.reason} coach remains typed`, () => assert.equal(isTypedRejection(coach.result.error || coach.result.value), true, `${scenario.reason} lost its typed blocked state at coach resolution`)]
-    ]) {
-      try { assertion(); } catch (error) { failures.push(`${label}: ${error.message}`); }
-    }
-  }
-
-  const frontendOnlyScenarios = [
-    {
-      reason: "empty_muscle_scope",
-      options: { excludedExerciseIds: [], availableEquipment: ["all"], includedMuscleGroupIds: [], sessionDurationMinutes: 45 },
-      directProbe: capture(() => engine.prescribeExercise({ ...baseRequest, includedMuscleGroupIds: [] }))
-    },
-    {
-      reason: "invalid_time_constraint",
-      options: { excludedExerciseIds: [], availableEquipment: ["all"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 0 },
-      directProbe: capture(() => engine.prescribeExercise({ ...baseRequest, sessionDurationMinutes: 0 }))
-    }
-  ];
-  for (const scenario of frontendOnlyScenarios) {
-    const directEngineDiagnostic = scenario.directProbe.error
-      ? `direct engine rejected (${scenario.directProbe.error.message || scenario.directProbe.error})`
-      : "direct engine accepted";
-    let engineCalls = 0;
-    const countingEngine = {
-      prescribeExercise: (request) => {
-        engineCalls += 1;
-        return engine.prescribeExercise(request);
-      }
-    };
-    const outcome = adapterProbe(countingEngine, scenario.options);
-    const coach = coachProbe(outcome);
-    for (const [label, assertion] of [
-      [`${scenario.reason} prevalidation`, () => assert.equal(engineCalls, 0, `${scenario.reason} must be blocked before calling prescribeExercise; diagnostic: ${directEngineDiagnostic}`)],
-      [`${scenario.reason} typed adapter`, () => assert.equal(isTypedRejection(outcome.error || outcome.value), true, `${scenario.reason} did not produce a typed non-executable frontend result`)],
-      [`${scenario.reason} no legacy fallback`, () => assert.equal(coach.legacyCalls, 0, `${scenario.reason} entered legacy workout target construction`)],
-      [`${scenario.reason} coach remains typed`, () => assert.equal(isTypedRejection(coach.result.error || coach.result.value), true, `${scenario.reason} lost its typed blocked state at coach resolution`)]
-    ]) {
-      try { assertion(); } catch (error) { failures.push(`${label}: ${error.message}`); }
-    }
-  }
-  if (failures.length) throw new Error(failures.join("\n"));
-});
-
-test("invalid reconciled custom exercise identity resolves to null instead of an ordinary custom ID", () => {
+test("invalid reconciled custom exercise identity fails closed without an executable research identity", () => {
   const invalidId = "custom_conflicting_press";
   const evidence = prescriptionApi.normalizeEvidenceBundle({
     researchData: publicResearchData(),
@@ -513,26 +270,32 @@ test("invalid reconciled custom exercise identity resolves to null instead of an
   assert.equal(reconciled?.invalid, true, "The fixture must be invalidated by the real evidence reconciler");
   assert.equal(reconciled?.researchExerciseId, null, "A real reconciled conflict must not retain either contradictory research ID");
   const realEngine = prescriptionApi.createPrescriptionEngine(evidence);
-  const resolver = evaluateFunction("prescriptionExerciseIdentity", {
+  const context = {
     prescriptionEngine: realEngine,
+    prescriptionIdentityCacheEngine: null,
+    prescriptionIdentityCacheResolver: null,
+    prescriptionIdentityResolutionCache: new Map(),
     normalizePrescriptionIdentity: normalizeIdentity
-  });
-  const resolved = resolver("Conflicting Garage Press");
-  assert.equal(resolved, null, "An invalid reconciled identity must fail closed instead of re-entering the custom exercise path");
-  assert.notEqual(resolved, invalidId, "Invalid reconciliation must never return an ordinary custom ID");
+  };
+  context.personalExerciseRecordForName = evaluateFunction("personalExerciseRecordForName", context);
+  context.resolvePrescriptionExerciseIdentity = evaluateFunction("resolvePrescriptionExerciseIdentity", context);
+  const resolveProfile = evaluateFunction("resolveExerciseIdentityProfile", context);
+  const resolved = plain(resolveProfile("Conflicting Garage Press"));
+  assert.equal(resolved.status, "unresolved", "An invalid reconciled identity must fail closed instead of re-entering the custom exercise path");
+  assert.equal(resolved.researchExerciseId, null, "Invalid reconciliation must never retain a contradictory research ID");
+  assert.equal(resolved.performanceExerciseId, invalidId, "Failing closed must preserve the historical performance namespace for audit without making it executable");
+  assert.equal(resolved.reason, "invalid_reconciled_identity");
 });
 
-test("unified prescriptions preserve template intent and all hard workout constraints", () => {
-  const unified = functionSource("unifiedPrescriptionSnapshot");
+test("stable template targets remain authoritative while canonical actions are prospective", () => {
   const start = functionSource("startTemplate");
   const resistanceFallbacks = start.match(/resistanceType\s*:\s*target\.resistanceType\s*\|\|\s*templateResistanceType/g) || [];
   collectAssertions([
-    ["planned working sets", () => assertContains(unified, /\b(?:plannedWorkingSets|plannedSets)\s*:/, "The engine call must receive the guided/template planned set count")],
-    ["resistance type", () => assertContains(unified, /\bresistanceType\s*:/, "The engine call must receive the explicit resistance type")],
-    ["time constraint", () => assertContains(unified, /\b(?:sessionDurationMinutes|timeConstraintMinutes|maxSessionMinutes)\s*:/, "The engine call must receive the session time constraint")],
-    ["equipment constraint", () => assertContains(unified, /\bavailableEquipment\s*:/, "The engine call must receive available equipment")],
-    ["exercise exclusions", () => assertContains(unified, /\b(?:excludedExerciseIds|exerciseExclusions)\s*:/, "The engine call must receive exercise exclusions")],
-    ["muscle scope", () => assertContains(unified, /\b(?:includedMuscleGroupIds|muscleScope)\s*:/, "The engine call must receive the selected muscle scope")],
+    ["stable target", () => assertContains(start, /stableTargetForTemplateExercise\(templateExercise,/, "The routine variant must provide the normal set/rep/RPE/rest target")],
+    ["canonical action", () => assertContains(start, /resolvedActionForVariant\(session\.resolvedActions, exerciseVariantId\)[\s\S]*applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "Only a canonical resolved action may prospectively adjust the stable target")],
+    ["stable snapshot", () => assertContains(start, /stableTargetSnapshot:[\s\S]*resolvedActionId:/, "The active exercise must preserve the unmodified target facts and applied decision identity")],
+    ["no normal engine target", () => assert.doesNotMatch(start, /prescribeExercise|unifiedPrescriptionSnapshot|coachTargetForTemplateExercise/, "The normal start path must not ask a recommendation engine to create a second prescription")],
+    ["equipment constraint removed", () => assert.doesNotMatch(start, /\bavailableEquipment\b|equipmentCompatible|configuredEquipment/, "The normal workout path must not receive deleted equipment constraints")],
     ["exercise/set resistance fallback", () => assert.ok(resistanceFallbacks.length >= 2, `Started exercises and generated sets must retain template resistance when an engine target omits it; found ${resistanceFallbacks.length} guarded assignment(s)`)]
   ]);
 });
@@ -551,45 +314,53 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
           warmups: [{ id: "warmup-1", reps: 10, weight: 10 }]
         }]
       }],
-      sessions: [], exercises: [], sets: [], recommendationHistory: [], mesocycles: [], settings: { weightUnit: "lb" }
+      sessions: [], exercises: [], sets: [], settings: { weightUnit: "lb", defaultRestSeconds: 90 }
     },
     defaultRecovery: () => ({}),
     hasActiveWorkout: () => false,
     activeSession: () => null,
     todayIso: () => "2026-07-14",
     isSessionSubmitted: () => false,
+    WORKOUT_DURATION_SEMANTICS_VERSION: "comprehensive-fitness-workout-duration/1.0.0",
     cleanRecovery: (value) => value,
     createSession: () => ({ id: "session-1", date: "2026-07-14", title: "Synthetic template" }),
-    recoveryRecommendationForSession: () => ({ decision: "normal" }),
+    measurePerformance: (_label, operation) => operation(),
+    resolveWorkoutExceptions: () => [],
     inferResistanceType: () => "cable",
-    coachTargetForTemplateExercise: () => ({
+    stableTargetForTemplateExercise: () => ({
       sets: 2, reps: 8, repLow: 6, repHigh: 10, weight: 40, weightUnit: "lb", rpe: 8,
-      restSeconds: 90, mode: "maintenance", confidence: "medium", reason: "Synthetic target",
-      adjusted: false, triggerLabels: [], recommendationSnapshot: null
+      restSeconds: 90, mode: "stable-target", adjusted: false
     }),
     isBodyweightResistance: () => false,
     recommendedRestSeconds: () => 90,
-    adjustTargetForRecovery: (target) => ({ ...target, resistanceType: undefined }),
-    unifiedTargetContext: () => null,
-    exerciseTargetContext: () => ({ setTypes: [] }),
-    resolvedSetTypesForPrescription: () => [{
+    resolvedActionForVariant: () => null,
+    applyResolvedActionToStableTarget: (target) => ({ ...target, resistanceType: undefined }),
+    normalizeStableTemplateExercise: (exercise) => ({
+      ...exercise,
+      sets: 2,
+      reps: 8,
+      repMin: 6,
+      repMax: 10,
+      targetRpe: 8,
+      restSeconds: 90,
+      setTypes: [{ id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true }]
+    }),
+    canonicalExerciseId: () => "synthetic_press",
+    exerciseIdentityFields: () => ({ performanceExerciseId: "synthetic_press" }),
+    stableSetTypesForWorkoutStart: () => [{
       id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10,
       rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true
     }],
     id: () => `generated-${++nextId}`,
     getMostRecentWorkoutSets: () => [],
-    setPrescriptionForRole: ({ setType, setTypeIndex, sequenceIndex }) => ({
-      setType: "straight", setTypeIndex, sequenceIndex, targetReps: 8, targetLoad: 40,
+    factualSetPrefillForWorkoutStart: (_exercise, _target, setType, setTypeIndex, sequenceIndex) => ({
+      setType: "straight", setTypeIndex, sequenceIndex, reps: 8, weight: 40, rpe: 8,
       repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: setType.restSeconds,
-      reason: "Synthetic role", previousComparableSet: null
+      previousComparableSet: null
     }),
-    validateGeneratedSetPrescriptions: (items) => items,
     normalizeSetTypeCode: (value) => value || "straight",
     setTypeLabels: { straight: "Working set" },
     createSet: (exerciseId, setNumber, source) => ({ id: `set-${setNumber}-${nextId}`, exerciseId, setNumber, ...source }),
-    currentMesocycle: () => null,
-    prescriptionApi: { PRESCRIPTION_SCHEMA_VERSION: "exercise-prescription/2.0.0" },
-    prescriptionEvidenceStatus: { personalVersion: "synthetic", researchVersion: "synthetic" },
     isoNow: () => "2026-07-14T12:00:00.000Z",
     setActiveTab: () => {},
     canonicalSetSequence: (set) => Number(set.sequenceIndex || 0),
@@ -602,6 +373,7 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
     activeSetAcknowledged: false,
     activeSetNotice: ""
   };
+  context.startWorkoutDuration = evaluateFunction("startWorkoutDuration", context);
   const startTemplate = evaluateFunction("startTemplate", context);
   startTemplate("template-1", {}, "usual");
   const exercise = committed?.exercises?.find((item) => item.sessionId === "session-1");
@@ -611,111 +383,25 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
   generatedSets.forEach((set) => assert.equal(set.resistanceType, "cable", `Generated set ${set.id} lost the resolved resistance type`));
 });
 
-test("unified prescription invocation forwards canonical profile fields and hard constraints unchanged", () => {
-  let captured = null;
-  const unified = evaluateFunction("unifiedPrescriptionSnapshot", {
-    prescriptionEngine: { prescribeExercise: (input) => { captured = input; return { recommendationId: "synthetic" }; } },
-    prescriptionEvidenceStatus: { state: "ready" },
-    prescriptionExerciseIdentity: () => "ex_barbell_bench_press",
-    normalizePrescriptionIdentity: (value) => String(value || "").trim(),
-    prescriptionMuscleGroup: () => "chest",
-    todayIso: () => "2026-07-14",
-    prescriptionHistoryForExercise: () => [],
-    prescriptionReadiness: () => ({}),
-    currentMesocycle: () => null,
-    prescriptionScopeHistories: () => ({ muscleExerciseHistories: [], programMuscleHistories: [] }),
-    musclesForExercise: () => [{ muscle: "Chest" }],
-    appMuscleFromPrescriptionGroup: () => "Chest",
-    weeklyMuscleVolume: () => [],
-    startOfWeekIso: (value) => value,
-    prescriptionSnapshotCache: new Map(),
-    analysisRevision: 1,
-    JSON
-  });
-  const requested = {
-    plannedWorkingSets: 3,
-    resistanceType: "external",
-    sessionDurationMinutes: 35,
-    availableEquipment: ["dumbbell", "bench"],
-    excludedExerciseIds: ["ex_barbell_bench_press"],
-    includedMuscleGroupIds: ["chest"],
-    trainingGoal: "hypertrophy",
-    nutritionPhase: "deficit",
-    experienceLevel: "intermediate",
-    createdAt: "2026-07-14T12:00:00.000Z",
-    fresh: true
-  };
-  unified({ name: "Bench Press" }, requested);
-  for (const field of [
-    "plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "availableEquipment",
-    "excludedExerciseIds", "includedMuscleGroupIds", "trainingGoal", "nutritionPhase", "experienceLevel"
-  ]) {
-    assert.deepEqual(plain(captured?.[field]), plain(requested[field]), `Unified adapter dropped or rewrote ${field}`);
-  }
-});
-
-test("settings use separate canonical training, nutrition, and experience fields with legacy migration", () => {
-  const defaultsStart = html.indexOf("const defaultSettings");
-  assert.notEqual(defaultsStart, -1, "Missing defaultSettings");
-  const defaults = html.slice(defaultsStart, defaultsStart + 3500);
-  const normalize = functionSource("normalizeLoadedData");
-  const unified = functionSource("unifiedPrescriptionSnapshot");
+test("canonical resolver invocation forwards only structural candidates and prior decisions", () => {
+  const resolver = functionSource("resolveWorkoutExceptions");
+  const safetyCandidate = functionSource("explicitSafetyCandidate");
+  const handling = functionSource("handleResolvedActionChoice");
   collectAssertions([
-    ["canonical defaults", () => {
-      assertContains(defaults, /trainingGoal\s*:/, "Settings need a canonical trainingGoal");
-      assertContains(defaults, /nutritionPhase\s*:/, "Settings need a separate nutritionPhase");
-      assertContains(defaults, /experienceLevel\s*:/, "Settings need a canonical experienceLevel");
+    ["candidate list", () => assertContains(resolver, /candidates:\s*\[safetyCandidate\]\.filter\(Boolean\)/, "The current resolver boundary must receive only the independently approved direct safety candidate")],
+    ["prior decisions", () => assertContains(resolver, /priorDecisions:\s*Array\.isArray\(session\.resolvedActions\)/, "Reevaluation must preserve the prior canonical decision chain")],
+    ["explicit observation", () => assertContains(resolver, /explicitSafetyObservation:\s*safetyCandidate \?/, "The deterministic safety fallback must stay inside the canonical resolver boundary")],
+    ["explicit handling boundary", () => {
+      assertContains(handling, /action\.handling\s*!==\s*["']pending["']/, "Only pending decisions may accept an explicit handling choice");
+      assertContains(handling, /exceptionResolverApi\.applyDecisionHandling\(action,\s*handling\)/, "Explicit user handling must be persisted structurally through the choice handler");
+      assert.doesNotMatch(resolver, /applyDecisionHandling/, "Resolver evaluation must not auto-handle a pending decision");
     }],
-    ["canonical persistence", () => {
-      assertContains(normalize, /trainingGoal\s*:/, "Loaded settings must preserve trainingGoal");
-      assertContains(normalize, /nutritionPhase\s*:/, "Loaded settings must preserve nutritionPhase");
-      assertContains(normalize, /experienceLevel\s*:/, "Loaded settings must preserve experienceLevel");
-    }],
-    ["legacy migration", () => {
-      assertContains(normalize, /(?:migrate|legacy)[\s\S]{0,900}(?:storedSettings\.)?goal/i, "Legacy overloaded goal values need an explicit migration");
-      assertContains(normalize, /(?:migrate|legacy)[\s\S]{0,900}(?:storedSettings\.)?trainingStatus/i, "Legacy trainingStatus needs an explicit experience migration");
-    }],
-    ["engine receives canonical fields", () => {
-      assertContains(unified, /trainingGoal\s*:/, "Prescription invocation must receive trainingGoal");
-      assertContains(unified, /nutritionPhase\s*:/, "Prescription invocation must receive nutritionPhase separately");
-      assertContains(unified, /experienceLevel\s*:/, "Prescription invocation must receive experienceLevel");
-    }]
+    ["no program-profile inputs", () => assert.doesNotMatch(`${resolver}\n${safetyCandidate}`, /trainingGoal|nutritionPhase|experienceLevel|availableEquipment|plannedWorkingSets|sessionDurationMinutes|includedMuscleGroupIds|excludedExerciseIds/, "The canonical exception path must not recreate the deleted program-prescription request")],
+    ["no exact normal target", () => assert.doesNotMatch(`${resolver}\n${safetyCandidate}`, /\b(?:sets|reps|repRange|targetRpe|weight|load)\s*:/, "The canonical exception path must not create exact normal targets")]
   ]);
 });
 
-test("legacy cut settings migrate at runtime without inheriting the hypertrophy default", () => {
-  const normalizeLoadedData = evaluateFunction("normalizeLoadedData", {
-    defaultSettings: {
-      weightUnit: "lb",
-      goal: "hypertrophy",
-      trainingStatus: "intermediate",
-      trainingGoal: "hypertrophy",
-      nutritionPhase: "maintenance",
-      experienceLevel: "intermediate",
-      readinessBaseline: {}
-    },
-    cleanReadinessBaseline: (value) => value || {},
-    cleanRecovery: (value) => value || {},
-    isBodyweightExerciseName: () => false,
-    inferResistanceType: (_name, source) => source?.resistanceType || "external",
-    isBodyweightResistance: () => false,
-    normalizeResistanceSet: (set, resistanceType) => ({ ...set, resistanceType }),
-    resistanceTypeValues: ["external", "bodyweight", "cable"],
-    normalizeTargetSetType: (value) => value,
-    migrateDomainData: (model) => model
-  });
-  const migrated = plain(normalizeLoadedData(legacyState()));
-  collectAssertions([
-    ["training goal", () => assert.equal(migrated.settings.trainingGoal, "general_fitness", "Legacy goal=cut must resolve to a neutral training goal")],
-    ["nutrition phase", () => assert.equal(migrated.settings.nutritionPhase, "deficit", "Legacy goal=cut must preserve the nutrition meaning")],
-    ["experience", () => assert.equal(migrated.settings.experienceLevel, "novice", "Legacy trainingStatus must migrate to experienceLevel")],
-    ["no inherited hypertrophy", () => assert.notEqual(migrated.settings.trainingGoal, "hypertrophy", "A missing legacy training goal must not inherit the new hypertrophy default")],
-    ["legacy goal removed", () => assert.equal(migrated.settings.goal, undefined, "The overloaded legacy goal must stop being authoritative")],
-    ["legacy status removed", () => assert.equal(migrated.settings.trainingStatus, undefined, "The legacy training status must stop being authoritative")]
-  ]);
-});
-
-test("canonical exercise and taxonomy resolution are registry-first and exhaustive", () => {
+test("canonical exercise identity resolution is registry-first and exhaustive", () => {
   const evidence = prescriptionApi.normalizeEvidenceBundle({ researchData: publicResearchData() });
   const unresolved = [];
   for (const exercise of publicExercises) {
@@ -728,42 +414,42 @@ test("canonical exercise and taxonomy resolution are registry-first and exhausti
   assert.deepEqual(unresolved, [], `Public canonical names/aliases failed resolution:\n${unresolved.join("\n")}`);
 
   const canonical = functionSource("canonicalExerciseId");
-  const muscles = functionSource("musclesForExercise");
   collectAssertions([
     ["no regex-only canonical fallback", () => assert.doesNotMatch(canonical, /return\s+researchId\s*\|\|\s*normalized/, "Known public exercises must resolve through a canonical registry instead of becoming regex-normalized pseudo IDs")],
-    ["canonical identity gates analytics", () => assertContains(muscles, /canonicalExerciseId\s*\(/, "Analytics must identify canonical exercises before considering a custom-exercise regex fallback")],
-    ["regex fallback is custom-only", () => assertContains(muscles, /(?:custom|uncatalogued|unmapped)[\s\S]{0,240}automaticMusclesForName|automaticMusclesForName[\s\S]{0,240}(?:custom|uncatalogued|unmapped)/i, "Regex muscle inference must be explicitly limited to custom or unmapped exercises")]
+    ["no deleted analytics coupling", () => assert.doesNotMatch(canonical, /weeklyMuscleVolume|hypertrophyAnalysis|calculateExerciseMuscleContributions/, "Canonical identity must remain independent from deleted volume and hypertrophy analysis")]
   ]);
 });
 
 test("frontend identity resolution prefers the public alias registry and namespaces uncatalogued exercises", () => {
-  const normalize = (value) => String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim();
-  const evidence = {
-    personal: {
+  const evidence = prescriptionApi.normalizeEvidenceBundle({
+    researchData: publicResearchData(),
+    personalData: {
       exerciseScores: [
         { exercise_id: "custom_spoofed_bench", exercise_name: "Bench Press" },
         { exercise_id: "custom_my_press", exercise_name: "My Garage Press" }
-      ],
-      exercisePrescriptions: []
-    },
-    research: {
-      exerciseIdByAlias: new Map([["bench press", "ex_barbell_bench_press"], ["flat bench", "ex_barbell_bench_press"]]),
-      exerciseDatabase: [{ exercise_id: "ex_barbell_bench_press", exercise_name: "Barbell Bench Press" }]
+      ]
     }
+  });
+  const context = {
+    prescriptionEngine: prescriptionApi.createPrescriptionEngine(evidence),
+    prescriptionIdentityCacheEngine: null,
+    prescriptionIdentityCacheResolver: null,
+    prescriptionIdentityResolutionCache: new Map()
   };
-  const prescriptionIdentity = evaluateFunction("prescriptionExerciseIdentity", {
-    prescriptionEngine: { evidence },
-    normalizePrescriptionIdentity: normalize
-  });
-  assert.equal(prescriptionIdentity("Flat Bench"), "ex_barbell_bench_press", "A public alias must resolve to its canonical research ID");
-  assert.equal(prescriptionIdentity("Bench Press"), "ex_barbell_bench_press", "A custom name collision must not shadow the public registry");
-  assert.equal(prescriptionIdentity("My Garage Press"), "custom_my_press", "A trusted custom identity must remain in its custom namespace");
+  context.normalizePrescriptionIdentity = evaluateFunction("normalizePrescriptionIdentity", context);
+  context.personalExerciseRecordForName = evaluateFunction("personalExerciseRecordForName", context);
+  context.resolvePrescriptionExerciseIdentity = evaluateFunction("resolvePrescriptionExerciseIdentity", context);
+  context.stableCustomPerformanceExerciseId = evaluateFunction("stableCustomPerformanceExerciseId", context);
+  context.resolveExerciseIdentityProfile = evaluateFunction("resolveExerciseIdentityProfile", context);
+  const bench = plain(context.resolveExerciseIdentityProfile("Bench Press"));
+  const custom = plain(context.resolveExerciseIdentityProfile("My Garage Press"));
+  assert.equal(bench.researchExerciseId, "ex_barbell_bench_press", "A custom name collision must not shadow the public registry");
+  assert.notEqual(bench.performanceExerciseId, "custom_spoofed_bench", "The spoofed personal record must not own the public alias performance namespace");
+  assert.equal(custom.performanceExerciseId, "custom_my_press", "A trusted custom identity must remain in its custom namespace");
+  assert.equal(custom.researchExerciseId, null);
 
-  const canonicalId = evaluateFunction("canonicalExerciseId", {
-    prescriptionEngine: { evidence },
-    normalizePrescriptionIdentity: normalize
-  });
-  assert.equal(canonicalId("Flat Bench"), "ex_barbell_bench_press");
+  const canonicalId = evaluateFunction("canonicalExerciseId", context);
+  assert.equal(canonicalId("Barbell Bench Press"), "ex_barbell_bench_press");
   assert.match(canonicalId("Uncatalogued Garage Press"), /^custom(?::|_)/, "An uncatalogued name must not become an unnamespaced pseudo-canonical ID");
 });
 
@@ -795,6 +481,7 @@ test("exact personal variations retain performance history identity while sharin
   context.normalizePrescriptionIdentity = evaluateFunction("normalizePrescriptionIdentity", context);
   context.personalExerciseRecordForName = evaluateFunction("personalExerciseRecordForName", context);
   context.resolvePrescriptionExerciseIdentity = evaluateFunction("resolvePrescriptionExerciseIdentity", context);
+  context.stableCustomPerformanceExerciseId = evaluateFunction("stableCustomPerformanceExerciseId", context);
   context.resolveExerciseIdentityProfile = evaluateFunction("resolveExerciseIdentityProfile", context);
   const canonicalExerciseId = evaluateFunction("canonicalExerciseId", context);
 
@@ -950,176 +637,78 @@ test("backup revision metadata is bounded and rebased while template numbers sha
   ]);
 });
 
-test("active and template recommendation snapshots require schema, checksum, identity, and direct-target validity", () => {
-  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
-  const validateExecutableRecommendationSnapshot = evaluateFunction("validateExecutableRecommendationSnapshot", { prescriptionApi });
-  const validateSnapshot = evaluateFunction("validateImportedExecutableRecommendationSnapshot", {
-    validateExecutableRecommendationSnapshot
-  });
-  const valid = engine.prescribeExercise({
-    exerciseId: "ex_barbell_bench_press",
-    muscleGroupId: "mg_chest_sternal",
-    availableEquipment: ["all"],
-    history: [],
-    createdAt: "2026-07-15T00:00:00.000Z"
-  });
-  assert.doesNotThrow(() => validateSnapshot(valid, engine, "Valid active recommendation"));
-
-  const staleChecksum = structuredClone(valid);
-  staleChecksum.confidence = staleChecksum.confidence === "high" ? "moderate" : "high";
-  assert.throws(() => validateSnapshot(staleChecksum, engine, "Stale checksum"), /checksum/i);
-
-  const unknownSchema = prescriptionApi.refreshRecommendationChecksum({ ...structuredClone(valid), schemaVersion: "snapshot/99.0.0" });
-  assert.throws(() => validateSnapshot(unknownSchema, engine, "Unknown schema"), /schema/i);
-
-  const unknownIdentity = structuredClone(valid);
-  unknownIdentity.exerciseId = "ex_unknown_imported_identity";
-  if (unknownIdentity.basePrescription) unknownIdentity.basePrescription.exerciseId = unknownIdentity.exerciseId;
-  if (unknownIdentity.finalPrescription) unknownIdentity.finalPrescription.exerciseId = unknownIdentity.exerciseId;
-  assert.throws(
-    () => validateSnapshot(prescriptionApi.refreshRecommendationChecksum(unknownIdentity), engine, "Unknown identity"),
-    /identity|unknown/i
-  );
-
-  const mismatchedTarget = prescriptionApi.refreshRecommendationChecksum({
-    ...structuredClone(valid),
-    muscleGroupId: "mg_quadriceps_rectus_femoris"
-  });
-  assert.throws(() => validateSnapshot(mismatchedTarget, engine, "Identity-target mismatch"), /taxonomy|target|direct|muscle/i);
-
-  assert.throws(
-    () => validateSnapshot(valid, engine, "Host mismatch", { name: "Seated Cable Row", canonicalExerciseId: "ex_seated_cable_row" }),
-    /host exercise identity/i
-  );
-
-  let prescribeCalls = 0;
-  const originalPrescribe = engine.prescribeExercise.bind(engine);
-  engine.prescribeExercise = (...args) => { prescribeCalls += 1; return originalPrescribe(...args); };
-  assert.doesNotThrow(() => validateSnapshot(valid, engine, "No fresh prescription"));
-  assert.equal(prescribeCalls, 0, "Snapshot integrity/identity validation must not invoke fresh prescription logic");
-
-  const blocked = engine.prescribeExercise({
-    exerciseId: "ex_barbell_bench_press",
-    muscleGroupId: "mg_chest_sternal",
-    readiness: { pain: true, affectedMuscle: "chest" },
-    availableEquipment: ["all"],
-    history: [],
-    createdAt: "2026-07-15T00:00:00.000Z"
-  });
-  assert.equal(blocked.finalPrescription.executionBlocked, true, "The hard-rejection fixture must be non-executable");
-  assert.doesNotThrow(() => validateSnapshot(blocked, engine, "Valid hard rejection"), "A valid non-executable safety snapshot remains safe to import");
-
-  const calls = [];
-  const validateCollection = evaluateFunction("validateImportedExecutableRecommendationSnapshots", {
-    validateImportedExecutableRecommendationSnapshot: (snapshot, _engine, label, hostExercise) => calls.push({ snapshot, label, hostExercise })
-  });
-  const historicalSnapshot = { exact: "historical bytes" };
-  const historicalBefore = JSON.stringify(historicalSnapshot);
-  validateCollection({
-    sessions: [
-      { id: "active", submitted: false, workoutPrescription: { recommendations: [{ kind: "active-workout" }] } },
-      { id: "historical", submitted: true, workoutPrescription: { recommendations: [{ kind: "historical-workout" }] } }
-    ],
-    exercises: [
-      { id: "active-exercise", sessionId: "active", recommendationSnapshot: { kind: "active-exercise" } },
-      { id: "historical-exercise", sessionId: "historical", recommendationSnapshot: historicalSnapshot }
-    ],
-    templates: [{ id: "template", exercises: [{ id: "template-exercise", recommendationSnapshot: { kind: "template" } }] }]
-  }, engine);
-  assert.deepEqual(calls.map((item) => item.snapshot.kind), ["active-exercise", "active-workout", "template"]);
-  assert.deepEqual(calls.filter((item) => item.hostExercise).map((item) => item.hostExercise.id), ["active-exercise", "template-exercise"], "Active/template exercise snapshots must remain bound to their host exercise");
-  assert.equal(JSON.stringify(historicalSnapshot), historicalBefore, "Submitted historical snapshot bytes must remain untouched and unvalidated");
-});
-
 test("Strong CSV import requires explicit source-unit provenance and preserves it", () => {
+  const prepareStrongSource = functionSource("prepareStrongCsvImport");
   const importStrongSource = functionSource("importStrongCsv");
   const importFileSource = functionSource("importDataFile");
+  const applySource = functionSource("applyPendingImport");
   collectAssertions([
-    ["explicit source unit", () => assertContains(importStrongSource, /normalizeStrongImportWeightUnit\s*\(\s*sourceWeightUnit\s*\)/, "Strong import must validate an explicit source unit")],
-    ["per-set provenance", () => assertContains(importStrongSource, /weightUnit\s*,/, "Strong sets must store the selected source unit")],
-    ["raw-source provenance", () => assertContains(importStrongSource, /originalText:\s*text[\s\S]{0,160}weightUnit/, "Retained Strong source metadata must store the selected unit")],
-    ["deterministic duplicate", () => assertContains(importStrongSource, /retainedRawImport[\s\S]{0,900}No data was changed/, "An exact duplicate Strong source must be a deterministic no-op")],
-    ["file wiring", () => assertContains(importFileSource, /importStrongCsv\s*\(\s*text\s*,\s*strongImportWeightUnit\s*\)/, "The file importer must pass the explicit Strong unit choice")],
+    ["explicit source unit", () => assertContains(prepareStrongSource, /normalizeStrongImportWeightUnit\s*\(\s*sourceWeightUnit\s*\)/, "Strong import must validate an explicit source unit")],
+    ["per-set provenance", () => assertContains(prepareStrongSource, /weightUnit\s*,/, "Strong sets must store the selected source unit")],
+    ["raw-source provenance", () => assertContains(prepareStrongSource, /originalText:\s*text[\s\S]{0,220}weightUnit/, "Retained Strong source metadata must store the selected unit")],
+    ["versioned raw source", () => assertContains(prepareStrongSource, /importVersion:\s*STRONG_IMPORT_CONTRACT_VERSION/, "Retained Strong source metadata must store the import contract version")],
+    ["deterministic duplicate", () => assertContains(prepareStrongSource, /retainedRawImport[\s\S]{0,1400}No data was changed/, "An exact duplicate Strong source must be a deterministic no-op")],
+    ["pending preview", () => assertContains(importStrongSource, /pendingImport\s*=\s*prepareStrongCsvImport[\s\S]*state:\s*"preview"/, "Strong import must stage an in-memory preview rather than commit")],
+    ["file wiring", () => assertContains(importFileSource, /importStrongCsv\s*\(\s*text\s*,\s*strongImportWeightUnit\s*,/, "The file importer must pass the explicit Strong unit choice")],
+    ["explicit apply", () => assertContains(applySource, /writeIndexedValuesAtomically[\s\S]*operation\.candidate/, "Only the explicit Apply path may durably write the staged candidate")],
     ["visible choice", () => assertContains(html, /data-action="strong-import-weight-unit"[\s\S]{0,500}Pounds \(lb\)[\s\S]{0,500}Kilograms \(kg\)/, "Settings must expose the Strong source-unit choice")]
   ]);
 });
 
-test("recommendation presentation tolerates legacy partial snapshots without mutating audit history", () => {
-  const recommendationMetricForDisplay = evaluateFunction("recommendationMetricForDisplay");
-  const recommendationExplanationForDisplay = evaluateFunction("recommendationExplanationForDisplay");
-  const recommendationSnapshotForDisplay = evaluateFunction("recommendationSnapshotForDisplay", { recommendationMetricForDisplay, recommendationExplanationForDisplay });
-  const historical = {
-    schemaVersion: "prescription-snapshot/public-synthetic-legacy",
-    recommendationId: "public-synthetic-legacy-partial",
-    confidence: "moderate",
-    finalPrescription: {
-      exerciseId: "ex_barbell_bench_press",
-      recommendationType: "hold",
-      sets: 2,
-      repRange: { min: 8, max: 10, target: 9 },
-      targetRpe: { min: 7, max: 8 },
-      restSeconds: { min: 90, max: 150, target: 120 }
-    }
-  };
-  const before = JSON.stringify(historical);
-  const display = recommendationSnapshotForDisplay(historical);
-  assert.equal(display.finalPrescription.workingSets.target, 2);
-  assert.equal(display.finalPrescription.setStructure, "not_specified");
-  assert.equal(display.finalPrescription.role, "not_specified");
-  assert.deepEqual(plain(display.finalPrescription.evidenceSummary), []);
-  assert.equal(display.basePrescription.repRange.target, 9, "a missing legacy base prescription must use a display-only final-prescription fallback");
-  assert.equal(JSON.stringify(historical), before, "presentation normalization must not rewrite immutable historical bytes");
-  assert.equal(recommendationSnapshotForDisplay({ executionBlocked: true, executable: false }), null);
-  const structuredLegacyReason = { explanation: { summary: "Public synthetic structured explanation." } };
-  const structuredBefore = JSON.stringify(structuredLegacyReason);
-  assert.equal(recommendationExplanationForDisplay(structuredLegacyReason), "Public synthetic structured explanation.");
-  assert.equal(recommendationExplanationForDisplay(["First reason.", { message: "Second reason." }]), "First reason. Second reason.");
-  assert.equal(recommendationExplanationForDisplay({ unknown: "not presentation text" }, "Saved recommendation details are unavailable."), "Saved recommendation details are unavailable.");
-  assert.equal(JSON.stringify(structuredLegacyReason), structuredBefore, "legacy explanation normalization must not mutate stored prescription data");
-
+test("visible exception presentation consumes only the canonical resolved-action contract", () => {
   const analysis = fs.readFileSync(path.join(APP_ROOT, "app-analysis.js"), "utf8");
   const views = fs.readFileSync(path.join(APP_ROOT, "app-views.js"), "utf8");
-  assert.match(analysis, /executionBlocked\s*===\s*true[\s\S]*blocked-recommendation/, "Progress lift recommendations must render hard rejections as bounded cards");
-  assert.match(analysis, /Array\.isArray\(recommendation\.evidence\)/, "legacy recommendations must not assume evidence is an array");
-  assert.match(views, /recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)/, "Today must normalize saved snapshots only at its display boundary");
-  assert.match(views, /recommendationExplanationForDisplay\(target\.adjustmentReason \|\| target\.reason/, "Today must normalize legacy prescription explanations before using string presentation methods");
-  assert.match(views, /function formatPreviousSetPerformance\([\s\S]*formatSetPerformance\(set, exercise\)/, "Today legacy recommendation details must retain the prior-set formatter used by their role rows");
-  assert.match(views, /program-warning blocking[\s\S]*cannot be used with the current workout constraints/, "Today must bound non-executable template exercises inside their workout card");
+  assert.match(views, /function renderResolvedAction\(/, "Visible exception copy must have one structural resolved-action renderer");
+  assert.match(views, /Array\.isArray\(session\?\.resolvedActions\)/, "Visible exception selection must read the persisted canonical actions");
+  assert.doesNotMatch(views, /renderRecommendationHead|renderUnifiedEvidence|renderUnifiedPrescriptionDetails|renderPrescriptionDetails/, "Today and the active workout must not retain legacy recommendation/confidence/evidence renderers");
+  assert.doesNotMatch(analysis, /function renderRecommendation\(|renderRecommendationHead|renderUnifiedEvidence/, "Progress must not retain a second recommendation renderer");
+  assert.doesNotMatch(views, /fatigueFlags\(|recoveryRecommendationForSession\(|unifiedPrescriptionSnapshot\(/, "Visible surfaces must not call detector or legacy prescription sources directly");
+  assert.doesNotMatch(analysis, /fatigueFlags\(|recoveryRecommendationForSession\(|coachRecommendationForExercise\(/, "Analysis surfaces must remain detached from detector outputs and normal coaching");
 });
 
 test("conflict-mode and rejected executable imports perform zero writes while accepted imports rebase once", async () => {
-  const makeContext = ({ conflict = false, snapshotError = null } = {}) => {
-    const events = { writes: [], removals: [], renders: 0, snapshotChecks: 0, evidenceInstalls: 0, invalidations: 0, runtimeSaves: 0 };
+  const makeContext = ({ conflict = false, loaderError = null, snapshotError = null } = {}) => {
+    const events = { writes: [], removals: [], renders: 0, snapshotChecks: 0, identityInstalls: 0, invalidations: 0, runtimeSaves: 0 };
     const engineSentinel = { id: "engine-sentinel" };
     const cacheSentinel = { id: "cache-sentinel" };
     const context = {
       importInProgress: false,
       importAttempt: 0,
       importStatus: { state: "idle", message: "" },
+      pendingImport: null,
       settingsMessage: "",
       render: () => { events.renders += 1; },
       appDataPersistenceConflict: conflict ? { message: "Synthetic divergent copies" } : null,
       BACKUP_IMPORT_LIMITS: { maxFileBytes: BACKUP_BOUNDARIES.fileBytes },
       Error,
       TextEncoder,
-      window: { FitnessBackupContract: { validateAndSanitizeBackup: (value) => value } },
+      window: {
+        FitnessBackupContract: {
+          validateAndSanitizeBackup: (value) => value,
+          decodeLegacyBackup: (value) => value
+        }
+      },
       validateImportedAppData: () => ({ appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], settings: {}, personalEvidencePackage: null, dataRevision: 0 }),
-      researchOnlyBundleForImport: () => ({ bundle: { personal: {} }, engine: { id: "prepared-engine" } }),
+      researchOnlyBundleForImport: async () => {
+        if (loaderError) throw new Error(loaderError);
+        return { bundle: { personal: {} }, engine: { id: "prepared-engine" }, exerciseDatabase: [] };
+      },
       normalizeLoadedData: (value) => structuredClone(value),
       nextMonotonicImportRevision: () => 42,
       validateImportedExecutableRecommendationSnapshots: () => {
         events.snapshotChecks += 1;
         if (snapshotError) throw new Error(snapshotError);
       },
-      writeIndexedValue: async (key, value) => { events.writes.push({ key, value: structuredClone(value) }); },
+      assertCandidateHasRecoverableExport: () => true,
+      collectionCounts: (value) => ({ sessions: value.sessions.length, exercises: value.exercises.length, sets: value.sets.length, templates: value.templates.length }),
+      validateActiveWorkoutDraftEnvelope: () => { throw new Error("Draft validation was not expected"); },
       localStorage: { removeItem: (key) => events.removals.push(key) },
       STORAGE_KEY: "comprehensive-fitness-data",
       data: { dataRevision: 41, sessions: [{ id: "runtime-session-sentinel" }], evidenceSentinel: "unchanged" },
       templateNumericDrafts: new Map(),
       prescriptionEngine: engineSentinel,
-      prescriptionEvidenceStatus: { state: "ready", personalVersion: "evidence-sentinel" },
       prescriptionSnapshotCache: new Map([["sentinel", cacheSentinel]]),
-      installPreparedEvidence: () => { events.evidenceInstalls += 1; context.prescriptionEngine = { id: "installed-engine" }; return 0; },
+      installExerciseIdentityCompatibility: () => { events.identityInstalls += 1; context.prescriptionEngine = { id: "installed-engine" }; return true; },
       entityStructureRevision: 7,
       entityIndexCache: { id: "entity-cache-sentinel" },
       invalidateCompletedAnalysis: () => { events.invalidations += 1; },
@@ -1140,12 +729,23 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   assert.equal(conflict.events.writes.length, 0, "Conflict-mode import must not write either store");
   assert.match(conflict.context.settingsMessage, /selected copy|alternate is excluded|Clear All/i);
 
+  const unavailable = makeContext({ loaderError: "Synthetic compatibility catalog unavailable" });
+  const unavailableData = unavailable.context.data;
+  const unavailableEngine = unavailable.context.prescriptionEngine;
+  await unavailable.run(file);
+  assert.equal(unavailable.events.snapshotChecks, 0, "Snapshot evaluation must wait for the compatibility catalog");
+  assert.equal(unavailable.events.writes.length, 0, "A missing compatibility catalog must reject before IndexedDB write");
+  assert.equal(unavailable.events.removals.length, 0, "A missing compatibility catalog must preserve the durable fallback");
+  assert.equal(unavailable.events.identityInstalls, 0, "A missing compatibility catalog must preserve the current identity engine");
+  assert.strictEqual(unavailable.context.data, unavailableData);
+  assert.strictEqual(unavailable.context.prescriptionEngine, unavailableEngine);
+  assert.match(unavailable.context.settingsMessage, /compatibility catalog unavailable/i);
+
   const invalid = makeContext({ snapshotError: "Synthetic invalid executable snapshot" });
   const invalidBefore = {
     data: invalid.context.data,
     bytes: JSON.stringify(invalid.context.data),
     engine: invalid.context.prescriptionEngine,
-    evidenceStatus: invalid.context.prescriptionEvidenceStatus,
     cacheValue: invalid.context.prescriptionSnapshotCache.get("sentinel"),
     entityStructureRevision: invalid.context.entityStructureRevision,
     entityIndexCache: invalid.context.entityIndexCache,
@@ -1156,13 +756,12 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   assert.equal(invalid.events.snapshotChecks, 1);
   assert.equal(invalid.events.writes.length, 0, "An invalid active/template snapshot must reject atomically before IndexedDB write");
   assert.equal(invalid.events.removals.length, 0, "Rejected snapshot import must leave the durable fallback untouched");
-  assert.equal(invalid.events.evidenceInstalls, 0, "Rejected snapshot import must not replace the active evidence engine");
+  assert.equal(invalid.events.identityInstalls, 0, "Rejected snapshot import must not replace the active identity engine");
   assert.equal(invalid.events.invalidations, 0, "Rejected snapshot import must not invalidate accepted-state caches");
   assert.equal(invalid.events.runtimeSaves, 0, "Rejected snapshot import must not persist altered runtime state");
   assert.strictEqual(invalid.context.data, invalidBefore.data);
   assert.equal(JSON.stringify(invalid.context.data), invalidBefore.bytes);
   assert.strictEqual(invalid.context.prescriptionEngine, invalidBefore.engine);
-  assert.strictEqual(invalid.context.prescriptionEvidenceStatus, invalidBefore.evidenceStatus);
   assert.strictEqual(invalid.context.prescriptionSnapshotCache.get("sentinel"), invalidBefore.cacheValue);
   assert.equal(invalid.context.entityStructureRevision, invalidBefore.entityStructureRevision);
   assert.strictEqual(invalid.context.entityIndexCache, invalidBefore.entityIndexCache);
@@ -1173,22 +772,30 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   const accepted = makeContext();
   await accepted.run(file);
   assert.equal(accepted.events.snapshotChecks, 1);
-  assert.equal(accepted.events.writes.length, 1, "A validated backup must perform one IndexedDB app-data write");
-  assert.equal(accepted.events.writes[0].value.dataRevision, 42, "Imported revision metadata must be replaced by the next local monotonic revision");
-  assert.equal(accepted.context.data.dataRevision, 42);
-  assert.deepEqual(accepted.events.removals, ["comprehensive-fitness-data"], "The shadowing fallback must be removed only after the accepted IndexedDB write");
+  assert.equal(accepted.events.writes.length, 0, "A validated backup preview must perform zero durable writes");
+  assert.equal(accepted.context.pendingImport.candidate.dataRevision, 42, "Previewed revision metadata must be replaced by the next local monotonic revision");
+  assert.equal(accepted.context.data.dataRevision, 41, "Preview must not mutate live app data");
+  assert.equal(accepted.context.importStatus.state, "preview");
+  assert.equal(accepted.events.identityInstalls, 0, "Preview must not replace the identity-only runtime engine");
+  assert.deepEqual(accepted.events.removals, [], "Preview must preserve every durable fallback");
 
   const importSource = functionSource("importDataFile");
+  const applySource = functionSource("applyPendingImport");
   const exportSource = functionSource("exportData");
   collectAssertions([
     ["conflict gate precedes file read", () => assert.ok(importSource.indexOf("appDataPersistenceConflict") < importSource.indexOf("file.text()"), "Conflict import must fail before consuming untrusted bytes")],
-    ["snapshot validation precedes write", () => assert.ok(importSource.indexOf("validateImportedExecutableRecommendationSnapshots") < importSource.indexOf('writeIndexedValue("app-data"'), "Executable snapshots must validate before persistence")],
-    ["fallback cleanup follows write", () => assert.ok(importSource.indexOf('writeIndexedValue("app-data"') < importSource.indexOf("localStorage.removeItem"), "Fallback cleanup must follow the successful IndexedDB write")],
+    ["preview validates without writing", () => assert.doesNotMatch(importSource, /writeIndexedValue|writeIndexedValuesAtomically/, "File selection must only stage a validated in-memory preview")],
+    ["explicit apply writes atomically", () => assertContains(applySource, /writeIndexedValuesAtomically\s*\(\s*writes\s*\)/, "Explicit Apply must own the durable replacement")],
+    ["rollback follows durable replacement", () => assertContains(applySource, /durableReplacementWritten[\s\S]*rollbackWrites[\s\S]*writeIndexedValuesAtomically\s*\(\s*rollbackWrites\s*\)/, "A post-write finalization failure must restore the pre-import snapshot")],
+    ["fallback cleanup follows write", () => assert.ok(applySource.indexOf("writeIndexedValuesAtomically(writes)") < applySource.indexOf("localStorage.removeItem(STORAGE_KEY)"), "Fallback cleanup must follow the successful atomic write")],
+    ["active draft is optional and atomic", () => assertContains(applySource, /operation\.activeWorkoutDraft[\s\S]*active-workout-draft[\s\S]*writeIndexedValuesAtomically/, "An imported active draft must share the atomic app-data transaction")],
+    ["absent backup draft clears stale recovery", () => assertContains(applySource, /operation\.replaceActiveWorkoutDraft[\s\S]*value:\s*operation\.activeWorkoutDraft \|\| null[\s\S]*removeItem\(ACTIVE_DRAFT_KEY\)/, "Applying a backup without a draft must atomically clear stale draft recovery")],
+    ["export includes side-effect-free draft", () => assertContains(exportSource, /activeWorkoutDraftSnapshot\s*\(\s*\{\s*incrementSequence:\s*false\s*\}\s*\)[\s\S]*serializeBackupExport\s*\(\s*data\s*,\s*\{\s*activeWorkoutDraft\s*\}/, "Complete export must include a side-effect-free active-draft snapshot in the exact size-checked serialization")],
     ["export identifies selected copy", () => assertContains(exportSource, /selected app-data copy only[\s\S]*?alternate[\s\S]*?not included/i, "Conflict export must disclose both selected scope and excluded alternate")]
   ]);
 });
 
-test("workout submission acceptance is shared by routing feedback and the reentrant idempotency boundary", () => {
+test("workout submission acceptance is shared by duration finalization and the reentrant idempotency boundary", () => {
   const session = { id: "session-1", date: "2026-07-15", submitted: false, workoutPrescription: null };
   const context = {
     data: { sessions: [session], exercises: [], recommendationHistory: [], manualOverrides: [], dataRevision: 1 },
@@ -1197,6 +804,8 @@ test("workout submission acceptance is shared by routing feedback and the reentr
     timerCompleteNotice: null,
     restNavigationState: null,
     isoNow: () => "2026-07-15T00:00:00.000Z",
+    startWorkoutDuration: (currentSession) => ({ ...currentSession, activeDurationMs: 90_000 }),
+    finalizeWorkoutDurationSession: (currentSession) => ({ ...currentSession, durationSeconds: 90 }),
     submitWorkoutPrs: null,
     calculateWorkoutAnalysis: () => ({ grade: "B" }),
     evaluateWorkoutOverrideOutcomes: () => ({ exercises: [], recommendationHistory: [], manualOverrides: [], evaluatedByRecommendation: new Map() }),
@@ -1205,12 +814,8 @@ test("workout submission acceptance is shared by routing feedback and the reentr
     activeWorkoutId: "session-1",
     clearActiveWorkoutDraft: () => { context.draftClears += 1; },
     commit: (nextData) => { context.commits += 1; context.data = { ...nextData, dataRevision: context.data.dataRevision + 1 }; },
-    playWorkoutCompletionSound: () => { context.sounds += 1; },
-    performInteractionFeedback: () => { context.feedback += 1; },
     cancelTimer: () => {},
     commits: 0,
-    sounds: 0,
-    feedback: 0,
     draftClears: 0,
     reentrantAttempts: 0
   };
@@ -1231,15 +836,14 @@ test("workout submission acceptance is shared by routing feedback and the reentr
   submit("session-1");
   assert.equal(context.reentrantAttempts, 1, "The calculation path must run once");
   assert.equal(context.commits, 1, "Reentrant and repeated submissions must create one logical completion");
-  assert.equal(context.sounds, 1, "Completion effects must run once");
   assert.equal(context.draftClears, 1, "The active draft must clear once");
   assert.equal(context.data.sessions[0].submitted, true);
   assert.equal(workoutSubmissionIsAccepted("session-1"), false, "A submitted session must not be accepted again");
   assert.equal(context.workoutSubmissionsInProgress.size, 0, "The reentrancy lock must release after completion");
   collectAssertions([
     ["submit uses shared predicate", () => assertContains(functionSource("submitWorkout"), /if\s*\(\s*!workoutSubmissionIsAccepted\s*\(\s*sessionId\s*\)\s*\)\s*return/, "submitWorkout must use the shared acceptance predicate")],
-    ["router suppresses rejected feedback", () => assertContains(html, /interactionAccepted\s*=\s*action\s*!==\s*["']confirm-submit-workout["']\s*\|\|\s*workoutSubmissionIsAccepted\s*\(\s*activeSessionId\s*\)[\s\S]{0,160}if\s*\(\s*interactionAccepted\s*\)\s*performInteractionFeedback/, "The router must gate generic submit feedback through the same predicate")],
-    ["router still calls submit", () => assertContains(html, /if\s*\(\s*action\s*===\s*["']confirm-submit-workout["']\s*\)\s*submitWorkout\s*\(\s*activeSessionId\s*\)/, "A rejected duplicate route must still invoke submitWorkout for the idempotent entry contract")]
+    ["submit owns duration finalization", () => assertContains(functionSource("submitWorkout"), /const\s+session\s*=\s*finalizeWorkoutDurationSession\s*\(\s*startWorkoutDuration\s*\(\s*sourceSession\s*\)\s*\)/, "submitWorkout must finalize active duration inside the same idempotent completion boundary")],
+    ["router invokes submission once", () => assertContains(html, /if\s*\(\s*action\s*===\s*["']confirm-submit-workout["']\s*\)\s*\{[\s\S]{0,120}submitWorkout\s*\(\s*activeSessionId\s*\)\s*;[\s\S]{0,20}\}/, "The confirm route must delegate the entire atomic completion to submitWorkout")]
   ]);
 });
 
@@ -1297,7 +901,7 @@ test("strict backup validation accepts every exact entity boundary and rejects b
     validateBackupJsonShape: () => true
   });
   for (const descriptor of entityCollectionCases()) {
-    const fixture = buildEntityCollectionCase(descriptor);
+    const fixture = backupContract.discardObsoletePlanningState(buildEntityCollectionCase(descriptor));
     let result;
     let error = null;
     try {
@@ -1344,77 +948,26 @@ test("synthetic JSON shape fixtures land exactly on and one beyond each boundary
   assert.equal(Object.keys(fixtures.get("object-width-over-boundary")).length, BACKUP_BOUNDARIES.objectKeys + 1);
 });
 
-test("cloud workout sync performs no queue or flush work without explicit true consent", async () => {
+test("cloud workout copy is decommissioned while notification delivery remains independent", () => {
   const defaultsStart = html.indexOf("const defaultSettings");
   assert.notEqual(defaultsStart, -1, "Missing defaultSettings");
   const defaults = html.slice(defaultsStart, defaultsStart + 3500);
   const normalize = functionSource("normalizeLoadedData");
-  const queue = functionSource("queueActiveWorkoutSync");
-  const flush = functionSource("flushWorkoutSyncQueue");
-  const consentTransition = functionSource("setCloudWorkoutSyncConsent");
+  const cleanup = functionSource("cleanupLegacyWorkoutCloudData");
   const notifications = functionSource("enablePushNotifications");
-  const notificationActionWindows = [...html.matchAll(/action\s*===\s*["'](?:request-notifications|toggle-rest-notifications|timer-notifications)["']/g)]
-    .map((match) => html.slice(match.index, match.index + 900));
-
-  async function run(consent) {
-    const settings = {};
-    if (consent !== undefined) settings.cloudWorkoutSyncConsent = consent;
-    const session = { id: "session-1" };
-    const model = { settings, exercises: [{ id: "exercise-1", sessionId: session.id }], sets: [{ id: "set-1", exerciseId: "exercise-1" }] };
-    const queueEvents = { reads: [], writes: [], timers: 0 };
-    const queueContext = {
-      data: model,
-      activeWorkoutSession: () => session,
-      completedSummarySessionId: "",
-      dataEntityIndex: () => ({
-        exerciseIndicesBySession: new Map([[session.id, [0]]]),
-        setIndicesByExercise: new Map([["exercise-1", [0]]])
-      }),
-      readIndexedValue: async (key) => { queueEvents.reads.push(key); return []; },
-      writeIndexedValue: async (key, value) => { queueEvents.writes.push({ key, value: plain(value) }); },
-      id: () => "mutation-1",
-      isoNow: () => "2026-07-14T12:00:00.000Z",
-      window: {
-        clearTimeout: () => {},
-        setTimeout: () => { queueEvents.timers += 1; return 1; }
-      },
-      syncFlushTimer: 0,
-      flushWorkoutSyncQueue: () => {}
-    };
-    await evaluateFunction("queueActiveWorkoutSync", queueContext)();
-
-    const flushEvents = { reads: [], writes: [], requests: [] };
-    const mutation = { mutationId: "mutation-1", sessionId: session.id, revision: "2026-07-14T12:00:00.000Z", payload: {} };
-    const flushContext = {
-      data: model,
-      navigator: { onLine: true },
-      pushIdentity: { installationId: "installation-1", token: "synthetic-token" },
-      readIndexedValue: async (key) => { flushEvents.reads.push(key); return [mutation]; },
-      writeIndexedValue: async (key, value) => { flushEvents.writes.push({ key, value: plain(value) }); },
-      pushApi: async (url, body) => { flushEvents.requests.push({ url, body: plain(body) }); return { status: "synced" }; }
-    };
-    await evaluateFunction("flushWorkoutSyncQueue", flushContext)();
-    return { queueEvents, flushEvents };
-  }
-
-  for (const consent of [undefined, false]) {
-    const result = await run(consent);
-    assert.deepEqual(result.queueEvents, { reads: [], writes: [], timers: 0 }, `${String(consent)} consent queued workout data`);
-    assert.deepEqual(result.flushEvents, { reads: [], writes: [], requests: [] }, `${String(consent)} consent flushed workout data`);
-  }
-  const allowed = await run(true);
-  assert.equal(allowed.queueEvents.writes.length, 1, "Explicit consent must permit queueing");
-  assert.equal(allowed.flushEvents.requests.length, 1, "Explicit consent must permit flushing");
+  const registration = functionSource("registerPushSubscription");
   collectAssertions([
-    ["default off", () => assertContains(defaults, /cloudWorkoutSyncConsent\s*:\s*false/, "Cloud workout sync consent must default to false")],
-    ["persisted independently", () => assertContains(normalize, /cloudWorkoutSyncConsent\s*:\s*storedSettings\.cloudWorkoutSyncConsent/, "Cloud workout sync consent must have its own persisted setting")],
-    ["explicit UI control", () => assertContains(html, /renderAlertSetting\(["']cloud-workout-sync-consent["']/, "Settings must expose a distinct cloud workout sync consent control")],
-    ["queue fails closed", () => assertContains(queue, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Queueing must require explicit true consent")],
-    ["flush fails closed", () => assertContains(flush, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Flushing must require explicit true consent")],
-    ["enable renders only after durable write", () => assertContains(consentTransition, /commitConsent\(true, false\)[\s\S]*await writeIndexedValue\("app-data", data\)[\s\S]*render\(\)/, "The enabled UI must not appear before consent is durably written")],
-    ["pending control stays canonical", () => assertContains(html, /requestedConsent = target\.checked === true;[\s\S]*target\.checked = data\.settings\.cloudWorkoutSyncConsent === true;[\s\S]*await setCloudWorkoutSyncConsent\(requestedConsent\)/, "The checkbox must not expose unconfirmed consent while authorization is pending")],
-    ["notification setup remains separate", () => assert.doesNotMatch(notifications, /cloudWorkoutSyncConsent/, "Enabling notifications must not enable workout upload")],
-    ["notification toggles remain separate", () => assert.ok(notificationActionWindows.every((source) => !/cloudWorkoutSyncConsent\s*:\s*true/.test(source)), "A notification preference handler must never grant workout-upload consent")]
+    ["no current defaults", () => assert.doesNotMatch(defaults, /cloudWorkoutSyncConsent|workoutCloudSync/, "Cloud-copy consent must not remain a current setting")],
+    ["legacy aliases discarded", () => assertContains(normalize, /delete model\.settings\.cloudWorkoutSyncConsent[\s\S]*delete model\.settings\.workoutCloudSync[\s\S]*delete model\.settings\.workoutCloudSyncConsentVersion/, "Legacy cloud settings must be discarded during normalization")],
+    ["no queue or enable functions", () => assert.doesNotMatch(html, /function\s+(?:queueActiveWorkoutSync|flushWorkoutSyncQueue|setCloudWorkoutSyncConsent|ensureInstallationAuthorization)\s*\(/, "No client upload or enable path may remain")],
+    ["no upload routes", () => assert.doesNotMatch(html, /\/api\/sync\/(?:authorize|workout)/, "The client must never call disabled upload or authorization routes")],
+    ["cleanup only", () => assertContains(cleanup, /\/api\/sync\/consent[\s\S]*enabled:\s*false/, "The isolated compatibility path may only request cleanup")],
+    ["no consent UI", () => assert.doesNotMatch(html, /data-action=["']cloud-workout-sync-consent["']|Optional workout cloud copy/, "Settings must not offer cloud-copy consent")],
+    ["notification setup remains", () => {
+      assertContains(notifications, /registerPushSubscription/, "Notification setup must retain its registration step");
+      assertContains(registration, /\/api\/push\/register/, "Notification registration must retain the push-only endpoint");
+    }],
+    ["notification privacy remains", () => assertContains(html, /Private changes the visible notification body only[\s\S]*server-side timer record/, "Decommissioning cloud copy must not weaken push privacy disclosure")]
   ]);
 });
 
@@ -1492,14 +1045,18 @@ test("quick-start cards retain native button semantics", () => {
   assert.doesNotMatch(source, /class="quick-template-card[^>]*\srole="listitem"/, "A native quick-template button must retain its computed button role");
 });
 
-test("four-destination architecture contains no superseded five-tab UI contract", () => {
+test("two-destination architecture uses one factual Progress surface", () => {
   collectAssertions([
-    ["four destination IDs", () => assertContains(html, /const primaryTabIds = \["today", "plan", "progress", "more"\]/, "Primary navigation must use the four-destination contract")],
-    ["four navigation buttons", () => assert.equal((functionSource("render").match(/navButton\(/g) || []).length, 4, "The shell must render exactly four primary navigation buttons")],
-    ["progress workspace", () => assertContains(html, /function renderProgress\([\s\S]*progressView === "lifts"[\s\S]*progressView === "history"/, "Dashboard, lift trends, and history must share the Progress workspace")],
+    ["two destination IDs", () => assertContains(html, /const primaryTabIds = \["today", "progress"\]/, "Primary navigation must contain only Today and Progress")],
+    ["two navigation buttons", () => assert.equal((functionSource("render").match(/navButton\(/g) || []).length, 2, "The persistent shell must render exactly two primary navigation buttons")],
+    ["single progress renderer", () => assertContains(functionSource("renderProgress"), /return renderLiftProgress\(\)/, "Progress must delegate to the single factual history and performance surface")],
+    ["no persistent progress subview", () => assert.doesNotMatch(html, /\bprogressView\b|set-progress-view|progress-switcher/, "Progress must not retain dashboard, lifts, or history subview state")],
+    ["factual progress content", () => assertContains(functionSource("renderLiftProgress"), /Performance trend[\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual chart with chronological submitted history")],
     ["removed top-level renderers", () => assert.doesNotMatch(html, /function renderDashboard\(|function renderReview\(/, "Superseded Dashboard and Charts top-level renderers must be removed")],
     ["removed reskin selectors", () => assert.doesNotMatch(html, /quiet-coach-hero|app-module/, "The previous reskin component selectors must not remain in source")],
-    ["legacy hashes only", () => assertContains(functionSource("tabFromLocation"), /dashboard[\s\S]*charts[\s\S]*return "progress"/, "Legacy route names may remain only as four-destination redirects")]
+    ["secondary contexts are not primary", () => assert.doesNotMatch(functionSource("render"), /navButton\("(?:routines|settings)"/, "Routines and Settings must remain contextual, not persistent destinations")],
+    ["current destination allowlist", () => assertContains(html, /const currentDestinationIds = \["today", "progress", "workout", "routines", "settings"\]/, "Only current destinations may resolve")],
+    ["no legacy destination redirects", () => assert.doesNotMatch(functionSource("normalizedDestination"), /plan|more|data|dashboard|charts|lift|progress-overview|progress-lifts|progress-history/, "Deleted destination aliases must not remain in the destination normalizer")]
   ]);
 });
 
@@ -1517,7 +1074,8 @@ test("guided planning contains no unreachable automatic-planner contract", () =>
     "addOmittedMuscleAndRebuild",
     "selectMesocycleCandidate",
     "renderMesocycleCandidate",
-    "renderMesocycleCard"
+    "renderMesocycleCard",
+    "renderMesocyclePlanner"
   ];
   const removedActions = [
     "preview-mesocycle",
@@ -1533,18 +1091,14 @@ test("guided planning contains no unreachable automatic-planner contract", () =>
   ];
   collectAssertions([
     ...removedFunctions.map((name) => [name, () => assert.doesNotMatch(html, new RegExp(`function\\s+${name}\\s*\\(`), `${name} is a retired, unreachable compatibility renderer/controller`)]),
-    ...removedActions.map((action) => [action, () => assert.doesNotMatch(html, new RegExp(`data-action=["']${action}["']|action\\s*===\\s*["']${action}["']`), `${action} is a retired automatic-planner action`)]),
-    ["unreachable code after planner entry", () => {
-      const planner = functionSource("renderMesocyclePlanner");
-      assert.doesNotMatch(planner, /Full-program design|Build full-program draft|Open Planner Review/, "The guided planner entry must not retain code after its unconditional return");
-    }]
+    ...removedActions.map((action) => [action, () => assert.doesNotMatch(html, new RegExp(`data-action=["']${action}["']|action\\s*===\\s*["']${action}["']`), `${action} is a retired automatic-planner action`)])
   ]);
 });
 
 test("navigation, dialogs, and Lift controls expose complete focus and naming contracts", () => {
   const setTab = functionSource("setActiveTab");
-  const openDialog = functionSource("openTemplateStart");
-  const closeDialog = functionSource("closeTemplateStart");
+  const openDialog = functionSource("requestCancelWorkout");
+  const closeDialog = functionSource("closeCancelWorkout");
   const exercise = functionSource("renderExercise");
   const actionTags = [...exercise.matchAll(/<button[^>]*data-action="(?:move-exercise|delete-exercise)"[^>]*>/g)].map((match) => match[0]);
   const equipmentGroups = [...html.matchAll(/<section\s+class="equipment-picker"[^>]*>/g)].map((match) => match[0]);
@@ -1553,11 +1107,11 @@ test("navigation, dialogs, and Lift controls expose complete focus and naming co
     ["skip link", () => assertContains(html, /<a[^>]+href=["']#main-content["'][^>]*>[^<]*(?:skip|content)/i, "Provide a keyboard-visible skip link to main content")],
     ["main target", () => assertContains(html, /<main[^>]+id=["']main-content["'][^>]*tabindex=["']-1["']|<main[^>]+tabindex=["']-1["'][^>]*id=["']main-content["']/, "The main content target must be programmatically focusable")],
     ["primary-tab focus", () => assertContains(setTab, /\.focus\s*\(/, "Primary-tab navigation must move focus to the new view heading or main region")],
-    ["dialog trigger captured", () => assertContains(openDialog, /document\.activeElement|returnFocus|focusOrigin|dialogTrigger/i, "Opening a dialog must capture its focus origin")],
-    ["dialog close restores focus", () => assertContains(closeDialog, /\.focus\s*\(|restoreFocus/i, "Closing a dialog must restore focus to its trigger")],
+    ["dialog trigger captured", () => assertContains(openDialog, /document\.activeElement|returnFocus|focusOrigin|dialogTrigger/i, "Opening the destructive confirmation must capture its focus origin")],
+    ["dialog close restores focus", () => assertContains(closeDialog, /\.focus\s*\(|restoreFocus/i, "Closing the destructive confirmation must restore focus to its trigger")],
     ["contextual Lift action names", () => assert.ok(actionTags.length >= 3 && actionTags.every((tag) => /aria-label=/.test(tag) && /exercise\.name/.test(tag)), `Move/delete controls need exercise-specific accessible names; received ${actionTags.join(" | ")}`)],
-    ["Available Equipment group name", () => assert.ok(equipmentGroups.length && equipmentGroups.every((tag) => /role="group"/.test(tag) && /aria-label="Available Equipment"|aria-labelledby=/.test(tag)), "Every Available Equipment picker must be a named group")],
-    ["Muscle Group Scope group name", () => assert.ok(scopeGroups.length && scopeGroups.every((tag) => /role="group"/.test(tag) && /aria-label="Muscle Group Scope"|aria-labelledby=/.test(tag)), "Every Muscle Group Scope picker must be a named group")]
+    ["Available Equipment removed", () => assert.equal(equipmentGroups.length, 0, "Deleted global equipment controls must not remain reachable")],
+    ["Muscle Group Scope removed", () => assert.equal(scopeGroups.length, 0, "Deleted planner scope controls must not remain reachable")]
   ]);
 });
 
@@ -1612,10 +1166,17 @@ test("loaded-data normalization uses an indexed set lookup", () => {
   ]);
 });
 
-test("evidence startup fetches public research at most once", () => {
-  const source = functionSource("initializePrescriptionEvidence");
-  const researchLoads = source.match(/loadEvidenceFromUrls\s*\(\s*\{\s*researchBaseUrl/g) || [];
-  assert.ok(researchLoads.length <= 1, `initializePrescriptionEvidence performs ${researchLoads.length} full research loads; optional personal-source probing must reuse one public research bundle`);
+test("normal startup installs identity compatibility without analytical evidence initialization", () => {
+  const startup = functionSource("initializeExerciseIdentityCompatibility");
+  const catalog = functionSource("loadExerciseIdentityCatalog");
+  const importValidation = functionSource("loadImportValidationResearch");
+  collectAssertions([
+    ["identity-only boot call", () => assertContains(html, /await\s+initializeExerciseIdentityCompatibility\s*\(\s*\)/, "Startup must await the identity-only compatibility boundary")],
+    ["single boot asset", () => assertContains(catalog, /exercise_database\.json/, "Normal boot must load the public exercise identity catalog")],
+    ["no import map at boot", () => assert.doesNotMatch(catalog + startup, /exercise_muscle_map|loadEvidenceFromUrls/, "Normal boot must not load analytical evidence or the import-only relationship map")],
+    ["lazy import map", () => assertContains(importValidation, /loadExerciseIdentityCatalog\(\)[\s\S]*exercise_muscle_map\.json/, "Import validation must reuse the identity catalog and lazily add only the relationship map")],
+    ["removed evidence status", () => assert.doesNotMatch(html, /prescriptionEvidenceStatus|initializePrescriptionEvidence|loadPrescriptionEvidence/, "The current runtime must not retain the deleted evidence initialization/status path")]
+  ]);
 });
 
 (async function run() {

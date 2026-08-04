@@ -1,14 +1,14 @@
 # Complete UI Reinvention: 15 Design Systems
 
-> **Status:** IMPLEMENTED concept dossier and non-production comparison lab; PARTIALLY IMPLEMENTED editable Figma source
-> **Decision:** Dual Track is the recommended direction; production cutover remains PLANNED
+> **Status:** HISTORICAL concept dossier; the non-production React/Vite comparison lab was removed at redesign M8
+> **Decision record:** Dual Track won this historical comparison; the authoritative zero-based redesign was implemented in the production shell instead of cutting over to the prototype
 > **Synthetic fixture:** All examples use the fictional Sample Athlete and contain no imported or personal fitness data.
 
 ## Blank-slate rule
 
 The current interface is not a visual reference. It is used only to inventory authoritative behavior and data contracts. Navigation, hierarchy, components, styling, and layouts in this study were designed from zero. Color, typography, and imagery do not earn uniqueness credit.
 
-The interactive evidence is the separate React/TypeScript lab under `redesign/`. Run `npm run redesign:dev`, then open `http://127.0.0.1:4175`. The lab exposes all 15 systems, all eight screen families, raw scores, capability classifications, the uniqueness rubric, and the Dual Track journey.
+The former React/TypeScript lab under `redesign/` provided interactive evidence for this decision. M8 removed that concept-only runtime, build, test, and dependency path after the authoritative redesign documents and production implementation superseded it. This dossier remains historical decision evidence; it is not a runnable product or current source of truth.
 
 ## UI-neutral capability contract
 

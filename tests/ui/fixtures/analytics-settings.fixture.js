@@ -47,15 +47,6 @@ function dateForWeekOffset(weekOffset) {
 function settingsFixture() {
   return {
     weightUnit: "lb",
-    trainingGoal: "hypertrophy",
-    trainingGoalSource: "explicit",
-    trainingGoalDisclosure: "",
-    nutritionPhase: "maintenance",
-    experienceLevel: "intermediate",
-    returningAfterGap: false,
-    trainingDaysPerWeek: 4,
-    availableEquipment: ["all"],
-    excludedExerciseIds: [],
     theme: "light",
     timerSound: false,
     workoutCompletionSound: false,
@@ -89,17 +80,12 @@ function settingsFixture() {
 
 function emptyModel() {
   return {
-    appDataVersion: 2,
+    appDataVersion: 3,
     domainMigrationVersion: 3,
     sessions: [],
     exercises: [],
     sets: [],
     templates: [],
-    mesocycles: [],
-    activeMesocycleId: "",
-    recommendationHistory: [],
-    manualOverrides: [],
-    personalEvidencePackage: null,
     rawImports: [],
     migrationAudit: [],
     dataRevision: 1,

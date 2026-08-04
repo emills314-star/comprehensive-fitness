@@ -36,12 +36,6 @@ function settings() {
   return {
     theme: "light",
     weightUnit: "lb",
-    goal: "hypertrophy",
-    trainingStatus: "intermediate",
-    experienceLevel: "intermediate",
-    trainingDaysPerWeek: 4,
-    availableEquipment: ["barbell", "plates", "bench", "rack", "dumbbell"],
-    excludedExerciseIds: [],
     installGuideDismissed: true,
     setupSoundConfirmed: true,
     timerSound: false,
@@ -227,17 +221,12 @@ function activeEntities() {
 function baseData() {
   const history = historyEntities();
   return {
-    appDataVersion: 2,
+    appDataVersion: 3,
     domainMigrationVersion: 3,
     sessions: history.sessions,
     exercises: history.exercises,
     sets: history.sets,
     templates: [controlTemplate()],
-    mesocycles: [],
-    activeMesocycleId: "",
-    recommendationHistory: [],
-    manualOverrides: [],
-    personalEvidencePackage: null,
     rawImports: [],
     migrationAudit: [],
     dataRevision: 10,

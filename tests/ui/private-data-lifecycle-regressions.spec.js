@@ -14,13 +14,28 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto("/");
   await page.waitForLoadState("load");
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
     timeout: 30_000
-  }).not.toBe("loading");
+  }).toBe("ex_barbell_bench_press");
 });
 
 test("migration audit import fields are typed and every rendered value is escaped", async ({ page }) => {
   const state = validFullState();
+  delete state.mesocycles;
+  delete state.activeMesocycleId;
+  const importableSettings = new Set([
+    "weightUnit", "theme", "colorPackage", "timerSound", "workoutCompletionSound",
+    "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts",
+    "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs",
+    "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout",
+    "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer",
+    "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed",
+    "setupSoundConfirmed", "readinessBaseline"
+  ]);
+  state.settings = Object.fromEntries(Object.entries(state.settings).filter(([key]) => importableSettings.has(key)));
   const result = await page.evaluate(({ model, ids }) => {
     const validAudit = {
       version: 2,
@@ -72,7 +87,7 @@ test("migration audit import fields are typed and every rendered value is escape
       templatesReseeded: payload,
       changes: []
     }];
-    activeTab = "more";
+    activeTab = "settings";
     render();
     return { validation, payload };
   }, { model: state, ids: IDS });
@@ -87,96 +102,40 @@ test("migration audit import fields are typed and every rendered value is escape
   await expect(page.locator(".settings-view")).toContainText(result.payload);
 });
 
-test("consent epochs discard stale reads, abort in-flight upload, clear durably, and permit a fresh epoch", async ({ page }) => {
-  const state = validFullState();
-  const result = await page.evaluate(async (model) => {
-    data = structuredClone(model);
-    data.settings.cloudWorkoutSyncConsent = true;
-    completedSummarySessionId = data.sessions[0].id;
+test("legacy cloud cleanup clears the local queue and can never upload or enable", async ({ page }) => {
+  const result = await page.evaluate(async () => {
     pushIdentity = { installationId: "installation-sync", deviceId: "device-sync", token: "sync-secret", status: "enabled" };
-    syncConsentEpoch = 40;
-    syncConsentTransition = Promise.resolve();
-    activeWorkoutSyncOperations.clear();
-    activeWorkoutSyncAbortControllers.clear();
-    window.clearTimeout(syncFlushTimer);
-    syncFlushTimer = 0;
-
     const writes = [];
-    let releaseRead;
-    let markReadStarted;
-    const readStarted = new Promise((resolve) => { markReadStarted = resolve; });
-    readIndexedValue = async (key) => {
-      if (key !== "sync-queue") return null;
-      markReadStarted();
-      return new Promise((resolve) => { releaseRead = resolve; });
-    };
     writeIndexedValue = async (key, value) => {
-      if (key === "sync-queue") writes.push({ phase: "stale-read", value: structuredClone(value), consent: data.settings.cloudWorkoutSyncConsent, epoch: syncConsentEpoch });
+      writes.push({ key, value: structuredClone(value) });
       return true;
     };
-    pushApi = async () => ({ status: "ok" });
-    const staleQueue = queueActiveWorkoutSync(syncConsentEpoch);
-    await readStarted;
-    const revoke = setCloudWorkoutSyncConsent(false);
-    releaseRead([{ mutationId: "stale", sessionId: data.sessions[0].id, payload: {} }]);
-    await Promise.all([staleQueue, revoke]);
-    const afterFirstRevoke = { consent: data.settings.cloudWorkoutSyncConsent, epoch: syncConsentEpoch, writes: structuredClone(writes), timer: syncFlushTimer };
-
-    writes.length = 0;
-    readIndexedValue = async (key) => key === "sync-queue" ? [] : null;
-    const priorEpoch = syncConsentEpoch;
-    await setCloudWorkoutSyncConsent(true);
-    const afterEnable = { consent: data.settings.cloudWorkoutSyncConsent, priorEpoch, epoch: syncConsentEpoch, writes: structuredClone(writes) };
-    window.clearTimeout(syncFlushTimer);
-    syncFlushTimer = 0;
-
-    writes.length = 0;
-    const queuedMutation = { mutationId: "upload-1", sessionId: data.sessions[0].id, revision: "2026-07-14T12:00:00.000Z", payload: {} };
-    readIndexedValue = async (key) => key === "sync-queue" ? [queuedMutation] : null;
-    let markUploadStarted;
-    const uploadStarted = new Promise((resolve) => { markUploadStarted = resolve; });
-    let uploadAborted = false;
-    pushApi = async (path, body, options = {}) => {
-      if (path !== "/api/sync/workout") return { status: "ok" };
-      markUploadStarted();
-      return new Promise((resolve, reject) => {
-        const rejectAbort = () => {
-          uploadAborted = true;
-          const error = new Error("Synthetic abort");
-          error.name = "AbortError";
-          reject(error);
-        };
-        if (options.signal?.aborted) rejectAbort();
-        else options.signal?.addEventListener("abort", rejectAbort, { once: true });
-      });
+    persistPushIdentity = async () => true;
+    const requests = [];
+    pushApi = async (path, body) => {
+      requests.push({ path, body: structuredClone(body) });
+      return requests.length === 1
+        ? { status: "cleanup-pending", cleanupComplete: false }
+        : { status: "disabled", cleanupComplete: true };
     };
-    writeIndexedValue = async (key, value) => {
-      if (key === "sync-queue") writes.push({ phase: "upload", value: structuredClone(value), consent: data.settings.cloudWorkoutSyncConsent, epoch: syncConsentEpoch });
-      return true;
-    };
-    const upload = flushWorkoutSyncQueue(syncConsentEpoch);
-    await uploadStarted;
-    const revokeDuringUpload = setCloudWorkoutSyncConsent(false);
-    await Promise.all([upload, revokeDuringUpload]);
-    window.clearTimeout(saveTimer);
-    window.clearTimeout(syncFlushTimer);
-    return {
-      afterFirstRevoke,
-      afterEnable,
-      afterUploadRevoke: { consent: data.settings.cloudWorkoutSyncConsent, epoch: syncConsentEpoch, writes: structuredClone(writes), uploadAborted, activeControllers: activeWorkoutSyncAbortControllers.size }
-    };
-  }, state);
+    const first = await cleanupLegacyWorkoutCloudData({ scheduleRetry: false });
+    const second = await cleanupLegacyWorkoutCloudData({ scheduleRetry: false });
+    return { first, second, requests, writes, identity: structuredClone(pushIdentity) };
+  });
 
-  expect(result.afterFirstRevoke.consent).toBe(false);
-  expect(result.afterFirstRevoke.timer).toBe(0);
-  expect(result.afterFirstRevoke.writes).toEqual([{ phase: "stale-read", value: [], consent: false, epoch: 41 }]);
-  expect(result.afterEnable.consent).toBe(true);
-  expect(result.afterEnable.epoch).toBe(result.afterEnable.priorEpoch + 1);
-  expect(result.afterEnable.writes.some((entry) => entry.value.length === 1 && entry.consent === true)).toBe(true);
-  expect(result.afterUploadRevoke.consent).toBe(false);
-  expect(result.afterUploadRevoke.uploadAborted).toBe(true);
-  expect(result.afterUploadRevoke.activeControllers).toBe(0);
-  expect(result.afterUploadRevoke.writes).toEqual([{ phase: "upload", value: [], consent: false, epoch: 43 }]);
+  expect(result.writes).toEqual([
+    { key: "sync-queue", value: [] },
+    { key: "sync-queue", value: [] }
+  ]);
+  expect(result.requests).toEqual([
+    { path: "/api/sync/consent", body: { installationId: "installation-sync", enabled: false } },
+    { path: "/api/sync/consent", body: { installationId: "installation-sync", enabled: false } }
+  ]);
+  expect(result.first).toEqual({ status: "cleanup-pending", retryable: true });
+  expect(result.second).toEqual({ status: "disabled", retryable: false });
+  expect(result.identity.token).toBe("sync-secret");
+  expect(result.identity.legacyWorkoutCleanupPending).toBe(false);
+  expect(result.identity.legacyWorkoutCleanupCompletedAt).toBeTruthy();
 });
 
 test("local clearing preserves pending deletion, deletes ordinary remote authorization, and awaits timer cancellation", async ({ page }) => {

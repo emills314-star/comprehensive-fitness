@@ -7,7 +7,7 @@ const { validateWorkflows } = require("./validate-workflows.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const SKIP_DIRECTORIES = new Set([
-  ".git", ".vercel-data", "artifacts", "node_modules", "dist", "coverage",
+  ".git", ".claude", ".vercel", ".vercel-data", "artifacts", "node_modules", "dist", "coverage",
   "DerivedData", "Pods", "build"
 ]);
 const JS_EXTENSIONS = new Set([".js", ".cjs", ".mjs"]);

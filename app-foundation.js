@@ -8,10 +8,13 @@
       const DB_VERSION = 1;
       const DB_STORE = "state";
       const ACTIVE_HISTORY_MONTHS = 6;
-      const SET_CLASSIFIER_VERSION = 2;
-      const DOMAIN_MIGRATION_VERSION = 3;
+      const SET_CLASSIFIER_VERSION = 3;
+      const DOMAIN_MIGRATION_VERSION = 4;
+      const WORKOUT_DURATION_SEMANTICS_VERSION = "comprehensive-fitness-workout-duration/1.0.0";
+      const READINESS_DEVIATIONS = new Set(["", "usual", "unusually_good", "meaningfully_poor"]);
       const BACKUP_IMPORT_LIMITS = Object.freeze({
         maxFileBytes: 50 * 1024 * 1024,
+        maxRawImportBytes: 10 * 1024 * 1024,
         maxJsonDepth: 32,
         maxObjectKeys: 128,
         maxSessions: 100000,
@@ -19,72 +22,45 @@
         maxSets: 100000,
         maxTemplates: 100000
       });
-      const PERSONAL_EVIDENCE_IMPORT_LIMITS = Object.freeze({
-        maxFileBytes: 8 * 1024 * 1024,
-        maxJsonDepth: 32,
-        maxObjectKeys: 128,
-        maxCoreCollectionItems: 1024,
-        maxStableIdChars: 128,
-        maxNameChars: 256,
-        maxTextChars: 4096
-      });
       const root = document.getElementById("root");
-      const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
       const defaultSettings = {
         weightUnit: "lb",
-        trainingGoal: "",
-        trainingGoalSource: "missing_default",
-        trainingGoalDisclosure: "General fitness is used as the disclosed default until a training goal is selected.",
-        nutritionPhase: "",
-        experienceLevel: "",
-        returningAfterGap: null,
-        trainingDaysPerWeek: 4,
-        availableEquipment: [],
-        excludedExerciseIds: [],
-        theme: "light",
-        colorPackage: "signal-garden",
         timerSound: true,
-        workoutCompletionSound: true,
         timerVibration: true,
-        interactionVibration: true,
         timerNotifications: true,
         inAppRestAlerts: true,
         restCompleteSound: "sharp_two_tone",
         restCompleteSoundVolume: 0.85,
         restCompleteAutoDismissMs: 5000,
-        restCompleteLockScreenNotifications: true,
         restCompleteAutoReturnToWorkout: false,
         defaultRestSeconds: 90,
         notificationMessageDetail: "exercise-set",
         autoStartRestTimer: true,
         autoHighlightNextSet: true,
-        autoScrollNextSet: false,
         installGuideDismissed: false,
         setupSoundConfirmed: false,
-        cloudWorkoutSyncConsent: false,
-        workoutCloudSync: false,
-        workoutCloudSyncConsentVersion: 0,
-        readinessBaseline: { ...defaultReadinessBaseline }
+        expectedTemplateId: ""
       };
       let data = emptyData();
-      const primaryTabIds = ["today", "plan", "progress", "more"];
+      const primaryTabIds = ["today", "progress"];
+      const currentDestinationIds = ["today", "progress", "workout", "routines", "settings"];
       const focusActionAllowlist = new Set([
         "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "reconcile-apply", "reconcile-dismiss", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
-        "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
-        "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
-        "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag", "toggle-volume-muscle",
-        "show-chart-point", "close-chart-point", "toggle-hypertrophy-score",
-        "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout", "adjust-template-readiness",
-        "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
-        "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
+        "resume-active-workout", "finish-active-workout", "discard-active-workout", "log-template-readiness", "log-workout-readiness", "start-workout-with-readiness", "save-workout-readiness",
+        "set-expected-template", "toggle-workout-pause", "handle-resolved-action",
+        "open-routines", "open-settings", "close-secondary-context", "close-workout-context",
+        "keep-workout", "keep-history-editing", "cancel-clear-data",
+        "open-history", "open-progress", "retry-view-render", "focus-workout-exercise",
+        "show-chart-point", "close-chart-point",
+        "cancel-template-start",
+        "template-readiness-deviation", "template-readiness-soreness", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
-        "adjust-guided-setup", "adjust-default-rest",
-        "clear-data-ack", "clear-data-phrase", "sync-before-clear", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
+        "adjust-default-rest",
+        "clear-data-ack", "clear-data-phrase", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
-      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle", "field", "chartKey", "chartDate"];
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "field", "chartKey", "chartDate"];
       const focusableCandidateSelector = 'button, input, select, textarea, a[href], summary, [tabindex]';
-      let progressView = progressViewFromLocation();
       let activeTab = tabFromLocation();
       const tabScrollPositions = new Map();
       let activeSessionId = "";
@@ -93,7 +69,9 @@
       let historyReturnExerciseId = "";
       let viewRenderError = null;
       let timer = null;
+      let activeDraftSequence = 0;
       let timerInterval = 0;
+      let workoutDurationInterval = 0;
       let timerCompleteNotice = null;
       let restCompletionState = null;
       let restNavigationState = null;
@@ -134,7 +112,6 @@
       let activeSetAcknowledged = false;
       let activeSetNotice = "";
       let notificationMessage = "";
-      let syncMessage = "";
       let pushIdentity = null;
       let pushConfig = null;
       let installPromptEvent = null;
@@ -143,11 +120,6 @@
       let pendingControllerReload = false;
       let persistenceReady = false;
       let storagePersistenceStatus = "unsupported";
-      let syncFlushTimer = 0;
-      let syncConsentEpoch = 0;
-      let syncConsentTransition = Promise.resolve();
-      const activeWorkoutSyncOperations = new Set();
-      const activeWorkoutSyncAbortControllers = new Set();
       const restSchedulePromises = new Map();
       const canceledRestScheduleKeys = new Map();
       let pushOperationWriteChain = Promise.resolve();
@@ -155,6 +127,7 @@
       let chartExerciseDraft = "";
       let chartExerciseSearchOpen = false;
       let chartExerciseSearchError = "";
+      let progressDateWindow = "recent";
       let chartExerciseHighlight = 0;
       let recentChartExerciseIds = [];
       const chartPointActivations = new Map();
@@ -163,6 +136,11 @@
       let addExerciseDraft = "";
       let addExercisePrimaryMuscle = "";
       let addExerciseSecondaryMuscle = "";
+      let addExerciseSetCount = 1;
+      let addExerciseRepMin = 8;
+      let addExerciseRepMax = 12;
+      let addExerciseTargetRpe = 8;
+      let addExerciseRestSeconds = 0;
       let exportText = "";
       let clearDataFlow = null;
       let cancelWorkoutFlow = null;
@@ -176,12 +154,6 @@
       const openDisclosureIds = new Set();
       const knownDisclosureIds = new Set();
       let pendingDeleteTemplateId = "";
-      let expandedVolumeMuscle = "";
-      let dashboardWeekStart = startOfWeekIso(todayIso());
-      let dashboardDetail = null;
-      const dashboardFocusStack = [];
-      let planVolumeDetailId = "";
-      let dashboardReturnScroll = 0;
       let settingsMessage = "";
       let appDataPersistenceConflict = null;
 
@@ -203,7 +175,7 @@
       let interactionRenderFrame = 0;
       let pendingFocusDescriptor = null;
       let renderedDialogKey = "";
-      const dialogFocusOrigins = { template: null, cancel: null, history: null, clear: null };
+      const dialogFocusOrigins = { template: null, readiness: null, cancel: null, history: null, clear: null };
       const performanceDebugEnabled = ["127.0.0.1", "localhost"].includes(window.location.hostname) && new URLSearchParams(window.location.search).has("perf");
       const performanceFixtureEnabled = performanceDebugEnabled && new URLSearchParams(window.location.search).get("perfFixture") === "large";
       const performanceEvents = [];
@@ -241,14 +213,14 @@
           date.setDate(date.getDate() - (dayOffset < recentHistoryTitles.length + 1 ? 0 : dayOffset));
           const dateIso = localDateIso(date);
           const sessionId = "perf-session-" + dayOffset;
-          const internalScore = recentHistoryScores[dayOffset] ?? 78 + (dayOffset % 18);
-          const grade = internalScore >= 97 ? "A+" : internalScore >= 93 ? "A" : internalScore >= 90 ? "A-" : internalScore >= 87 ? "B+" : internalScore >= 83 ? "B" : internalScore >= 80 ? "B-" : internalScore >= 77 ? "C+" : internalScore >= 73 ? "C" : internalScore >= 70 ? "C-" : internalScore >= 60 ? "D" : "F";
-          sessions.push({ id: sessionId, date: dateIso, completedAt: dateIso, submitted: true, workoutState: "completed", title: recentHistoryTitles[dayOffset] || (dayOffset % 2 ? "Tuesday - Heavy Push + Calves + Light Quads" : "Sunday - Light Upper + Posterior Chain"), createdAt: dateIso + "T12:00:00.000Z", updatedAt: dateIso + "T13:00:00.000Z", workoutAnalysis: { version: 1, grade, internalScore, intent: "Standard training session", interpretation: "Fixture workout", rationale: "Used for development layout and performance verification.", categoryScores: [], highlights: [], improvements: [], exerciseResults: [], confidence: "moderate", metrics: { completedSets: names.length * 4, rpeLoggedRatio: 1 } } });
+          const gradeScore = recentHistoryScores[dayOffset] ?? 78 + (dayOffset % 18);
+          const letter = gradeScore >= 90 ? "A" : gradeScore >= 80 ? "B" : gradeScore >= 70 ? "C" : gradeScore >= 60 ? "D" : "F";
+          sessions.push({ id: sessionId, date: dateIso, completedAt: dateIso, submitted: true, workoutState: "completed", title: recentHistoryTitles[dayOffset] || (dayOffset % 2 ? "Tuesday - Heavy Push + Calves + Light Quads" : "Sunday - Light Upper + Posterior Chain"), createdAt: dateIso + "T12:00:00.000Z", updatedAt: dateIso + "T13:00:00.000Z", workoutAnalysis: { contractVersion: "comprehensive-fitness-workout-grade/2.0.0", algorithmVersion: "actual-work-rubric/1.0.0", letter, reasons: [{ code: "actual_work", text: names.length * 4 + " valid working sets recorded." }, { code: "logging_validity", text: "Load, repetitions, and RPE are complete for every recorded working set." }], sourceSessionId: sessionId, resolvedActionDecisionIds: [], createdAt: dateIso + "T13:00:00.000Z" } });
           names.forEach((name, exerciseIndex) => {
             const exerciseId = sessionId + "-exercise-" + exerciseIndex;
             exercises.push({ id: exerciseId, sessionId, name, order: exerciseIndex, resistanceType: "external", restSeconds: 90, primaryMuscle: "", secondaryMuscle: "" });
             for (let setIndex = 0; setIndex < 4; setIndex += 1) {
-              sets.push({ id: exerciseId + "-set-" + setIndex, exerciseId, setNumber: setIndex + 1, sequenceIndex: setIndex, sequence: setIndex, setType: setIndex === 0 ? "top" : "backoff", reps: 8 + (setIndex % 2), weight: 50 + exerciseIndex * 10 + Math.floor(dayOffset / 30) * 2.5, weightUnit: "lb", resistanceType: "external", rpe: 7.5 + (setIndex % 3) * 0.5, completed: true, skipped: false, edited: false, countsTowardScore: true, countsTowardVolume: true, countsTowardProgression: true, targetReps: 9, targetRepMin: 8, targetRepMax: 12, targetRpe: 8, targetRpeMin: 7, targetRpeMax: 9 });
+              sets.push({ id: exerciseId + "-set-" + setIndex, exerciseId, setNumber: setIndex + 1, sequenceIndex: setIndex, sequence: setIndex, setType: setIndex === 0 ? "top" : "backoff", reps: 8 + (setIndex % 2), weight: 50 + exerciseIndex * 10 + Math.floor(dayOffset / 30) * 2.5, weightUnit: "lb", resistanceType: "external", rpe: 7.5 + (setIndex % 3) * 0.5, completed: true, skipped: false, edited: false, countsTowardProgression: true, targetReps: 9, targetRepMin: 8, targetRepMax: 12, targetRpe: 8, targetRpeMin: 7, targetRpeMax: 9 });
             }
           });
         }
@@ -271,69 +243,35 @@
       const workoutSubmissionsInProgress = new Set();
       let completedSummarySessionId = "";
       let chartDetailPoint = null;
-      let hypertrophyScoreExpanded = false;
-      let hypertrophyScoreLoading = false;
-      let hypertrophyWindowOffset = 0;
       let analysisRevision = 0;
       let entityStructureRevision = 0;
       let entityIndexCache = null;
       let completedAnalysisIndexCache = null;
       let exerciseCatalogCache = null;
-      let completedEntriesCache = null;
       const activeHistoryCache = new Map();
       const activeHistoryIdCache = new Map();
-      const exerciseScopeCache = new Map();
-      const exerciseWeekCache = new Map();
-      const hypertrophyWeekCache = new Map();
-      const hypertrophyQualificationCache = new Map();
-      const hypertrophyScoreCache = new Map();
-      const weeklyVolumeCache = new Map();
-      const fatigueFlagCache = new Map();
-      const templateAdviceCache = new Map();
-      const targetContextCache = new Map();
-      const actualExpectedCache = new Map();
-      const coachRecommendationCache = new Map();
-      const exerciseProgressCache = new Map();
       const previousPerformanceCache = new Map();
       const submittedPerformanceIndexCache = new Map();
-      const muscleAssignmentCache = new Map();
+      const exerciseProgressCache = new Map();
       const prescriptionIdentityResolutionCache = new Map();
       let prescriptionIdentityCacheEngine = null;
       let prescriptionIdentityCacheResolver = null;
       const templateNumericDrafts = new Map();
       const templateNumericFields = Object.freeze({
         "template-exercise-sets": Object.freeze({ field: "sets", label: "sets", min: 1, max: 100, step: 1, integer: true }),
-        "template-exercise-reps": Object.freeze({ field: "reps", label: "repetitions", min: 1, max: 1000, step: 1, integer: true }),
         "template-exercise-rep-min": Object.freeze({ field: "repMin", label: "minimum repetitions", min: 1, max: 100, step: 1, integer: true }),
         "template-exercise-rep-max": Object.freeze({ field: "repMax", label: "maximum repetitions", min: 1, max: 100, step: 1, integer: true }),
         "template-exercise-rpe": Object.freeze({ field: "targetRpe", label: "target RPE", min: 5, max: 10, step: 0.5, integer: false }),
-        "template-exercise-increment": Object.freeze({ field: "increment", label: "load increment", min: 0.5, max: 10000, step: 0.5, integer: false }),
         "template-exercise-rest": Object.freeze({ field: "restSeconds", label: "rest seconds", min: 15, max: 3600, step: 15, integer: true })
       });
       const recentHistoryDataIssueIds = new Set();
       let templateStartFlow = null;
+      let optionalReadinessFlow = null;
       const prescriptionApi = window.ComprehensiveFitnessPrescriptionEngine || null;
-      const programmingFamilyApi = window.ComprehensiveFitnessProgrammingFamilyLedger || null;
+      const exceptionResolverApi = window.FitnessExceptionResolver || null;
       let prescriptionEngine = prescriptionApi?.createPrescriptionEngine({}) || null;
-      let prescriptionEvidenceStatus = { state: "loading", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "Loading training evidence." };
-      const prescriptionSnapshotCache = new Map();
-      let mesocycleDraftType = "primary_progression";
-      let mesocycleSpecializationMuscle = "";
-      let mesocycleDurationDraft = "";
-      let mesocycleScopeDraft = null;
-      let pendingDeleteMesocycleId = "";
-      const guidedMesocycleApi = window.ComprehensiveFitnessGuidedMesocycle || null;
-      let guidedMesocycleView = "closed";
-      let guidedMesocycleDraftId = "";
-      let guidedSelectedDayId = "";
-      let guidedExerciseBrowserDayId = "";
-      let guidedExerciseMuscleFilter = "";
-      let guidedExerciseSearch = "";
-      let guidedPendingAssignment = null;
-      let guidedReturnFocusToPicker = false;
-      let guidedWeeklySummaryOpen = false;
-      let guidedGenerationReviewOpen = false;
-      let guidedCreationPending = false;
+      let exerciseIdentityCatalogPromise = null;
+      let importValidationResearchPromise = null;
       const expandedTemplateEditorIds = new Set();
 
       const svgIcon = (paths, viewBox = "0 0 24 24") => '<svg class="ui-icon" viewBox="' + viewBox + '" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
@@ -363,7 +301,7 @@
       };
 
       function emptyData() {
-        return { appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], mesocycles: [], activeMesocycleId: "", recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
+        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
       }
 
       // DOMAIN_INTEGRITY_ENGINE_START
@@ -398,8 +336,9 @@
 
       function normalizeCanonicalSetType(value, isWarmup = false) {
         if (isWarmup) return "warmup";
-        const key = String(value || "straight").toLowerCase().replace(/[^a-z]/g, "");
+        const key = String(value || "").toLowerCase().replace(/[^a-z]/g, "");
         if (["w", "warmup", "warmupset"].includes(key)) return "warmup";
+        if (["working", "work", "workingset", "workset", "straight", "straightset"].includes(key)) return "straight";
         if (["top", "topset"].includes(key)) return "top";
         if (["backoff", "backoffset"].includes(key)) return "backoff";
         if (["d", "drop", "dropset"].includes(key)) return "drop";
@@ -408,7 +347,7 @@
         if (["technique", "techniqueset"].includes(key)) return "technique";
         if (["deload", "deloadset"].includes(key)) return "deload";
         if (["unknown", "review", "reviewrequired"].includes(key)) return "unknown";
-        return "straight";
+        return "unknown";
       }
 
       function setTypeSemantics(set) {
@@ -417,18 +356,17 @@
         return {
           type,
           isWarmup,
-          countsTowardScore: set?.countsTowardScore != null ? Boolean(set.countsTowardScore) : !isWarmup && type !== "unknown",
-          countsTowardVolume: set?.countsTowardVolume != null ? Boolean(set.countsTowardVolume) : !isWarmup && type !== "unknown",
-          countsTowardProgression: set?.countsTowardProgression != null ? Boolean(set.countsTowardProgression) : !isWarmup && type !== "unknown"
+          countsTowardProgression: !isWarmup
+            && type !== "unknown"
+            && (set?.countsTowardProgression != null ? Boolean(set.countsTowardProgression) : true)
         };
       }
 
-      function isWorkingSet(set, purpose = "score") {
+      function isWorkingSet(set, purpose = "actual") {
         const semantics = setTypeSemantics(set);
         if (semantics.isWarmup || semantics.type === "unknown") return false;
-        if (purpose === "volume") return semantics.countsTowardVolume;
         if (purpose === "progression" || purpose === "pr") return semantics.countsTowardProgression;
-        return semantics.countsTowardScore;
+        return true;
       }
 
       function explicitStrongSetType(value) {
@@ -447,15 +385,28 @@
           if (set.manualOverride || set.classificationSource === "manual") {
             result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
             result.source = "manual";
-            result.confidence = 1;
-            result.reason = "Manual correction preserved.";
+            result.confidence = result.type === "unknown" ? 0 : 1;
+            result.reviewRequired = result.type === "unknown";
+            result.reason = result.type === "unknown" ? "Manual classification is missing or unrecognized and requires review." : "Manual correction preserved.";
             return;
           }
           if (source !== "strong") {
-            result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
-            result.source = set.classificationSource || "app-explicit";
-            result.confidence = Number(set.classificationConfidence || 1);
-            result.reason = "App-created classification preserved.";
+            const original = set.originalImportedValue && typeof set.originalImportedValue === "object"
+              ? set.originalImportedValue
+              : null;
+            const rawType = original && Object.prototype.hasOwnProperty.call(original, "setType")
+              ? original.setType
+              : set.setType;
+            const rawWarmup = original && Object.prototype.hasOwnProperty.call(original, "isWarmup")
+              ? original.isWarmup
+              : set.isWarmup;
+            result.type = normalizeCanonicalSetType(rawType, rawWarmup);
+            result.source = set.classificationSource || (result.type === "unknown" ? "recorded" : "app-explicit");
+            result.confidence = result.type === "unknown" ? 0 : Number(set.classificationConfidence || 1);
+            result.reviewRequired = result.type === "unknown";
+            result.reason = result.type === "unknown"
+              ? "Recorded set role is missing or unrecognized and requires review."
+              : "App-created classification preserved.";
             return;
           }
           const explicit = explicitStrongSetType(set.originalImportedValue?.setOrder || set.sourceSetType || set.sourceSetOrder);
@@ -469,8 +420,11 @@
           if (set.setType && normalizeCanonicalSetType(set.setType, set.isWarmup) !== "straight" && set.classificationSource !== "inferred") {
             result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
             result.source = set.classificationSource || "app-explicit";
-            result.confidence = Number(set.classificationConfidence || 0.95);
-            result.reason = "Existing explicit app classification preserved.";
+            result.confidence = result.type === "unknown" ? 0 : Number(set.classificationConfidence || 0.95);
+            result.reviewRequired = result.type === "unknown";
+            result.reason = result.type === "unknown"
+              ? "Existing set role is unrecognized and requires review."
+              : "Existing explicit app classification preserved.";
           }
         });
         if (["bodyweight", "assisted_bodyweight", "duration", "distance"].includes(resistanceType)) {
@@ -565,15 +519,16 @@
             if (classification.type === "drop") report.dropSets += 1;
             if (classification.reviewRequired) report.ambiguous += 1;
             const semantics = setTypeSemantics({ ...original, setType: classification.type, isWarmup: classification.type === "warmup" });
-            const changed = normalizeCanonicalSetType(original.setType, original.isWarmup) !== classification.type || Number(original.sequenceIndex ?? original.sequence ?? -1) !== Number(classification.set.sequenceIndex ?? classification.set.sequence);
+            const changed = original.setType !== classification.type
+              || Boolean(original.isWarmup) !== semantics.isWarmup
+              || Boolean(original.reviewRequired) !== classification.reviewRequired
+              || Number(original.sequenceIndex ?? original.sequence ?? -1) !== Number(classification.set.sequenceIndex ?? classification.set.sequence);
             const migrated = {
               ...original,
               sequenceIndex: classification.set.sequenceIndex ?? classification.set.sequence,
               sequence: classification.set.sequenceIndex ?? classification.set.sequence,
               setType: classification.type,
               isWarmup: semantics.isWarmup,
-              countsTowardScore: semantics.countsTowardScore,
-              countsTowardVolume: semantics.countsTowardVolume,
               countsTowardProgression: semantics.countsTowardProgression,
               classificationSource: classification.source,
               classificationConfidence: classification.confidence,
@@ -677,6 +632,24 @@
         });
       }
 
+      async function writeIndexedValuesAtomically(entries) {
+        if (!Array.isArray(entries) || !entries.length) throw new Error("At least one IndexedDB value is required.");
+        const normalizedEntries = entries.map((entry) => {
+          if (!entry || typeof entry.key !== "string" || !entry.key) throw new Error("Every IndexedDB value requires a key.");
+          return { key: entry.key, value: entry.value };
+        });
+        const db = await openFitnessDb();
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(DB_STORE, "readwrite");
+          const store = transaction.objectStore(DB_STORE);
+          const updatedAt = isoNow();
+          normalizedEntries.forEach((entry) => store.put({ ...entry, updatedAt }));
+          transaction.oncomplete = () => { db.close(); resolve(true); };
+          transaction.onerror = () => { db.close(); reject(transaction.error || new Error("Atomic IndexedDB write failed.")); };
+          transaction.onabort = () => { db.close(); reject(transaction.error || new Error("Atomic IndexedDB write was aborted.")); };
+        });
+      }
+
       function todayIso() {
         return localDateIso(new Date());
       }
@@ -721,20 +694,19 @@
       }
 
       function cleanReadinessBaseline(source = {}) {
-        return {
-          sleepHours: source.sleepHours ?? defaultReadinessBaseline.sleepHours,
-          sleepQuality: source.sleepQuality ?? defaultReadinessBaseline.sleepQuality,
-          hrv: source.hrv ?? defaultReadinessBaseline.hrv,
-          restingHr: source.restingHr ?? defaultReadinessBaseline.restingHr,
-          soreness: source.soreness ?? defaultReadinessBaseline.soreness,
-          band: source.band ?? defaultReadinessBaseline.band
-        };
+        const retainedFields = ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"];
+        return Object.fromEntries(retainedFields
+          .filter((field) => Object.prototype.hasOwnProperty.call(source, field))
+          .map((field) => [field, source[field]]));
       }
 
       function cleanRecovery(source = {}) {
         const hasExplicitPain = typeof source.pain === "boolean";
-        const legacyAffectedInjury = !hasExplicitPain && Boolean(source.illness) && Boolean(String(source.affectedMuscle || "").trim());
+        const readinessDeviation = READINESS_DEVIATIONS.has(String(source.readinessDeviation || ""))
+          ? String(source.readinessDeviation || "")
+          : "";
         return {
+          readinessDeviation,
           sleepHours: source.sleepHours ?? "",
           sleepQuality: source.sleepQuality ?? "",
           hrv: source.hrv ?? "",
@@ -743,9 +715,225 @@
           nutritionStatus: source.nutritionStatus ?? "",
           proteinStatus: source.proteinStatus ?? "",
           outsideBandNote: source.outsideBandNote ?? "",
-          illness: Boolean(source.illness) && !legacyAffectedInjury,
-          pain: hasExplicitPain ? Boolean(source.pain) : legacyAffectedInjury,
+          illness: Boolean(source.illness),
+          ...(hasExplicitPain ? { pain: Boolean(source.pain) } : {}),
           affectedMuscle: source.affectedMuscle ?? ""
+        };
+      }
+
+      function expectedWorkoutTemplate(model = data) {
+        const templates = Array.isArray(model?.templates) ? model.templates : [];
+        const expectedTemplateId = String(model?.settings?.expectedTemplateId || "");
+        return templates.find((template) => template.id === expectedTemplateId) || null;
+      }
+
+      function workoutDurationTimestamp(value) {
+        const timestamp = Date.parse(String(value || ""));
+        return Number.isFinite(timestamp) ? timestamp : null;
+      }
+
+      function legacyDraftKnownActiveDurationMs(snapshot, savedAt, session) {
+        const sourceSession = { ...(session || {}), ...(snapshot?.session || {}) };
+        const hasRecordedDuration = sourceSession.durationSeconds != null
+          || sourceSession.durationSemanticsVersion != null
+          || sourceSession.activeDurationMs != null
+          || sourceSession.activeDurationStartedAt != null
+          || sourceSession.workoutPausedAt != null;
+        if (hasRecordedDuration) return null;
+        const startedAt = workoutDurationTimestamp(sourceSession.startedAt || session?.startedAt);
+        const knownBoundary = Number.isFinite(savedAt)
+          ? savedAt
+          : workoutDurationTimestamp(snapshot?.savedAt || sourceSession.updatedAt || session?.updatedAt);
+        if (startedAt == null || knownBoundary == null) return null;
+        return Math.max(0, Math.floor(knownBoundary - startedAt));
+      }
+
+      function workoutActiveDurationMs(session, now = Date.now()) {
+        if (session?.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) return null;
+        const accumulated = Number(session.activeDurationMs);
+        if (!Number.isSafeInteger(accumulated) || accumulated < 0) return null;
+        const activeSince = workoutDurationTimestamp(session.activeDurationStartedAt);
+        if (activeSince == null || session.workoutPausedAt) return accumulated;
+        return accumulated + Math.max(0, Math.floor(Number(now) - activeSince));
+      }
+
+      function startWorkoutDuration(session, nowIso = isoNow()) {
+        if (!session || isSessionSubmitted(session)) return session;
+        const startedAt = new Date(nowIso).toISOString();
+        if (session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) {
+          const retainedLegacyDurationMs = Number.isFinite(Number(session.durationSeconds))
+            ? Math.max(0, Math.round(Number(session.durationSeconds) * 1000))
+            : 0;
+          return {
+            ...session,
+            durationSemanticsVersion: WORKOUT_DURATION_SEMANTICS_VERSION,
+            activeDurationMs: retainedLegacyDurationMs,
+            activeDurationStartedAt: startedAt,
+            workoutPausedAt: ""
+          };
+        }
+        if (session.activeDurationStartedAt && !session.workoutPausedAt) return session;
+        return {
+          ...session,
+          activeDurationMs: Math.max(0, Number(session.activeDurationMs || 0)),
+          activeDurationStartedAt: startedAt,
+          workoutPausedAt: ""
+        };
+      }
+
+      function pauseWorkoutDuration(session, nowIso = isoNow()) {
+        if (!session || session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) return session;
+        const pausedAt = new Date(nowIso).toISOString();
+        const accumulated = workoutActiveDurationMs(session, Date.parse(pausedAt));
+        return {
+          ...session,
+          activeDurationMs: Math.max(0, Number(accumulated || 0)),
+          activeDurationStartedAt: "",
+          workoutPausedAt: pausedAt
+        };
+      }
+
+      function finalizeWorkoutDurationSession(session, nowIso = isoNow()) {
+        if (!session || session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) return session;
+        const finalized = pauseWorkoutDuration(session, nowIso);
+        return {
+          ...finalized,
+          durationSeconds: Math.max(0, Math.round(Number(finalized.activeDurationMs || 0) / 1000))
+        };
+      }
+
+      function passedExceptionQualification() {
+        return Object.fromEntries((exceptionResolverApi?.QUALIFICATION_FIELDS || []).map((field) => [field, true]));
+      }
+
+      function explicitSafetyCandidate(session, recoveryInput) {
+        if (!exceptionResolverApi) return null;
+        const source = recoveryInput && typeof recoveryInput === "object" ? recoveryInput : {};
+        const hasDirectPain = Object.prototype.hasOwnProperty.call(source, "pain") && source.pain === true;
+        const legacyInferredPain = !Object.prototype.hasOwnProperty.call(source, "pain")
+          && source.illness === true
+          && Boolean(String(source.affectedMuscle || "").trim());
+        const hasDirectIllness = source.illness === true && !legacyInferredPain;
+        if (!hasDirectIllness && !hasDirectPain) return null;
+        const evaluatedAt = isoNow();
+        const recordedInputs = [
+          ...(hasDirectIllness ? [{ field: "illness", reasonCode: "explicit_illness" }] : []),
+          ...(hasDirectPain ? [{ field: "pain", reasonCode: "explicit_pain_or_injury" }] : [])
+        ].map((input) => ({
+          ...input,
+          sourceReference: `session:${session.id}:recovery.${input.field}`
+        }));
+        const priorDecisions = Array.isArray(session.resolvedActions) ? session.resolvedActions : [];
+        const clearedBoundaryIndex = priorDecisions.findIndex((decision) => decision?.outcome === "no_action");
+        const priorCurrentSegment = priorDecisions
+          .slice(0, clearedBoundaryIndex < 0 ? priorDecisions.length : clearedBoundaryIndex)
+          .filter((decision) => decision?.outcome === "action");
+        const prior = priorCurrentSegment.find((decision) =>
+          decision?.outcome === "action"
+          && decision.category === "pain_or_illness"
+          && decision.sourceReferences?.some((reference) => recordedInputs.some((input) => input.sourceReference === reference))
+        );
+        return {
+          candidateVersion: exceptionResolverApi.CANDIDATE_VERSION,
+          candidateId: `candidate-${session.id}-${recordedInputs.map((input) => input.field).join("-")}`,
+          detector: {
+            id: "explicit-safety-input",
+            version: "comprehensive-fitness-explicit-safety-input/1.1.0",
+            ruleVersion: "explicit-recorded-input/1.1.0"
+          },
+          evaluatedAt,
+          effectiveAt: prior?.effectiveAt || evaluatedAt,
+          expiresAt: null,
+          returnCondition: { type: "input_cleared_or_workout_ended" },
+          category: "pain_or_illness",
+          explicitSafetyInput: true,
+          scope: { type: "session" },
+          action: { code: "stop_or_skip_work", parameters: { mode: "stop_or_skip" } },
+          reasonCodes: recordedInputs.map((input) => input.reasonCode),
+          sourceReferences: recordedInputs.map((input) => input.sourceReference),
+          evidence: recordedInputs.map((input) => ({ sourceReference: input.sourceReference, provenance: "recorded", required: true })),
+          qualification: passedExceptionQualification()
+        };
+      }
+
+      function reportExceptionResolverEngineeringError(record) {
+        const code = ["detector_error", "candidate_normalization_error"].includes(record?.code)
+          ? record.code
+          : "candidate_normalization_error";
+        console.error("[CF exception resolver]", Object.freeze({
+          code,
+          module: "exception-resolver",
+          ruleVersion: "candidate-normalization/1.0.0"
+        }));
+      }
+
+      function resolveWorkoutExceptions(session, recoveryInput) {
+        if (!exceptionResolverApi) return [];
+        const safetyCandidate = explicitSafetyCandidate(session, recoveryInput);
+        const evaluatedAt = safetyCandidate?.evaluatedAt || isoNow();
+        const sourceReference = safetyCandidate?.sourceReferences?.[0] || "";
+        const result = exceptionResolverApi.resolveExceptionCandidates({
+          evaluatedAt,
+          candidates: [safetyCandidate].filter(Boolean),
+          priorDecisions: Array.isArray(session.resolvedActions) ? session.resolvedActions : [],
+          explicitSafetyObservation: safetyCandidate ? {
+            explicit: true,
+            observedAt: evaluatedAt,
+            sourceReference,
+            scope: { type: "session" }
+          } : null,
+          onEngineeringError: reportExceptionResolverEngineeringError
+        });
+        return Array.isArray(result?.decisions) ? result.decisions : [];
+      }
+
+      function mergeResolvedDecisionHistory(priorDecisions, currentDecisions) {
+        const current = Array.isArray(currentDecisions) ? currentDecisions : [];
+        const currentIds = new Set(current.map((decision) => decision?.decisionId).filter(Boolean));
+        return [
+          ...current,
+          ...(Array.isArray(priorDecisions) ? priorDecisions : []).filter((decision) => !currentIds.has(decision?.decisionId))
+        ].slice(0, 64);
+      }
+
+      function resolvedActionForVariant(resolvedActions, exerciseVariantId) {
+        const decisions = Array.isArray(resolvedActions) ? resolvedActions : [];
+        if (decisions[0]?.outcome === "no_action") return null;
+        const actions = decisions.filter((decision) => decision?.outcome === "action");
+        return actions.find((decision) => decision.scope?.type === "exercise" && decision.scope.exerciseVariantId === exerciseVariantId)
+          || actions.find((decision) => decision.scope?.type === "session")
+          || null;
+      }
+
+      function applyResolvedActionToStableTarget(stableTarget, resolvedAction) {
+        if (!resolvedAction || resolvedAction.outcome !== "action") return { ...stableTarget };
+        const code = resolvedAction.action?.code || "";
+        const parameters = resolvedAction.action?.parameters || {};
+        if (["stop_or_skip_work", "skip_exercise", "address_plateau"].includes(code)) {
+          return {
+            ...stableTarget,
+            resolvedActionId: resolvedAction.decisionId,
+            resolvedActionCode: code,
+            adjustmentReason: resolvedAction.reasonCodes?.join(", ") || resolvedAction.category
+          };
+        }
+        const loadReductionPercent = Number(parameters.loadReductionPercent || 0);
+        const setReductionCount = Number(parameters.setReductionCount || 0);
+        const rpeCeiling = Number(parameters.rpeCeiling || 0);
+        const adjustedSets = setReductionCount > 0 ? Math.max(1, Number(stableTarget.sets || 1) - setReductionCount) : Number(stableTarget.sets || 1);
+        const adjustedRpe = rpeCeiling > 0 ? Math.min(Number(stableTarget.rpe || rpeCeiling), rpeCeiling) : Number(stableTarget.rpe || 0);
+        return {
+          ...stableTarget,
+          sets: adjustedSets,
+          rpe: adjustedRpe,
+          adjusted: loadReductionPercent > 0 || setReductionCount > 0 || (rpeCeiling > 0 && adjustedRpe < Number(stableTarget.rpe || 0)),
+          mode: code === "time_bounded_deload" ? "deload" : "readiness-adjusted",
+          isDeload: code === "time_bounded_deload",
+          loadReductionPercent,
+          resolvedActionId: resolvedAction.decisionId,
+          resolvedActionCode: code,
+          adjustmentReason: resolvedAction.reasonCodes?.join(", ") || resolvedAction.category,
+          triggerLabels: resolvedAction.reasonCodes || []
         };
       }
 
@@ -809,6 +997,7 @@
           && activeSessionId === session.id;
         if (normalizedAction === "start-timer") {
           if (!exactActiveWorkout || !sessionHasStarted(session)) return failure("timer_requires_active_workout", "Rest timers can run only for the exact active workout.");
+          if (!set.completed || set.skipped) return failure("timer_requires_completed_set", "Rest can start only after a completed set.");
           return { authorized: true, authorizationMode: "active_workout", action: normalizedAction, exercise, set, session };
         }
         if (exactHistoryEdit) return { authorized: true, authorizationMode: "history_edit", action: normalizedAction, exercise, set, session };
@@ -819,8 +1008,7 @@
       function workoutMutationSafetyDecision(action, context = {}) {
         const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
         if (!executableActions.includes(String(action || ""))) return { allowed: true, scope: "none", reason: "not_executable" };
-        const normalize = (value) => String(value || "").toLowerCase().replace(/^mg_/, "").replace(/[^a-z0-9]+/g, " ").trim();
-        const block = (scope, reason, message) => ({ allowed: false, executable: false, executionBlocked: true, scope, reason, message });
+        const block = (scope, reason, message) => ({ allowed: false, scope, reason, message });
         if (context.authorization?.authorized === false) {
           return block("workout", context.authorization.reason || "unauthorized_workout_target", context.authorization.message || "This action is not authorized for the requested workout.");
         }
@@ -828,55 +1016,22 @@
           return { allowed: true, scope: "history", reason: "authorized_history_correction" };
         }
         const recovery = context.recovery || {};
-        const exercise = context.exercise || null;
-        const restriction = exercise?.safetyRestriction || exercise?.finalPrescription?.safetyRestriction || exercise?.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
-        const blockedBySnapshot = exercise?.executionBlocked === true
-          || exercise?.finalPrescription?.executionBlocked === true
-          || exercise?.recommendationSnapshot?.finalPrescription?.executionBlocked === true;
-        if (recovery.illness === true) return block("workout", "illness", "Current illness blocks executable workout actions.");
-        const affectedMuscle = normalize(recovery.affectedMuscle);
-        if (recovery.pain === true && !affectedMuscle) return block("workout", "pain", "Pain without a specified affected area blocks executable workout actions.");
-        if (blockedBySnapshot) {
-          return block(restriction?.scope || "exercise", restriction?.reason || "pain", "This exercise remains non-executable until its hard-safety restriction is resolved.");
-        }
-        const confirmedSubstitute = restriction?.status === "resolved_by_confirmed_substitute"
-          && restriction?.painFreeConfirmed === true
-          && restriction?.substituteExerciseId;
-        if (confirmedSubstitute) {
-          if (context.substituteValidation?.valid === true) return { allowed: true, scope: "exercise", reason: "confirmed_pain_free_substitute" };
-          return block("exercise", context.substituteValidation?.reason || "substitute_constraints_changed", context.substituteValidation?.message || "This confirmed substitute no longer satisfies the current catalog, equipment, exclusion, or program constraints.");
-        }
-        if (recovery.pain !== true) return { allowed: true, scope: "none", reason: "clear" };
-        const exerciseMuscles = (Array.isArray(context.exerciseMuscles) ? context.exerciseMuscles : [])
-          .map((item) => normalize(typeof item === "string" ? item : item?.muscle || item?.programmingFamilyId || item?.programming_family_id))
-          .filter(Boolean);
-        if (!exercise || context.taxonomyResolved !== true || !exerciseMuscles.length) {
-          return block("exercise", "pain", "The exercise taxonomy is unresolved, so a localized pain restriction must fail closed.");
-        }
-        if (exerciseMuscles.includes(affectedMuscle)) {
-          return block("exercise", "pain", "This exercise trains the affected area and is blocked until a validated pain-free substitute is confirmed.");
-        }
-        return { allowed: true, scope: "exercise", reason: "catalog_resolved_nonmatch" };
+        const hasRecordedSafetyAction = recovery.illness === true || recovery.pain === true;
+        return {
+          allowed: true,
+          scope: hasRecordedSafetyAction ? "workout" : "none",
+          reason: hasRecordedSafetyAction ? "recorded_safety_action_is_advisory" : "no_safety_restriction"
+        };
       }
 
       function workoutMutationSafetyContext(action, identifiers = {}, authorization = resolveWorkoutMutationTarget(action, identifiers)) {
         const exercise = authorization.exercise
           || (action === "add-exercise" && addExerciseDraft.trim() ? { name: addExerciseDraft.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle } : null);
         const session = authorization.session;
-        const taxonomy = exercise ? taxonomyMusclesForExercise(exercise) : [];
-        const restriction = exercise?.safetyRestriction || exercise?.finalPrescription?.safetyRestriction || exercise?.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
-        const substituteValidation = identifiers.substituteValidation !== undefined
-          ? identifiers.substituteValidation
-          : restriction?.status === "resolved_by_confirmed_substitute" && exercise?.recommendationSnapshot
-            ? safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session }).resolvedValidation
-            : null;
         return {
           authorization,
           recovery: authorization.authorized && authorization.authorizationMode !== "history_edit" && session ? cleanRecovery(session.recovery || {}) : cleanRecovery({}),
-          exercise,
-          exerciseMuscles: taxonomy.map((item) => item.muscle),
-          taxonomyResolved: taxonomy.length > 0,
-          substituteValidation
+          exercise
         };
       }
 
@@ -906,6 +1061,11 @@
           back: "upper_back", shoulders: "front_delts", quads: "quadriceps",
           core: "abdominals", neck: "neck_flexors"
         })[key] || key;
+      }
+
+      function appMuscleFromCustomGroup(value) {
+        const canonical = canonicalCustomMuscleGroup(value);
+        return muscleGroups.find((muscle) => canonicalCustomMuscleGroup(muscle) === canonical) || "";
       }
 
       function normalizeCustomExerciseProfile(profile) {
@@ -942,75 +1102,180 @@
         return missing;
       }
 
+      function normalizeStableTemplateExercise(exercise = {}) {
+        const profile = typeof progressionProfileForExercise === "function"
+          ? progressionProfileForExercise(exercise.name || "")
+          : { lowerRep: 8, upperRep: 12, increment: 5 };
+        const numeric = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+        const legacyRoles = exercise.standardRoleWorkload && typeof exercise.standardRoleWorkload === "object"
+          ? exercise.standardRoleWorkload
+          : null;
+        const legacyRoleTypes = legacyRoles?.topSet
+          ? [
+              {
+                type: "top",
+                setCount: legacyRoles.topSet.count,
+                repMin: legacyRoles.topSet.repRange?.min,
+                repMax: legacyRoles.topSet.repRange?.max
+              },
+              ...(legacyRoles.setStructure === "top_set_backoff" && legacyRoles.backoffSets ? [{
+                type: "backoff",
+                setCount: legacyRoles.backoffSets.count,
+                repMin: legacyRoles.backoffSets.repRange?.min,
+                repMax: legacyRoles.backoffSets.repRange?.max
+              }] : [])
+            ]
+          : [];
+        const sourceTypes = legacyRoleTypes.length
+          ? legacyRoleTypes
+          : Array.isArray(exercise.setTypes) ? exercise.setTypes.filter((item) => item && item.countsTowardProgression !== false && !item.isWarmup && normalizeSetTypeCode(item.type || item.setType) !== "warmup") : [];
+        const aggregateSetCount = sourceTypes.reduce((sum, item) => sum + Math.max(0, Number(item.setCount || 0)), 0);
+        const requestedSetCount = Math.max(1, Math.round(numeric(exercise.sets, aggregateSetCount || 3)));
+        const sourceRepMins = sourceTypes.map((item) => Number(item.repMin || 0)).filter((value) => value > 0);
+        const sourceRepMaxes = sourceTypes.map((item) => Number(item.repMax || item.repMin || 0)).filter((value) => value > 0);
+        const legacyExactReps = sourceTypes.length === 0
+          && Number(exercise.reps) > 0
+          && !Object.prototype.hasOwnProperty.call(exercise, "repMin")
+          && !Object.prototype.hasOwnProperty.call(exercise, "repMax");
+        const stableRepMin = Math.max(1, Math.round(numeric(exercise.repMin, sourceRepMins.length ? Math.min(...sourceRepMins) : numeric(exercise.reps, profile.lowerRep || 8))));
+        const stableRepMax = Math.max(stableRepMin, Math.round(numeric(exercise.repMax, sourceRepMaxes.length ? Math.max(...sourceRepMaxes) : numeric(exercise.reps, profile.upperRep || stableRepMin))));
+        const sourceRpes = sourceTypes.flatMap((item) => [Number(item.rpeMax || item.targetRpe || 0), Number(item.rpeMin || 0)]).filter((value) => value > 0);
+        const stableTargetRpe = Math.max(1, Math.min(10, numeric(exercise.targetRpe, sourceRpes.length ? Math.max(...sourceRpes) : 8)));
+        const stableRestSeconds = Math.max(15, Math.round(numeric(exercise.restSeconds, Number(data?.settings?.defaultRestSeconds || 90))));
+        const normalizeType = (item, index) => {
+          const fallback = {
+            id: item.id || `${exercise.id || "exercise"}-stable-${index + 1}`,
+            type: item.type || item.setType || "straight",
+            setCount: Number(item.setCount || 1),
+            repMin: stableRepMin,
+            repMax: stableRepMax,
+            rpeMin: Math.max(1, stableTargetRpe - 1),
+            rpeMax: stableTargetRpe,
+            restSeconds: stableRestSeconds,
+            countsTowardProgression: true
+          };
+          const normalized = typeof normalizeTargetSetType === "function"
+            ? normalizeTargetSetType(item, fallback)
+            : { ...fallback, ...item };
+          return {
+            ...normalized,
+            id: normalized.id || fallback.id,
+            setCount: Math.max(1, Math.round(Number(normalized.setCount || 1))),
+            repMin: Math.max(1, Math.round(Number(normalized.repMin || stableRepMin))),
+            repMax: Math.max(Math.max(1, Math.round(Number(normalized.repMin || stableRepMin))), Math.round(Number(normalized.repMax || stableRepMax))),
+            rpeMin: Math.max(1, Math.min(10, Number(normalized.rpeMin || Math.max(1, stableTargetRpe - 1)))),
+            rpeMax: Math.max(1, Math.min(10, Number(normalized.rpeMax || stableTargetRpe))),
+            restSeconds: stableRestSeconds,
+            countsTowardProgression: normalized.countsTowardProgression !== false,
+            isWarmup: false
+          };
+        };
+        const setTypes = (sourceTypes.length ? sourceTypes : [{
+          id: `${exercise.id || "exercise"}-stable-1`,
+          type: "straight",
+          setCount: requestedSetCount,
+          repMin: stableRepMin,
+          repMax: stableRepMax,
+          exactReps: legacyExactReps,
+          rangeSource: legacyExactReps ? "legacy-exact" : "program",
+          rpeMin: Math.max(1, stableTargetRpe - 1),
+          rpeMax: stableTargetRpe,
+          restSeconds: stableRestSeconds,
+          countsTowardProgression: true
+        }]).map(normalizeType);
+        const stableSetCount = setTypes.reduce((sum, item) => sum + Number(item.setCount || 0), 0);
+        const explicitRoutineReps = numeric(exercise.reps, Math.round((stableRepMin + stableRepMax) / 2));
+        const {
+          standardWorkloadOverride,
+          standardRoleWorkload,
+          recommendationSnapshot,
+          basePrescription,
+          finalPrescription,
+          originalPrescription,
+          prescription,
+          setPrescription,
+          coachRecommendation,
+          executionBlocked,
+          safetyRestriction,
+          prescriptionConfidence,
+          recommendationVersion,
+          personalDataVersion,
+          researchDatabaseVersion,
+          programTargetContext,
+          appliedTargetContext,
+          ...retained
+        } = exercise;
+        return {
+          ...retained,
+          sets: stableSetCount,
+          reps: Math.max(stableRepMin, Math.min(stableRepMax, Math.round(explicitRoutineReps))),
+          repMin: stableRepMin,
+          repMax: stableRepMax,
+          targetRpe: stableTargetRpe,
+          increment: numeric(exercise.increment, profile.increment || 5),
+          restSeconds: stableRestSeconds,
+          setTypes
+        };
+      }
+
       function normalizeLoadedData(model) {
+        const sourceAppDataVersion = Number(model.appDataVersion || 0);
+        const sourceTemplates = Array.isArray(model.templates) ? model.templates : [];
+        const sourceTemplateExercises = sourceTemplates.flatMap((template) => Array.isArray(template.exercises) ? template.exercises : []);
+        const legacyStableTargetCount = sourceTemplateExercises.filter((exercise) => exercise.standardWorkloadOverride != null || exercise.standardRoleWorkload != null || !Number(exercise.sets) || !Number(exercise.repMin || exercise.reps) || !Number(exercise.repMax || exercise.reps) || !Number(exercise.targetRpe) || !Number(exercise.restSeconds)).length;
+        const legacyEquipmentPreferencePresent = Object.prototype.hasOwnProperty.call(model.settings || {}, "availableEquipment");
         const storedSettings = model.settings || {};
-        const legacyGoal = String(storedSettings.goal || "").trim().toLowerCase();
-        const legacyTrainingStatus = String(storedSettings.trainingStatus || "").trim().toLowerCase();
-        const validTrainingGoals = new Set(["strength", "hypertrophy", "muscular_endurance", "general_fitness"]);
-        const validNutritionPhases = new Set(["deficit", "maintenance", "surplus", "recomposition"]);
-        const validExperienceLevels = new Set(["novice", "intermediate", "advanced"]);
-        const legacyTrainingGoal = ({
-          strength: "strength", hypertrophy: "hypertrophy", endurance: "muscular_endurance",
-          muscular_endurance: "muscular_endurance", general: "general_fitness", general_fitness: "general_fitness",
-          cut: "general_fitness", recomposition: "general_fitness", maintain: "general_fitness", maintenance: "general_fitness", bulk: "general_fitness"
-        })[legacyGoal] || "";
-        const legacyNutritionPhase = ({ cut: "deficit", deficit: "deficit", recomposition: "recomposition", maintain: "maintenance", maintenance: "maintenance", bulk: "surplus", surplus: "surplus" })[legacyGoal] || "";
-        const trainingGoal = validTrainingGoals.has(storedSettings.trainingGoal) ? storedSettings.trainingGoal : legacyTrainingGoal;
-        const nutritionPhase = validNutritionPhases.has(storedSettings.nutritionPhase) ? storedSettings.nutritionPhase : legacyNutritionPhase;
-        const experienceLevel = validExperienceLevels.has(storedSettings.experienceLevel)
-          ? storedSettings.experienceLevel
-          : validExperienceLevels.has(legacyTrainingStatus) ? legacyTrainingStatus : "";
-        const returningAfterGap = typeof storedSettings.returningAfterGap === "boolean" ? storedSettings.returningAfterGap : null;
         const safeSettings = {
           weightUnit: storedSettings.weightUnit,
-          trainingGoal,
-          trainingGoalSource: validTrainingGoals.has(storedSettings.trainingGoal) ? (storedSettings.trainingGoalSource || "explicit") : (storedSettings.trainingGoalSource || "missing_default"),
-          trainingGoalDisclosure: validTrainingGoals.has(storedSettings.trainingGoal) ? (storedSettings.trainingGoalDisclosure || "") : (storedSettings.trainingGoalDisclosure || "General fitness default used because the legacy nutrition goal did not specify a training goal."),
-          nutritionPhase,
-          experienceLevel,
-          returningAfterGap,
-          trainingDaysPerWeek: storedSettings.trainingDaysPerWeek,
-          availableEquipment: storedSettings.availableEquipment,
-          excludedExerciseIds: storedSettings.excludedExerciseIds,
-          theme: storedSettings.theme,
-          colorPackage: storedSettings.colorPackage,
           timerSound: storedSettings.timerSound,
-          workoutCompletionSound: storedSettings.workoutCompletionSound,
           timerVibration: storedSettings.timerVibration,
-          interactionVibration: storedSettings.interactionVibration,
           timerNotifications: storedSettings.timerNotifications,
           inAppRestAlerts: storedSettings.inAppRestAlerts,
           restCompleteSound: storedSettings.restCompleteSound,
           restCompleteSoundVolume: storedSettings.restCompleteSoundVolume,
           restCompleteAutoDismissMs: storedSettings.restCompleteAutoDismissMs,
-          restCompleteLockScreenNotifications: storedSettings.restCompleteLockScreenNotifications,
           restCompleteAutoReturnToWorkout: storedSettings.restCompleteAutoReturnToWorkout,
           defaultRestSeconds: storedSettings.defaultRestSeconds,
           notificationMessageDetail: storedSettings.notificationMessageDetail,
           autoStartRestTimer: storedSettings.autoStartRestTimer,
           autoHighlightNextSet: storedSettings.autoHighlightNextSet,
-          autoScrollNextSet: storedSettings.autoScrollNextSet,
           installGuideDismissed: storedSettings.installGuideDismissed,
           setupSoundConfirmed: storedSettings.setupSoundConfirmed,
-          cloudWorkoutSyncConsent: storedSettings.cloudWorkoutSyncConsent === true || (storedSettings.workoutCloudSync === true && Number(storedSettings.workoutCloudSyncConsentVersion || 0) >= 1),
-          workoutCloudSync: storedSettings.workoutCloudSync,
-          workoutCloudSyncConsentVersion: storedSettings.workoutCloudSyncConsentVersion
+          expectedTemplateId: storedSettings.expectedTemplateId
         };
-        model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
-        model.settings.workoutCloudSync = model.settings.cloudWorkoutSyncConsent === true;
-        model.settings.workoutCloudSyncConsentVersion = model.settings.cloudWorkoutSyncConsent === true ? 1 : 0;
+        model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)) };
+        if (storedSettings.readinessBaseline && typeof storedSettings.readinessBaseline === "object" && !Array.isArray(storedSettings.readinessBaseline)) {
+          const compatibilityBaseline = cleanReadinessBaseline(storedSettings.readinessBaseline);
+          if (Object.keys(compatibilityBaseline).length) model.settings.readinessBaseline = compatibilityBaseline;
+        }
+        delete model.settings.availableEquipment;
         delete model.settings.goal;
         delete model.settings.trainingStatus;
-        model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({
-          ...session,
-          submitted: session.source === "strong" && session.submitted == null ? true : session.submitted,
-          workoutState: session.source === "strong" && !session.workoutState ? "completed" : session.workoutState,
-          completedAt: session.completedAt || session.submittedAt || (session.source === "strong" ? session.date : ""),
-          recovery: cleanRecovery(session.recovery || {})
-        }));
+        delete model.settings.cloudWorkoutSyncConsent;
+        delete model.settings.workoutCloudSync;
+        delete model.settings.workoutCloudSyncConsentVersion;
+        model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => {
+          const resolvedActions = (Array.isArray(session.resolvedActions) ? session.resolvedActions : []).filter((action) => {
+            if (window.FitnessExceptionResolver?.validateResolvedAction) return window.FitnessExceptionResolver.validateResolvedAction(action)?.valid === true;
+            return action?.contractVersion === "comprehensive-fitness-resolved-action/1.0.0"
+              && ["no_action", "action"].includes(action.outcome)
+              && ["session", "exercise"].includes(action.scope?.type);
+          });
+          const normalizedSession = {
+            ...session,
+            resolvedActions,
+            submitted: session.source === "strong" && session.submitted == null ? true : session.submitted,
+            workoutState: session.source === "strong" && !session.workoutState ? "completed" : session.workoutState,
+            completedAt: session.completedAt || session.submittedAt || (session.source === "strong" ? session.date : ""),
+            recovery: cleanRecovery(session.recovery || {})
+          };
+          if (!isSessionSubmitted(normalizedSession)) delete normalizedSession.exerciseQualityAnswers;
+          return normalizedSession;
+        });
         model.exercises = Array.isArray(model.exercises) ? model.exercises : [];
         model.sets = Array.isArray(model.sets) ? model.sets : [];
         model.sets = model.sets.map((set) => ({ ...set, skipped: Boolean(set.skipped), edited: Boolean(set.edited) }));
+        const submittedSessionIds = new Set(model.sessions.filter((session) => isSessionSubmitted(session)).map((session) => session.id));
         const setsByExercise = new Map();
         model.sets.forEach((set) => {
           if (!setsByExercise.has(set.exerciseId)) setsByExercise.set(set.exerciseId, []);
@@ -1021,8 +1286,25 @@
           const legacyBodyweight = exerciseSets.length > 0 && exerciseSets.every((set) => Boolean(set.isBodyweight)) && isBodyweightExerciseName(exercise.name);
           const resistanceType = inferResistanceType(exercise.name, { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight }, exerciseSets);
           const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null;
-          const executionQualityAssessment = typeof executionQualityValues !== "undefined" && executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : undefined;
-          return { ...exercise, ...(customExerciseProfile ? { customExerciseProfile } : {}), ...(executionQualityAssessment ? { executionQualityAssessment } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          const submittedExercise = submittedSessionIds.has(exercise.sessionId);
+          const executionQualityAssessment = submittedExercise
+            && typeof executionQualityValues !== "undefined"
+            && executionQualityValues.has(exercise.executionQualityAssessment)
+            ? exercise.executionQualityAssessment
+            : undefined;
+          let retainedExercise = { ...exercise };
+          if (!submittedExercise) {
+            delete retainedExercise.executionQualityAssessment;
+            delete retainedExercise.executionBlocked;
+            delete retainedExercise.safetyRestriction;
+          }
+          return {
+            ...retainedExercise,
+            ...(customExerciseProfile ? { customExerciseProfile } : {}),
+            ...(executionQualityAssessment ? { executionQualityAssessment } : {}),
+            resistanceType,
+            isBodyweight: isBodyweightResistance(resistanceType)
+          };
         });
         const normalizedExerciseById = new Map(model.exercises.map((exercise) => [exercise.id, exercise]));
         model.sets = model.sets.map((set) => {
@@ -1032,26 +1314,38 @@
         });
         model.templates = (Array.isArray(model.templates) ? model.templates : []).map((template) => ({
           ...template,
-          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null; return { ...exercise, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "", setTypes: Array.isArray(exercise.setTypes) ? exercise.setTypes.map((setType) => normalizeTargetSetType(setType, { restSeconds: exercise.restSeconds, targetRpe: exercise.targetRpe })) : [] }; })
+          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => {
+            const stable = normalizeStableTemplateExercise(exercise);
+            const resistanceType = inferResistanceType(stable.name, stable);
+            const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(stable.customExerciseProfile) : null;
+            return { ...stable, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          })
         }));
-        model.appDataVersion = Math.max(2, Number(model.appDataVersion || 0));
-        model.mesocycles = (Array.isArray(model.mesocycles) ? model.mesocycles : []).map((mesocycle) => ({
-          ...mesocycle,
-          status: mesocycle.status === "preview" ? "draft" : mesocycle.status === "loaded" ? "planned" : mesocycle.status,
-          planningStep: Number(mesocycle.planningStep || 5),
-          programSlots: Array.isArray(mesocycle.programSlots) ? mesocycle.programSlots : [],
-          selectedPortfolio: Array.isArray(mesocycle.selectedPortfolio) ? mesocycle.selectedPortfolio : (Array.isArray(mesocycle.activeExercises) ? mesocycle.activeExercises : []),
-          sessions: Array.isArray(mesocycle.sessions) ? mesocycle.sessions : [],
-          programReview: mesocycle.programReview || { warnings: [], seriousWarningCount: 0, musclePlans: [], explanation: ["Legacy mesocycle: rebuild the draft to receive full-program interaction analysis."] }
-        }));
-        model.activeMesocycleId = model.mesocycles.some((mesocycle) => mesocycle.id === model.activeMesocycleId && mesocycle.status === "active") ? model.activeMesocycleId : "";
-        model.recommendationHistory = Array.isArray(model.recommendationHistory) ? model.recommendationHistory : [];
-        model.manualOverrides = Array.isArray(model.manualOverrides) ? model.manualOverrides : [];
-        model.personalEvidencePackage = model.personalEvidencePackage && typeof model.personalEvidencePackage === "object" ? model.personalEvidencePackage : null;
+        if (!model.templates.some((template) => template.id === model.settings.expectedTemplateId)) {
+          model.settings.expectedTemplateId = model.templates[0]?.id || "";
+        }
+        model.appDataVersion = Math.max(3, Number(model.appDataVersion || 0));
+        delete model.recommendationHistory;
+        delete model.manualOverrides;
+        delete model.personalEvidencePackage;
         model.rawImports = Array.isArray(model.rawImports) ? model.rawImports : [];
         model.migrationAudit = Array.isArray(model.migrationAudit) ? model.migrationAudit : [];
         model.dataRevision = Number(model.dataRevision || 0);
-        return migrateDomainData(model);
+        model = migrateDomainData(model);
+        if (sourceAppDataVersion < 3 && !model.migrationAudit.some((record) => Number(record.version) === 4)) {
+          const migratedAt = isoNow();
+          model.migrationAudit.push({
+            version: 4,
+            startedAt: migratedAt,
+            completedAt: migratedAt,
+            inspected: sourceTemplateExercises.length,
+            changed: legacyStableTargetCount + (legacyEquipmentPreferencePresent ? 1 : 0),
+            explicitRetained: Math.max(0, sourceTemplateExercises.length - legacyStableTargetCount),
+            changes: []
+          });
+          model.dataRevision += 1;
+        }
+        return model;
       }
 
       function persistenceTimestamp(value) {
@@ -1105,7 +1399,7 @@
         if (!Number.isSafeInteger(revision) || revision < 0) return null;
         const requiredCollectionKeys = ["sessions", "exercises", "sets", "templates"];
         if (requiredCollectionKeys.some((key) => !Array.isArray(value[key]))) return null;
-        const collectionKeys = ["sessions", "exercises", "sets", "templates", "mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"];
+        const collectionKeys = ["sessions", "exercises", "sets", "templates", "recommendationHistory", "rawImports", "migrationAudit"];
         if (collectionKeys.some((key) => Object.prototype.hasOwnProperty.call(value, key) && !Array.isArray(value[key]))) return null;
         if (Object.prototype.hasOwnProperty.call(value, "settings") && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return null;
         return { source, value, revision, canonicalContent: null, updatedAt: metadata.updatedAt || null, timestamp: persistenceTimestamp(metadata.updatedAt) };
@@ -1188,7 +1482,9 @@
             replaceConflictPreserved: true
           });
         }
-        const stored = selectedCandidate?.value || null;
+        const stored = selectedCandidate?.value
+          ? window.FitnessBackupContract?.discardObsoletePlanningState?.(selectedCandidate.value) || selectedCandidate.value
+          : null;
         const invalidStoredSource = Boolean((indexedStored !== null && !indexedCandidate) || (localStoragePresent && !localCandidate));
         data = stored ? { ...emptyData(), ...stored, settings: { ...defaultSettings, ...stored.settings } } : emptyData();
         const needsDomainRecalculation = Number(data.domainMigrationVersion || 0) < DOMAIN_MIGRATION_VERSION;
@@ -1197,13 +1493,9 @@
         entityStructureRevision += 1;
         entityIndexCache = null;
         if (needsDomainRecalculation) {
-          const activeIds = activeHistorySessionIds();
-          data.sessions = data.sessions.map((session) => {
-            if (!activeIds.has(session.id)) return session;
-            const prs = submitWorkoutPrs(session);
-            const updated = { ...session, prs };
-            return { ...updated, workoutAnalysis: calculateWorkoutAnalysis(updated, { prs }) };
-          });
+          // Submitted source observations and stored grade versions are immutable.
+          // Migration may rebuild transient indexes, but it never assigns a newer
+          // grade or PR record to an older workout that did not store one.
           invalidateCompletedAnalysis();
         }
         applyTheme();
@@ -1245,98 +1537,58 @@
         }
       }
 
-      async function loadPrescriptionEvidence(options = {}) {
-        if (!prescriptionApi) {
-          prescriptionEvidenceStatus = { state: "unavailable", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "The unified prescription module did not load." };
-          return false;
-        }
-        const researchBaseUrl = "./research_database/exports/json";
-        const personalEvidencePackage = Object.prototype.hasOwnProperty.call(options, "personalEvidencePackage")
-          ? options.personalEvidencePackage
-          : data.personalEvidencePackage;
-        const persistedPersonalData = personalEvidencePackage?.personalData || null;
-        let bundle = null;
-        let sourceLabel = persistedPersonalData ? "imported local evidence" : "research defaults";
-        try {
-          const researchBundle = await prescriptionApi.loadEvidenceFromUrls({ researchBaseUrl, personalData: {} });
-          if (persistedPersonalData) {
-            bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: persistedPersonalData, research: researchBundle.research });
-          } else {
-            const evidenceHostname = String(window.location.hostname || "").toLowerCase().replace(/^\[|\]$/g, "");
-            const loopbackEvidenceOrigin = evidenceHostname === "localhost" || evidenceHostname === "127.0.0.1" || evidenceHostname === "::1";
-            const nativeEvidenceOrigin = window.Capacitor?.isNativePlatform?.() === true;
-            if (!loopbackEvidenceOrigin && !nativeEvidenceOrigin) {
-              bundle = researchBundle;
-            } else {
-            const personalSources = [
-              { base: "./private-personal-data", metadata: "./private-personal-data/analysis_metadata.json", label: "private native evidence" },
-              { base: "./personal_fitness_data/derived", metadata: "./personal_fitness_data/reports/analysis_metadata.json", label: "local protected evidence" }
-            ];
-            const fetchOptional = async (url, kind) => {
-              try {
-                const resolved = new URL(url, window.location.href);
-                if (resolved.origin !== window.location.origin) return kind === "csv" ? [] : kind === "metadata" ? {} : [];
-                const response = await fetch(resolved.href, { credentials: "same-origin", cache: "no-store" });
-                if (!response.ok) return kind === "csv" ? [] : kind === "metadata" ? {} : [];
-                return kind === "csv" ? prescriptionApi.parseCsv(await response.text()) : response.json();
-              } catch {
-                return kind === "csv" ? [] : kind === "metadata" ? {} : [];
-              }
-            };
-            for (const source of personalSources) {
-              const [exercisePrescriptions, exerciseScores, exerciseMuscleScores, exerciseSessionMetrics, weeklyMuscleVolumeResponse, recoveryRules, muscleGroupSweetSpots, embeddedMetadata] = await Promise.all([
-                fetchOptional(`${source.base}/exercise_prescriptions.json`, "json"),
-                fetchOptional(`${source.base}/exercise_scores.csv`, "csv"),
-                fetchOptional(`${source.base}/exercise_muscle_scores.csv`, "csv"),
-                fetchOptional(`${source.base}/exercise_session_metrics.csv`, "csv"),
-                fetchOptional(`${source.base}/weekly_muscle_volume_response.csv`, "csv"),
-                fetchOptional(`${source.base}/recovery_rules.json`, "json"),
-                fetchOptional(`${source.base}/muscle_group_sweet_spots.json`, "json"),
-                fetchOptional(`${source.base}/analysis_metadata.json`, "metadata")
-              ]);
-              let metadata = embeddedMetadata || {};
-              if (!metadata.methodology_version && !metadata.pipeline_version) metadata = await fetchOptional(source.metadata, "metadata");
-              const personalData = { exercisePrescriptions, exerciseScores, exerciseMuscleScores, exerciseSessionMetrics, weeklyMuscleVolumeResponse, recoveryRules, muscleGroupSweetSpots, metadata };
-              const candidate = prescriptionApi.normalizeEvidenceBundle({ personalData, research: researchBundle.research });
-              if (!candidate.personal.exercisePrescriptions.length && !candidate.personal.exerciseScores.length) {
-                if (!bundle) bundle = candidate;
-                continue;
-              }
-              bundle = candidate;
-              sourceLabel = source.label;
-              break;
-            }
-            }
-          }
-          if (!bundle) bundle = researchBundle;
-          const nextPrescriptionEngine = prescriptionApi.createPrescriptionEngine(bundle);
-          const personalRecords = bundle.personal.exercisePrescriptions.length + bundle.personal.exerciseScores.length + bundle.personal.exerciseMuscleScores.length;
-          const nextPrescriptionEvidenceStatus = {
-            state: bundle.research.exerciseDatabase.length ? "ready" : "research_unavailable",
-            source: sourceLabel,
-            personalRecords,
-            researchExercises: bundle.research.exerciseDatabase.length,
-            personalVersion: bundle.versions.personal,
-            researchVersion: bundle.versions.research,
-            message: personalRecords
-              ? `Unified engine loaded ${personalRecords} personal prescription/score records and ${bundle.research.exerciseDatabase.length} research exercises from ${sourceLabel}.`
-              : `Unified engine loaded ${bundle.research.exerciseDatabase.length} research exercises. Import the private personal evidence package on devices that cannot access the protected local files.`
-          };
-          prescriptionEngine = nextPrescriptionEngine;
-          prescriptionEvidenceStatus = nextPrescriptionEvidenceStatus;
-          invalidateCompletedAnalysis();
-          return true;
-        } catch (error) {
-          if (options.preserveCurrentOnFailure === true) return false;
-          prescriptionEngine = prescriptionApi.createPrescriptionEngine({});
-          prescriptionEvidenceStatus = { state: "error", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: `Prescription evidence could not be loaded: ${error?.message || error}` };
-          invalidateCompletedAnalysis();
-          return false;
-        }
+      async function fetchIdentityCompatibilityRecords(url, label) {
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (!response.ok) throw new Error(`Unable to load ${label} (${response.status}).`);
+        const records = await response.json();
+        if (!Array.isArray(records)) throw new Error(`${label} must be an array.`);
+        return records;
       }
 
-      async function initializePrescriptionEvidence() {
-        return loadPrescriptionEvidence();
+      function loadExerciseIdentityCatalog() {
+        if (!exerciseIdentityCatalogPromise) {
+          exerciseIdentityCatalogPromise = fetchIdentityCompatibilityRecords(
+            "./research_database/exports/json/exercise_database.json",
+            "the exercise identity catalog"
+          ).catch((error) => {
+            exerciseIdentityCatalogPromise = null;
+            throw error;
+          });
+        }
+        return exerciseIdentityCatalogPromise;
+      }
+
+      function loadImportValidationResearch() {
+        if (!importValidationResearchPromise) {
+          importValidationResearchPromise = Promise.all([
+            loadExerciseIdentityCatalog(),
+            fetchIdentityCompatibilityRecords(
+              "./research_database/exports/json/exercise_muscle_map.json",
+              "the legacy snapshot validation map"
+            )
+          ]).then(([exerciseDatabase, exerciseMuscleMap]) => ({ exerciseDatabase, exerciseMuscleMap }))
+            .catch((error) => {
+              importValidationResearchPromise = null;
+              throw error;
+            });
+        }
+        return importValidationResearchPromise;
+      }
+
+      function installExerciseIdentityCompatibility(exerciseDatabase, preparedEngine = null) {
+        if (!prescriptionApi || !Array.isArray(exerciseDatabase)) return false;
+        prescriptionEngine = preparedEngine || prescriptionApi.createPrescriptionEngine({ personalData: {}, researchData: { exerciseDatabase } });
+        return true;
+      }
+
+      async function initializeExerciseIdentityCompatibility() {
+        if (!prescriptionApi) return false;
+        try {
+          return installExerciseIdentityCompatibility(await loadExerciseIdentityCatalog());
+        } catch {
+          prescriptionEngine = prescriptionApi.createPrescriptionEngine({});
+          return false;
+        }
       }
 
       function normalizePrescriptionIdentity(value) {
@@ -1404,6 +1656,18 @@
         return { status: "unresolved", ...(resolved.exerciseId ? { exerciseId: resolved.exerciseId } : {}), reason: resolved.reason || "unknown_exercise_identity" };
       }
 
+      function stableCustomPerformanceExerciseId(name) {
+        const exactVariantKey = String(name || "").normalize("NFKC").trim().toLowerCase();
+        if (!exactVariantKey) return "";
+        const slug = normalizePrescriptionIdentity(name).replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 112) || "variant";
+        let fingerprint = 2166136261;
+        for (let index = 0; index < exactVariantKey.length; index += 1) {
+          fingerprint ^= exactVariantKey.charCodeAt(index);
+          fingerprint = Math.imul(fingerprint, 16777619);
+        }
+        return `custom_${slug}_${(fingerprint >>> 0).toString(16).padStart(8, "0")}`;
+      }
+
       function resolveExerciseIdentityProfile(exerciseOrName) {
         const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
         const name = String(exercise.name || exercise.exerciseName || "").trim();
@@ -1434,8 +1698,7 @@
           || reconciled?.researchExerciseId
           || (prescriptionIdentity.status === "resolved" && !prescriptionIdentity.custom ? prescriptionIdentity.exerciseId : "")
           || "";
-        const reportingFallback = normalizePrescriptionIdentity(name).replace(/\s+/g, "_");
-        const performanceExerciseId = personalId || researchExerciseId || (reportingFallback ? `custom_${reportingFallback}` : "");
+        const performanceExerciseId = personalId || researchExerciseId || stableCustomPerformanceExerciseId(name);
         if (!performanceExerciseId) return { status: "unresolved", performanceExerciseId: null, researchExerciseId: researchExerciseId || null, reason: prescriptionIdentity.reason || "unknown_exercise_identity", identitySource: "unresolved", identityVersion: "exercise-identity/2.0.0" };
         return {
           status: "resolved",
@@ -1461,757 +1724,6 @@
         } : {};
       }
 
-      function prescriptionExerciseIdentity(exerciseName) {
-        if (typeof resolvePrescriptionExerciseIdentity === "function") {
-          const resolved = resolvePrescriptionExerciseIdentity(exerciseName);
-          return resolved.status === "resolved" ? resolved.exerciseId : null;
-        }
-        if (!prescriptionEngine) return null;
-        if (typeof prescriptionEngine.resolveExerciseIdentity === "function") {
-          const resolved = prescriptionEngine.resolveExerciseIdentity(exerciseName);
-          if (resolved?.status === "resolved") return resolved.exerciseId;
-          if (resolved?.reason && resolved.reason !== "unknown_exercise_identity") return null;
-        }
-        const requested = normalizePrescriptionIdentity(exerciseName);
-        const evidence = prescriptionEngine.evidence;
-        const researchId = evidence?.research?.exerciseIdByAlias?.get(requested)
-          || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)?.exercise_id;
-        if (researchId) return researchId;
-        const records = [evidence?.personal?.exerciseScores, evidence?.personal?.exercisePrescriptions, evidence?.personal?.exerciseMuscleScores];
-        const personalRecord = records.flatMap((items) => Array.isArray(items) ? items : []).find((item) => normalizePrescriptionIdentity(item?.exercise_name || item?.exerciseName || item?.exercise_id || item?.exerciseId) === requested);
-        const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
-        const reconciled = evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId);
-        if (reconciled?.invalid) return null;
-        if (reconciled?.researchExerciseId) return reconciled.researchExerciseId;
-        return /^(?:custom|user)(?::|_)/.test(personalId) ? personalId : null;
-      }
-
-      function prescriptionMuscleGroup(exerciseOrName) {
-        const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
-        const resolved = musclesForExercise(exercise)[0]?.muscle || exercise.primaryMuscle || "";
-        if (resolved) return normalizePrescriptionIdentity(resolved);
-        const identity = prescriptionExerciseIdentity(exercise.name);
-        const prescription = identity ? prescriptionEngine?.evidence.personal.prescriptionsFor(identity)[0] : null;
-        return normalizePrescriptionIdentity(prescription?.muscle_group_id || prescription?.muscleGroupId || "general");
-      }
-
-      function appPrescriptionHistory(exerciseName, options = {}) {
-        const throughDate = options.throughDate || todayIso();
-        const performanceExerciseId = String(options.performanceExerciseId || "");
-        const exposures = [];
-        activeHistorySessions({ throughDate, asOfDate: todayIso() }).forEach((session) => {
-          if (session.id === options.excludeSessionId) return;
-          data.exercises.filter((exercise) => exercise.sessionId === session.id).forEach((exercise) => {
-            const sameIdentity = performanceExerciseId && exercise.performanceExerciseId === performanceExerciseId;
-            if (!sameIdentity && !exerciseMatches(exercise.name, exerciseName)) return;
-            const planned = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "progression") && !set.skipped);
-            const completed = planned.filter((set) => set.completed);
-            if (!planned.length && !completed.length) return;
-            const loads = completed.map((set) => Number(set.weight || 0));
-            const reps = completed.map((set) => Number(set.reps || 0));
-            const rpes = completed.map((set) => Number(set.rpe || 0)).filter((value) => value > 0);
-            const performance = completed.reduce((best, set) => Math.max(best, estimatedOneRepMax(set)), 0);
-            const affected = String(session.recovery?.affectedMuscle || "");
-            const pain = exercise.safetyRestriction?.reason === "pain" || Boolean(session.recovery?.pain && (!affected || musclesForExercise(exercise).some((item) => normalizePrescriptionIdentity(item.muscle) === normalizePrescriptionIdentity(affected))));
-            const quality = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
-            const prescribedReduction = Boolean(exercise.isDeload || exercise.adjusted || exercise.prescription?.isDeload || /deload|light/.test(String(exercise.finalPrescription?.recommendationType || "")));
-            exposures.push({
-              exposure_id: `app:${session.id}:${exercise.id}`,
-              workout_id: session.id,
-              session_id: session.id,
-              exercise_id: exercise.performanceExerciseId || performanceExerciseId || canonicalExerciseId(exercise),
-              research_exercise_id: exercise.researchExerciseId || null,
-              workout_date: sessionCompletionDate(session),
-              comparison_performance_value: performance || null,
-              best_epley_e1rm: performance || null,
-              average_rpe: rpes.length ? rpes.reduce((sum, value) => sum + value, 0) / rpes.length : null,
-              set_repetitions: JSON.stringify(reps),
-              set_loads: JSON.stringify(loads),
-              set_rpes: JSON.stringify(rpes),
-              set_types: JSON.stringify(completed.map((set) => normalizeCanonicalSetType(set.setType, set.isWarmup))),
-              completed_set_count: completed.length,
-              prescribed_set_count: planned.length,
-              completed_set_ratio: completed.length / Math.max(1, planned.length),
-              technique_valid: quality === "controlled" ? true : quality === "breakdown" ? false : null,
-              technique_quality: quality,
-              pain,
-              prescribed_reduction: prescribedReduction,
-              prescribed_reduction_reasons: prescribedReduction ? [exercise.adjustmentReason || exercise.finalPrescription?.progressionRule || "Planned reduced exposure"] : []
-            });
-          });
-        });
-        exposures.sort((left, right) => left.workout_date.localeCompare(right.workout_date) || left.exposure_id.localeCompare(right.exposure_id));
-        let priorPerformance = null;
-        let regressionRun = 0;
-        return exposures.map((exposure) => {
-          const current = Number(exposure.comparison_performance_value || 0);
-          const change = current > 0 && priorPerformance > 0 ? (current / priorPerformance - 1) * 100 : null;
-          const status = exposure.prescribed_reduction ? "planned_reduction" : change == null ? "baseline" : change >= 1 ? "improved" : change < -1.5 ? "regressed" : "held";
-          regressionRun = status === "regressed" ? regressionRun + 1 : 0;
-          if (current > 0 && !exposure.prescribed_reduction) priorPerformance = current;
-          return { ...exposure, progression_status: status, progression_pct_vs_prior: change, regression_duration_exposures: regressionRun };
-        });
-      }
-
-      function prescriptionHistoryForExercise(exerciseName, exerciseId, options = {}) {
-        const throughDate = options.throughDate || todayIso();
-        const identityProfile = typeof resolveExerciseIdentityProfile === "function"
-          ? resolveExerciseIdentityProfile({ name: exerciseName, researchExerciseId: options.researchExerciseId || exerciseId, performanceExerciseId: options.performanceExerciseId || "" })
-          : { performanceExerciseId: options.performanceExerciseId || exerciseId };
-        const performanceExerciseId = identityProfile.performanceExerciseId || exerciseId;
-        const personal = (prescriptionEngine?.evidence.personal.historyFor(performanceExerciseId) || []).filter((item) => String(item.workout_date || item.date || "").slice(0, 10) <= throughDate);
-        const appHistory = appPrescriptionHistory(exerciseName, { ...options, performanceExerciseId });
-        const seen = new Set();
-        return [...personal, ...appHistory].filter((item) => {
-          const key = item.exposure_id || item.exposureId || `${item.workout_id || item.workoutId || ""}|${item.exercise_id || item.exerciseId || performanceExerciseId}|${item.workout_date || item.date || ""}|${item.set_repetitions || ""}|${item.set_loads || ""}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        }).sort((left, right) => String(left.workout_date || left.date || "").localeCompare(String(right.workout_date || right.date || "")));
-      }
-
-      function prescriptionReadiness(recoveryInput = {}, history = []) {
-        const recovery = cleanRecovery(recoveryInput);
-        const baseline = readinessBaseline();
-        const recentStatus = String(history.at(-1)?.progression_status || history.at(-1)?.progressionStatus || "").toLowerCase();
-        return {
-          sleepHours: recovery.sleepHours === "" ? undefined : Number(recovery.sleepHours),
-          baselineSleepHours: Number(baseline.sleepHours || 0) || undefined,
-          hrv: recovery.hrv === "" ? undefined : Number(recovery.hrv),
-          baselineHrv: Number(baseline.hrv || 0) || undefined,
-          restingHeartRate: recovery.restingHr === "" ? undefined : Number(recovery.restingHr),
-          baselineRestingHeartRate: Number(baseline.restingHr || 0) || undefined,
-          soreness: recovery.soreness === "" ? undefined : Number(recovery.soreness) * 2,
-          illness: Boolean(recovery.illness),
-          pain: Boolean(recovery.pain),
-          affectedMuscle: recovery.affectedMuscle,
-          previousExposureRegressed: /regress|declin/.test(recentStatus),
-          consecutiveRegressions: history.slice(-2).filter((item) => /regress|declin/.test(String(item.progression_status || item.progressionStatus || "").toLowerCase())).length,
-          readinessScore: recovery.sleepQuality === "" ? undefined : Number(recovery.sleepQuality) * 2,
-          nutritionAdequate: recovery.nutritionStatus === "" ? undefined : recovery.nutritionStatus === "on_plan",
-          proteinAdequate: recovery.proteinStatus === "" ? undefined : recovery.proteinStatus === "adequate",
-          energyAvailabilityLow: recovery.nutritionStatus === "low_energy"
-        };
-      }
-
-      function currentMesocycle() {
-        return data.mesocycles.find((mesocycle) => mesocycle.id === data.activeMesocycleId && mesocycle.status === "active") || null;
-      }
-
-      function prescriptionScopeHistories(template, targetMuscle, options = {}) {
-        const entries = (template?.exercises || []).map((exercise) => {
-          const id = prescriptionExerciseIdentity(exercise.name);
-          if (!id) return null;
-          return { muscle: prescriptionMuscleGroup(exercise), history: prescriptionHistoryForExercise(exercise.name, id, options) };
-        }).filter(Boolean);
-        const muscleExerciseHistories = entries.filter((entry) => entry.muscle === targetMuscle).map((entry) => entry.history);
-        const byMuscle = new Map();
-        entries.forEach((entry) => {
-          if (!byMuscle.has(entry.muscle)) byMuscle.set(entry.muscle, []);
-          byMuscle.get(entry.muscle).push(entry.history);
-        });
-        return { muscleExerciseHistories, programMuscleHistories: Array.from(byMuscle.values()) };
-      }
-
-      function trustedCustomPrescriptionMuscleGroup(exercise, exerciseId) {
-        const manualMuscle = String(exercise?.primaryMuscle || "").trim();
-        if (manualMuscle) return normalizePrescriptionIdentity(manualMuscle);
-        const personal = prescriptionEngine?.evidence?.personal;
-        const explicitPersonalRecord = personal?.prescriptionsFor?.(exerciseId)?.find((record) => record?.muscle_group_id || record?.muscleGroupId)
-          || personal?.muscleScoresFor?.(exerciseId)?.find((record) => record?.muscle_group_id || record?.muscleGroupId);
-        return String(explicitPersonalRecord?.muscle_group_id || explicitPersonalRecord?.muscleGroupId || "").trim();
-      }
-
-      function customPrescriptionEngineFor(exercise, profile) {
-        const evidence = prescriptionEngine?.evidence;
-        if (!evidence || !prescriptionApi) return null;
-        const exerciseId = String(exercise.performanceExerciseId || "").trim();
-        if (!exerciseId || profile?.status !== "complete") return null;
-        const raw = evidence.personal?.raw || {};
-        const withoutIdentity = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => String(row.exercise_id || row.exerciseId || "") !== exerciseId);
-        const progressionModel = profile.progressionMetric === "reps_only" ? "rep_progression"
-          : profile.progressionMetric === "assistance" ? "assistance_progression"
-            : ["duration", "distance"].includes(profile.progressionMetric) ? `${profile.progressionMetric}_progression` : "double_progression";
-        const personalData = {
-          exercisePrescriptions: [...withoutIdentity(raw.exercisePrescriptions || raw.exercise_prescriptions), {
-            exercise_id: exerciseId,
-            exercise_name: exercise.name,
-            muscle_group_id: profile.primaryMuscleGroupId,
-            role: profile.exerciseStyle === "single_joint" ? "secondary_hypertrophy" : "primary_hypertrophy",
-            recommended_increment: profile.smallestIncrement,
-            preferred_progression_model: progressionModel,
-            evidence_summary: "User-declared custom profile; muscle-level research and exact same-identity history only."
-          }],
-          exerciseScores: [...withoutIdentity(raw.exerciseScores || raw.exercise_scores), {
-            exercise_id: exerciseId,
-            exercise_name: exercise.name,
-            overall_personal_exercise_score: 50,
-            progression_score: 50,
-            recovery_efficiency_score: 50,
-            repeatability_score: 50,
-            confidence_rating: "low",
-            main_reason_for_score: "Custom exercise metadata is complete; canonical exercise comparison remains intentionally unavailable."
-          }],
-          exerciseMuscleScores: [...withoutIdentity(raw.exerciseMuscleScores || raw.exercise_muscle_scores), {
-            exercise_id: exerciseId,
-            exercise_name: exercise.name,
-            muscle_group: profile.primaryMuscleGroupId,
-            muscle_role: "primary",
-            contribution_weight: 1,
-            muscle_specific_effectiveness_score: 70
-          }],
-          exerciseSessionMetrics: withoutIdentity(raw.exerciseSessionMetrics || raw.exercise_session_metrics),
-          weeklyMuscleVolumeResponse: raw.weeklyMuscleVolumeResponse || raw.weekly_muscle_volume_response || [],
-          recoveryRules: raw.recoveryRules || raw.recovery_rules || [],
-          muscleGroupSweetSpots: raw.muscleGroupSweetSpots || raw.muscle_group_sweet_spots || [],
-          metadata: { ...(raw.metadata || {}), methodology_version: `${evidence.versions.personal || "unknown"}+custom-profile/1.0.0` }
-        };
-        return prescriptionApi.createPrescriptionEngine({ personalData, research: evidence.research, personalDataVersion: personalData.metadata.methodology_version, researchDatabaseVersion: evidence.versions.research });
-      }
-
-      function boundedCustomPrescriptionSnapshot(exercise, profile, options = {}) {
-        const customEngine = customPrescriptionEngineFor(exercise, profile);
-        if (!customEngine) return null;
-        const history = options.history || prescriptionHistoryForExercise(exercise.name, exercise.performanceExerciseId, { ...options, performanceExerciseId: exercise.performanceExerciseId, researchExerciseId: "" });
-        const request = {
-          exerciseId: exercise.performanceExerciseId,
-          muscleGroupId: profile.primaryMuscleGroupId,
-          history,
-          readiness: options.readiness || prescriptionReadiness(options.recovery || {}, history),
-          equipmentIncrement: Number(profile.smallestIncrement || 0) || undefined,
-          resistanceType: profile.resistanceType,
-          trainingGoal: options.trainingGoal ?? data.settings?.trainingGoal,
-          nutritionPhase: options.nutritionPhase ?? data.settings?.nutritionPhase,
-          experienceLevel: options.experienceLevel ?? data.settings?.experienceLevel,
-          returningAfterGap: options.returningAfterGap ?? data.settings?.returningAfterGap,
-          createdAt: options.createdAt || `${options.throughDate || todayIso()}T12:00:00.000Z`
-        };
-        Object.keys(request).forEach((key) => request[key] === undefined || request[key] === "" ? delete request[key] : null);
-        let snapshot = customEngine.prescribeExercise(request);
-        const disclosure = "Bounded custom guidance uses the declared profile, muscle-level research dosage, the current goal, and exact history for this custom identity. Canonical ranking, biomechanics, substitution, and equivalence claims are unavailable.";
-        for (const field of ["basePrescription", "finalPrescription"]) {
-          snapshot[field].preferredReplacementExerciseId = null;
-          snapshot[field].substitutionRule = "No canonical substitution or equivalence recommendation is available for this custom exercise.";
-          snapshot[field].evidenceSummary = Array.from(new Set([...(snapshot[field].evidenceSummary || []), disclosure]));
-          snapshot[field].userExplanation = `${disclosure} The current target is ${snapshot[field].workingSets.target} working sets of ${snapshot[field].repRange.min}-${snapshot[field].repRange.max} reps at RPE ${snapshot[field].targetRpe.min}-${snapshot[field].targetRpe.max}, with ${snapshot[field].restSeconds.min}-${snapshot[field].restSeconds.max} seconds of rest. ${snapshot[field].progressionRule}`;
-        }
-        snapshot.explanation = snapshot.finalPrescription.userExplanation;
-        snapshot.evidenceSummary = [...snapshot.finalPrescription.evidenceSummary];
-        snapshot.standardGuideline.explanation = disclosure;
-        snapshot = prescriptionApi.refreshRecommendationChecksum(snapshot);
-        return snapshot;
-      }
-
-      function unifiedPrescriptionSnapshot(exerciseOrName, options = {}) {
-        if (!prescriptionEngine || prescriptionEvidenceStatus.state === "error") return null;
-        const hardConstraintRejection = (reason, message) => {
-          const normalizedReason = String(reason || "constraint_rejection").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-          return {
-            type: "hard_constraint_rejection",
-            kind: "hard_constraint_rejection",
-            code: `HARD_CONSTRAINT_${normalizedReason.toUpperCase()}`,
-            hardConstraint: true,
-            executionBlocked: true,
-            executable: false,
-            status: "blocked",
-            reason: normalizedReason,
-            message: String(message || "The workout request violates a hard constraint."),
-            decision: "hold",
-            mode: "stop-modify",
-            interventionType: "stop_modify",
-            sets: 0,
-            reps: 0,
-            repLow: 0,
-            repHigh: 0,
-            weight: 0,
-            addedLoad: 0,
-            assistanceLoad: 0,
-            rpe: 0,
-            restSeconds: 0,
-            warmups: [],
-            executableActions: [],
-            safetyRestriction: {
-              schemaVersion: "hard-safety/1.0.0",
-              status: "blocked",
-              scope: normalizedReason === "empty_muscle_scope" || normalizedReason === "invalid_time_constraint" ? "workout" : "exercise",
-              reason: normalizedReason,
-              resumeCriteria: "Correct the rejected hard constraint before generating or executing this workout."
-            }
-          };
-        };
-        const engineFailure = () => ({
-          type: "engine_failure",
-          kind: "engine_failure",
-          code: "PRESCRIPTION_ENGINE_FAILURE",
-          hardConstraint: false,
-          executionBlocked: true,
-          executable: false,
-          status: "unavailable",
-          recommendationStatus: "unavailable",
-          reason: "engine_failure",
-          message: "Recommendation guidance is unavailable because the prescription engine could not generate a recommendation.",
-          decision: "hold",
-          mode: "stop-modify",
-          interventionType: "stop_modify",
-          sets: 0,
-          reps: 0,
-          repLow: 0,
-          repHigh: 0,
-          weight: 0,
-          addedLoad: 0,
-          assistanceLoad: 0,
-          rpe: 0,
-          restSeconds: 0,
-          warmups: [],
-          executableActions: []
-        });
-        const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
-        const customProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null;
-        if (exercise.recommendationSnapshot) {
-          const owningSession = exercise.sessionId
-            ? data.sessions.find((session) => session.id === exercise.sessionId)
-            : null;
-          // Submitted history is an immutable audit record. It must remain
-          // byte/reference exact even when a later engine no longer accepts the
-          // historical schema. Active and template snapshots are executable
-          // state, so they must pass the current integrity and identity boundary
-          // before reuse.
-          if (owningSession && isSessionSubmitted(owningSession)) return exercise.recommendationSnapshot;
-          try {
-            const validationEngine = customProfile?.status === "complete" && exercise.identitySource === "user_declared_custom"
-              ? customPrescriptionEngineFor(exercise, customProfile)
-              : prescriptionEngine;
-            validateExecutableRecommendationSnapshot(exercise.recommendationSnapshot, validationEngine, exercise, "Stored executable recommendationSnapshot");
-            return exercise.recommendationSnapshot;
-          } catch {
-            return hardConstraintRejection(
-              "invalid_stored_recommendation_snapshot",
-              "The stored recommendation snapshot failed integrity, identity, or taxonomy validation and cannot be executed."
-            );
-          }
-        }
-        if (customProfile?.status === "complete" && exercise.identitySource === "user_declared_custom") {
-          try {
-            return boundedCustomPrescriptionSnapshot(exercise, customProfile, options) || engineFailure();
-          } catch {
-            return engineFailure();
-          }
-        }
-        const identityInput = Object.prototype.hasOwnProperty.call(options, "exerciseId")
-          ? { ...exercise, exerciseId: options.exerciseId }
-          : exercise;
-        const identity = typeof resolvePrescriptionExerciseIdentity === "function"
-          ? resolvePrescriptionExerciseIdentity(identityInput)
-          : (() => {
-              const fallbackId = options.exerciseId || prescriptionExerciseIdentity(exercise.name);
-              return fallbackId ? { status: "resolved", exerciseId: fallbackId, source: "compatibility_adapter" } : { status: "unresolved", reason: "unknown_exercise_identity" };
-            })();
-        if (identity.status !== "resolved" || !identity.exerciseId) {
-          const reason = identity.reason || "unknown_exercise_identity";
-          return hardConstraintRejection(reason, `The exercise identity could not be resolved safely (${reason}).`);
-        }
-        const exerciseId = identity.exerciseId;
-        const hasExplicitMuscleGroup = Object.prototype.hasOwnProperty.call(options, "muscleGroupId");
-        let muscleGroupId = hasExplicitMuscleGroup ? String(options.muscleGroupId || "").trim() : "";
-        if (!hasExplicitMuscleGroup && identity.custom) {
-          muscleGroupId = typeof trustedCustomPrescriptionMuscleGroup === "function" ? trustedCustomPrescriptionMuscleGroup(exercise, exerciseId) : normalizePrescriptionIdentity(exercise.primaryMuscle || "");
-        } else if (!hasExplicitMuscleGroup) {
-          if (typeof prescriptionEngine.resolveDefaultPrescriptionTarget === "function") {
-            const target = prescriptionEngine.resolveDefaultPrescriptionTarget(exerciseId);
-            if (!target || target.status !== "resolved") {
-              const reason = target?.reason || "unknown_exercise_identity";
-              return hardConstraintRejection(reason, `The exercise has no safe canonical default prescription target (${reason}).`);
-            }
-            muscleGroupId = target.muscleGroupId;
-          } else {
-            muscleGroupId = normalizePrescriptionIdentity(prescriptionMuscleGroup(exercise));
-          }
-        }
-        if (!muscleGroupId || muscleGroupId === "general") return hardConstraintRejection("invalid_muscle_identity", "The exercise does not have a resolved canonical muscle-group identity.");
-        const explicitScope = Object.prototype.hasOwnProperty.call(options, "includedMuscleGroupIds")
-          ? options.includedMuscleGroupIds
-          : Object.prototype.hasOwnProperty.call(options, "muscleScope") ? options.muscleScope : undefined;
-        if (explicitScope !== undefined && (!Array.isArray(explicitScope) || explicitScope.length === 0)) {
-          return hardConstraintRejection("empty_muscle_scope", "At least one canonical muscle group must remain in scope.");
-        }
-        const explicitDurationValues = ["sessionDurationMinutes", "timeConstraintMinutes", "maxSessionMinutes", "sessionDurationMaximumMinutes"]
-          .filter((field) => Object.prototype.hasOwnProperty.call(options, field))
-          .map((field) => options[field]);
-        if (explicitDurationValues.some((value) => !Number.isFinite(Number(value)) || Number(value) <= 0)) {
-          return hardConstraintRejection("invalid_time_constraint", "Session duration constraints must be finite positive minutes.");
-        }
-        const throughDate = options.throughDate || todayIso();
-        const identityProfile = typeof resolveExerciseIdentityProfile === "function" ? resolveExerciseIdentityProfile(exercise) : { performanceExerciseId: exerciseId, researchExerciseId: exerciseId };
-        const history = options.history || prescriptionHistoryForExercise(exercise.name, exerciseId, { ...options, performanceExerciseId: identityProfile.performanceExerciseId, researchExerciseId: identityProfile.researchExerciseId || exerciseId });
-        const mesocycle = options.mesocycle === undefined ? currentMesocycle() : options.mesocycle;
-        const appSettings = typeof data === "object" && data?.settings ? data.settings : {};
-        const recoveryInput = options.recovery || {};
-        const affectedMuscle = String(recoveryInput.affectedMuscle || "").trim();
-        const painApplies = !recoveryInput.pain || !affectedMuscle || musclesForExercise(exercise).some((item) => normalizePrescriptionIdentity(item.muscle) === normalizePrescriptionIdentity(affectedMuscle));
-        const scopedRecovery = painApplies ? recoveryInput : { ...recoveryInput, pain: false, affectedMuscle: "" };
-        const readiness = options.readiness || prescriptionReadiness(scopedRecovery, history);
-        const scope = prescriptionScopeHistories(options.template, muscleGroupId, options);
-        const appMuscle = musclesForExercise(exercise)[0]?.muscle || appMuscleFromPrescriptionGroup(muscleGroupId);
-        const currentWeeklySets = appMuscle ? Number(weeklyMuscleVolume(startOfWeekIso(throughDate)).find((item) => item.muscle === appMuscle)?.sets || 0) : undefined;
-        const equipmentIncrement = Number(options.equipmentIncrement || exercise.increment || 0);
-        const sessionDurationMinutes = options.sessionDurationMinutes ?? options.timeConstraintMinutes ?? options.maxSessionMinutes ?? options.template?.sessionDurationMinutes ?? mesocycle?.sessionDurationTargetMinutes ?? mesocycle?.constraints?.sessionDurationTargetMinutes;
-        const availableEquipment = Object.prototype.hasOwnProperty.call(options, "availableEquipment")
-          ? options.availableEquipment
-          : mesocycle?.availableEquipment ?? (Array.isArray(appSettings.availableEquipment) && appSettings.availableEquipment.length ? appSettings.availableEquipment : ["all"]);
-        const request = {
-          exerciseId,
-          muscleGroupId,
-          history,
-          histories: options.histories,
-          readiness,
-          mesocycle,
-          role: options.role,
-          muscleExerciseHistories: scope.muscleExerciseHistories,
-          programMuscleHistories: scope.programMuscleHistories,
-          currentWeeklySets,
-          equipmentIncrement,
-          plannedWorkingSets: options.plannedWorkingSets ?? options.plannedSets ?? exercise.plannedSets ?? exercise.sets,
-          resistanceType: options.resistanceType ?? exercise.resistanceType,
-          sessionDurationMinutes,
-          sessionDurationTargetMinutes: sessionDurationMinutes,
-          sessionDurationMaximumMinutes: options.sessionDurationMaximumMinutes ?? sessionDurationMinutes,
-          availableEquipment,
-          excludedExerciseIds: options.excludedExerciseIds ?? options.exerciseExclusions ?? options.template?.excludedExerciseIds ?? mesocycle?.constraints?.excludedExerciseIds ?? appSettings.excludedExerciseIds,
-          includedMuscleGroupIds: options.includedMuscleGroupIds ?? options.muscleScope ?? mesocycle?.includedMuscleGroupIds,
-          trainingDays: options.trainingDays ?? mesocycle?.trainingDays ?? appSettings.trainingDaysPerWeek,
-          trainingGoal: options.trainingGoal ?? appSettings.trainingGoal,
-          nutritionPhase: options.nutritionPhase ?? appSettings.nutritionPhase,
-          experienceLevel: options.experienceLevel ?? appSettings.experienceLevel,
-          returningAfterGap: options.returningAfterGap ?? appSettings.returningAfterGap,
-          createdAt: options.createdAt || `${throughDate}T12:00:00.000Z`
-        };
-        ["plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "sessionDurationTargetMinutes", "sessionDurationMaximumMinutes", "availableEquipment", "excludedExerciseIds", "includedMuscleGroupIds", "trainingDays", "trainingGoal", "nutritionPhase", "experienceLevel", "returningAfterGap"].forEach((field) => {
-          if (request[field] === undefined || request[field] === null || request[field] === "") delete request[field];
-        });
-        const cacheKey = [analysisRevision, exerciseId, muscleGroupId, throughDate, mesocycle?.id || "", equipmentIncrement, JSON.stringify(readiness), JSON.stringify({ plannedWorkingSets: request.plannedWorkingSets, resistanceType: request.resistanceType, sessionDurationMinutes: request.sessionDurationMinutes, availableEquipment: request.availableEquipment, excludedExerciseIds: request.excludedExerciseIds, includedMuscleGroupIds: request.includedMuscleGroupIds, trainingDays: request.trainingDays, trainingGoal: request.trainingGoal, nutritionPhase: request.nutritionPhase, experienceLevel: request.experienceLevel, returningAfterGap: request.returningAfterGap }), options.historical ? "history" : "current"].join("|");
-        if (!options.fresh && prescriptionSnapshotCache.has(cacheKey)) return prescriptionSnapshotCache.get(cacheKey);
-        try {
-          const snapshot = prescriptionEngine.prescribeExercise(request);
-          if (!options.fresh) prescriptionSnapshotCache.set(cacheKey, snapshot);
-          return snapshot;
-        } catch (error) {
-          const recognizedConstraintError = error?.name === "Error" && error?.constructor?.name === "Error";
-          const detail = recognizedConstraintError
-            ? `${error?.code || ""} ${error?.message || error || ""}`.toLowerCase()
-            : "";
-          const reason = recognizedConstraintError && /exercise .+ is excluded by the supplied|excluded exercise .+ (?:invalid|unknown)|exclusions? must resolve|excludedexerciseids must/.test(detail)
-            ? "excluded_exercise"
-            : /exercise .+ is not compatible with the supplied equipment|available equipment (?:input|restriction)|equipment restrictions?; missing/.test(detail)
-              ? "unavailable_equipment"
-              : /unknown exercise .+ for muscle group|exerciseid and musclegroupid are required|invalid trusted identity|no positive dynamic taxonomy target relationship/.test(detail)
-                ? "invalid_exercise_identity"
-                : /includedmusclegroupids scope/.test(detail)
-                  ? "invalid_muscle_scope"
-                  : /session duration .+(?:positive finite|must not exceed)|positive finite number of minutes/.test(detail)
-                    ? "invalid_time_constraint"
-                    : "";
-          return reason
-            ? hardConstraintRejection(reason, error?.message || "The prescription engine rejected a recognized hard workout constraint.")
-            : engineFailure();
-        }
-      }
-
-      function recommendationLabel(type) {
-        return ({
-          normal: "Train as prescribed",
-          progress: "Progress",
-          hold: "Hold",
-          reduce_volume: "Reduce volume",
-          light_session: "Readiness-adjusted light session",
-          exercise_deload: "Exercise-specific deload",
-          muscle_group_deload: "Muscle-group deload",
-          full_program_deload: "Full-program deload",
-          substitute: "Substitute exercise",
-          rotate_exercise: "Rotate exercise"
-        })[type] || "Training prescription";
-      }
-
-      function recommendationActionLabel(prescription) {
-        if (!prescription) return "Training prescription";
-        if (prescription.recommendationType !== "progress") return recommendationLabel(prescription.recommendationType);
-        return ({
-          increase_load: "Progress Load",
-          increase_top_set_load: "Progress Top-Set Load",
-          increase_load_first: "Progress Load",
-          add_one_rep: "Add One Rep",
-          add_one_rep_fixed_load: "Add One Rep",
-          progress_top_set_rep: "Add a Top-Set Rep",
-          progress_backoff_reps: "Add Back-Off Reps",
-          add_one_working_set: "Add One Working Set",
-          improve_technique_quality: "Progress Execution"
-        })[prescription.progressionAction] || "Progress";
-      }
-
-      function recommendationMetricForDisplay(value) {
-        const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-        const finite = (candidate) => candidate === null || candidate === undefined || candidate === "" || !Number.isFinite(Number(candidate)) ? null : Number(candidate);
-        const scalarValue = typeof value === "number" || typeof value === "string" ? finite(value) : null;
-        return {
-          min: finite(source.min) ?? scalarValue,
-          target: finite(source.target) ?? scalarValue,
-          max: finite(source.max) ?? scalarValue
-        };
-      }
-
-      function recommendationExplanationForDisplay(value, fallback = "") {
-        const preferredFields = ["summary", "message", "explanation", "reason", "text", "detail"];
-        const seen = new Set();
-        const read = (candidate, depth = 0) => {
-          if (candidate === null || candidate === undefined) return "";
-          if (["string", "number", "boolean"].includes(typeof candidate)) return String(candidate).trim();
-          if (typeof candidate !== "object" || depth > 2 || seen.has(candidate)) return "";
-          seen.add(candidate);
-          if (Array.isArray(candidate)) return candidate.map((item) => read(item, depth + 1)).filter(Boolean).join(" ");
-          for (const field of preferredFields) {
-            const resolved = read(candidate[field], depth + 1);
-            if (resolved) return resolved;
-          }
-          return "";
-        };
-        return read(value) || read(fallback);
-      }
-
-      function recommendationSnapshotForDisplay(snapshot) {
-        if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return null;
-        const normalizePrescription = (source, fallback = null) => {
-          const candidate = source && typeof source === "object" && !Array.isArray(source) ? source : fallback;
-          if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
-          const text = (value, defaultValue = "") => recommendationExplanationForDisplay(value, defaultValue);
-          const readiness = candidate.readinessAdjustment && typeof candidate.readinessAdjustment === "object"
-            ? {
-                ...candidate.readinessAdjustment,
-                explanation: text(candidate.readinessAdjustment.explanation),
-                resumeRule: text(candidate.readinessAdjustment.resumeRule)
-              }
-            : null;
-          return {
-            ...candidate,
-            recommendationType: text(candidate.recommendationType, "hold"),
-            setStructure: text(candidate.setStructure, "not_specified"),
-            role: text(candidate.role, "not_specified"),
-            confidence: text(candidate.confidence, text(snapshot.confidence, "not_available")),
-            workingSets: recommendationMetricForDisplay(candidate.workingSets ?? candidate.sets),
-            repRange: recommendationMetricForDisplay(candidate.repRange ?? candidate.reps),
-            targetRpe: recommendationMetricForDisplay(candidate.targetRpe ?? candidate.rpe),
-            targetRir: recommendationMetricForDisplay(candidate.targetRir ?? candidate.rir),
-            restSeconds: recommendationMetricForDisplay(candidate.restSeconds),
-            frequencyPerWeek: recommendationMetricForDisplay(candidate.frequencyPerWeek),
-            evidenceSummary: Array.isArray(candidate.evidenceSummary) ? candidate.evidenceSummary.map((item) => text(item)).filter(Boolean) : [],
-            userExplanation: text(candidate.userExplanation, text(snapshot.explanation || snapshot.message)),
-            progressionRule: text(candidate.progressionRule, "No executable progression change is available."),
-            substitutionRule: text(candidate.substitutionRule),
-            regressionRule: text(candidate.regressionRule),
-            readinessAdjustment: readiness
-          };
-        };
-        const finalPrescription = normalizePrescription(snapshot.finalPrescription);
-        if (!finalPrescription) return null;
-        const basePrescription = normalizePrescription(snapshot.basePrescription, snapshot.finalPrescription);
-        return {
-          ...snapshot,
-          recommendationVersion: String(snapshot.recommendationVersion || "unknown"),
-          personalDataVersion: String(snapshot.personalDataVersion || "unknown"),
-          researchDatabaseVersion: String(snapshot.researchDatabaseVersion || "unknown"),
-          basePrescription,
-          finalPrescription
-        };
-      }
-
-      function legacyRecommendationFromSnapshot(snapshot, exerciseName) {
-        if (!snapshot) return null;
-        if (snapshot.executionBlocked === true && snapshot.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot.type || snapshot.kind)) return snapshot;
-        const prescription = snapshot.finalPrescription;
-        const type = prescription.recommendationType;
-        const deload = ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type);
-        const rotation = ["substitute", "rotate_exercise"].includes(type);
-        const light = ["reduce_volume", "light_session"].includes(type);
-        const progressionAction = type === "progress"
-          ? Number(prescription.prescribedLoad?.adjustmentPercent || 0) > 0 ? "increase_load" : "increase_reps"
-          : type === "hold" || type === "normal" ? "repeat" : type;
-        const explanationLead = recommendationExplanationForDisplay(prescription.userExplanation || snapshot.explanation).split(/(?<=[.!?])\s+/)[0] || recommendationLabel(type);
-        return {
-          decision: rotation ? "change" : deload ? "deload" : type === "progress" ? "progress" : "hold",
-          label: recommendationLabel(type),
-          reason: explanationLead,
-          action: prescription.progressionRule,
-          evidence: prescription.evidenceSummary || snapshot.evidenceSummary || [],
-          confidence: prescription.confidence || snapshot.confidence,
-          interventionType: rotation ? "stop_modify" : deload ? "deload" : light ? "light" : "normal",
-          progressionAction,
-          affectedExerciseIds: [prescription.exerciseId],
-          affectedExerciseName: exerciseName || prescription.exerciseId,
-          reasonCodes: [type, prescription.staleness?.classification, prescription.deloadStatus?.state].filter(Boolean),
-          humanReadableReason: prescription.userExplanation,
-          severity: deload || rotation ? "high" : light ? "moderate" : "normal",
-          loadAdjustment: Number(prescription.prescribedLoad?.adjustmentPercent || 0) / 100,
-          setAdjustment: Number(prescription.readinessAdjustment?.setChange || 0),
-          targetLoad: Number(prescription.prescribedLoad?.target || 0),
-          targetReps: Number(prescription.repRange?.target || prescription.repRange?.min || 0),
-          resistanceType: prescription.resistanceType || "external",
-          rpeTarget: prescription.targetRpe ? Number(((prescription.targetRpe.min + prescription.targetRpe.max) / 2).toFixed(1)) : null,
-          restAdjustment: 0,
-          removeIntensificationTechniques: deload || light,
-          progressionExpected: type === "progress",
-          durationInSessions: deload || light ? 1 : rotation ? 4 : 1,
-          returnToNormalCriteria: prescription.readinessAdjustment?.resumeRule || prescription.holdRule,
-          sourceWindow: { historical: false },
-          recommendationId: snapshot.recommendationId,
-          recommendationSnapshot: snapshot,
-          prescription
-        };
-      }
-
-      function legacyTargetFromSnapshot(snapshot, templateExercise = {}, options = {}) {
-        if (!snapshot) return null;
-        if (snapshot.executionBlocked === true && snapshot.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot.type || snapshot.kind)) return snapshot;
-        const prescription = options.useBase ? snapshot.basePrescription : snapshot.finalPrescription;
-        const type = prescription.recommendationType;
-        const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name || prescription.exerciseId, templateExercise);
-        if (prescription.executionBlocked === true) {
-          const reason = prescription.userExplanation || prescription.readinessAdjustment?.explanation || "A hard safety restriction blocks this exercise until its resume criteria are met.";
-          const blockedTarget = {
-            decision: type,
-            mode: "stop-modify",
-            interventionType: "stop_modify",
-            executionBlocked: true,
-            safetyAdjustment: true,
-            safetyRestriction: prescription.safetyRestriction || null,
-            sets: 0,
-            reps: 0,
-            repLow: 0,
-            repHigh: 0,
-            weight: 0,
-            rpe: 0,
-            weightUnit: data.settings.weightUnit,
-            resistanceType,
-            addedLoad: 0,
-            assistanceLoad: 0,
-            isBodyweight: isBodyweightResistance(resistanceType),
-            isDeload: false,
-            restSeconds: 0,
-            warmups: [],
-            executableActions: [],
-            reason,
-            preferredReplacementExerciseId: prescription.preferredReplacementExerciseId || null,
-            substitutionRule: prescription.substitutionRule || "Stop the affected work unless a distinct, catalog-backed, pain-free alternative is explicitly confirmed.",
-            confidence: prescription.confidence,
-            recommendationSnapshot: snapshot,
-            basePrescription: snapshot.basePrescription,
-            finalPrescription: snapshot.finalPrescription,
-            coachRecommendation: legacyRecommendationFromSnapshot(snapshot, templateExercise.name || prescription.exerciseId),
-            adjusted: true,
-            adjustmentReason: reason,
-            triggerLabels: prescription.readinessAdjustment?.signals?.map((signal) => signal.explanation) || []
-          };
-          blockedTarget.text = targetText(blockedTarget, reason);
-          return blockedTarget;
-        }
-        const rpe = prescription.targetRpe ? Number(((prescription.targetRpe.min + prescription.targetRpe.max) / 2).toFixed(1)) : 8;
-        const sourceWeightUnit = prescription.prescribedLoad?.unit || templateExercise.weightUnit || data.settings.weightUnit;
-        const weight = Number(convertWeightValue(prescription.prescribedLoad?.target || 0, sourceWeightUnit, data.settings.weightUnit));
-        const reps = Number(prescription.repRange?.target || Math.round((prescription.repRange.min + prescription.repRange.max) / 2));
-        const mode = type === "progress" ? (Number(prescription.prescribedLoad?.adjustmentPercent || 0) > 0 ? "load-progression" : "rep-progression")
-          : ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type) ? "deload"
-            : type === "light_session" || type === "reduce_volume" ? "light"
-              : type === "substitute" || type === "rotate_exercise" ? "substitution" : "maintenance";
-        const target = {
-          decision: type,
-          mode,
-          interventionType: type,
-          sets: prescription.workingSets.target,
-          reps,
-          repLow: prescription.repRange.min,
-          repHigh: prescription.repRange.max,
-          weight,
-          rpe,
-          weightUnit: data.settings.weightUnit,
-          resistanceType,
-          addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
-          assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
-          isBodyweight: isBodyweightResistance(resistanceType),
-          isDeload: ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type),
-          reason: prescription.userExplanation,
-          increment: Math.abs(weight - Number(convertWeightValue(prescription.prescribedLoad?.previous || 0, sourceWeightUnit, data.settings.weightUnit))) || Number(templateExercise.increment || progressionProfileForExercise(templateExercise.name || prescription.exerciseId).increment),
-          confidence: prescription.confidence,
-          restSeconds: prescription.restSeconds.target,
-          restReason: `Unified ${prescription.confidence} confidence target: ${prescription.restSeconds.min}-${prescription.restSeconds.max} seconds.`,
-          setStructure: prescription.setStructure,
-          topSet: prescription.topSet,
-          backoffSets: prescription.backoffSets,
-          recommendationSnapshot: snapshot,
-          basePrescription: snapshot.basePrescription,
-          finalPrescription: snapshot.finalPrescription,
-          coachRecommendation: legacyRecommendationFromSnapshot(snapshot, templateExercise.name || prescription.exerciseId),
-          adjusted: Boolean(prescription.readinessAdjustment?.changed),
-          adjustmentReason: prescription.readinessAdjustment?.changed ? prescription.readinessAdjustment.explanation : "",
-          triggerLabels: prescription.readinessAdjustment?.signals?.map((signal) => signal.explanation) || []
-        };
-        target.text = targetText(target, target.reason);
-        return target;
-      }
-
-      function isUsableWorkoutPrescriptionSnapshot(snapshot) {
-        if (!snapshot || typeof snapshot !== "object") return false;
-        if (snapshot.executionBlocked === true && snapshot.executable === false) return true;
-        const prescription = snapshot.finalPrescription || snapshot.basePrescription || {};
-        const workingSets = Number(prescription.workingSets?.target ?? prescription.sets?.target ?? prescription.sets ?? 0);
-        const repTarget = Number(prescription.repRange?.target ?? prescription.repRange?.max ?? prescription.reps?.target ?? prescription.reps ?? 0);
-        return workingSets >= 1 && repTarget >= 1;
-      }
-
-      function unifiedTargetContext(target, template, templateExercise) {
-        const prescription = target?.finalPrescription || target?.recommendationSnapshot?.finalPrescription;
-        if (!prescription) return null;
-        if (target.executionBlocked === true || prescription.executionBlocked === true) {
-          return {
-            id: target.recommendationSnapshot?.recommendationId || "",
-            exerciseId: prescription.exerciseId,
-            exerciseName: templateExercise?.name || prescription.exerciseId,
-            templateId: template?.id || "",
-            templateName: template?.name || "Unified prescription",
-            sessionType: "stop-modify",
-            source: "Unified prescription engine hard-safety restriction",
-            effectiveStartDate: todayIso(),
-            setTypes: [],
-            confidence: prescription.confidence,
-            executionBlocked: true,
-            safetyRestriction: prescription.safetyRestriction || null,
-            recommendationSnapshot: target.recommendationSnapshot
-          };
-        }
-        const setTypes = [];
-        const savedRepRange = target.recommendationSnapshot?.manualOverrides?.at(-1)?.changes?.repRange?.to || null;
-        const executableRepRange = savedRepRange || prescription.repRange;
-        if (prescription.setStructure === "top_set_backoff") {
-          setTypes.push({ type: "top", label: "Top set", setCount: Number(prescription.topSet?.count || 1), repMin: savedRepRange ? executableRepRange.min : prescription.topSet?.repRange?.min || executableRepRange.min, repMax: savedRepRange ? executableRepRange.max : prescription.topSet?.repRange?.max || executableRepRange.max, rpeMin: Math.max(5, Number(prescription.topSet?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.topSet?.targetRpe || prescription.targetRpe.max), rirMin: prescription.topSet?.targetRir, rirMax: prescription.topSet?.targetRir, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
-          setTypes.push({ type: "backoff", label: "Back-off set", setCount: Number(prescription.backoffSets?.count || Math.max(1, prescription.workingSets.target - 1)), repMin: savedRepRange ? executableRepRange.min : prescription.backoffSets?.repRange?.min || executableRepRange.min, repMax: savedRepRange ? executableRepRange.max : prescription.backoffSets?.repRange?.max || executableRepRange.max, rpeMin: Math.max(5, Number(prescription.backoffSets?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.backoffSets?.targetRpe || prescription.targetRpe.max), rirMin: prescription.backoffSets?.targetRir, rirMax: prescription.backoffSets?.targetRir, loadReductionMin: prescription.backoffSets?.loadReductionPercent?.min, loadReductionTarget: prescription.backoffSets?.loadReductionPercent?.target, loadReductionMax: prescription.backoffSets?.loadReductionPercent?.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
-        } else if (prescription.setStructure === "multiple_top_sets") {
-          setTypes.push({ type: "top", label: "Top set", setCount: prescription.workingSets.target, repMin: executableRepRange.min, repMax: executableRepRange.max, rpeMin: prescription.targetRpe.min, rpeMax: prescription.targetRpe.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
-        } else {
-          const type = target.isDeload ? "deload" : "straight";
-          setTypes.push({ type, label: setTypeLabels[type] || "Working set", setCount: prescription.workingSets.target, repMin: executableRepRange.min, repMax: executableRepRange.max, rpeMin: prescription.targetRpe.min, rpeMax: prescription.targetRpe.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
-        }
-        return {
-          id: target.recommendationSnapshot.recommendationId,
-          exerciseId: prescription.exerciseId,
-          exerciseName: templateExercise?.name || prescription.exerciseId,
-          templateId: template?.id || "",
-          templateName: template?.name || "Unified prescription",
-          sessionType: target.mode,
-          source: "Unified prescription engine",
-          effectiveStartDate: todayIso(),
-          setTypes,
-          progressionRule: prescription.progressionRule,
-          confidence: prescription.confidence,
-          recommendationSnapshot: target.recommendationSnapshot
-        };
-      }
-
       function cancelPendingDataSave() {
         window.clearTimeout(saveTimer);
         saveTimer = 0;
@@ -2228,7 +1740,6 @@
           if (!appDataPersistenceConflict) {
             try { localStorage.removeItem(STORAGE_KEY); } catch { /* IndexedDB remains primary. */ }
           }
-          queueActiveWorkoutSync();
           recordPerformance("persistence:stableSnapshot", saveStartedAt, { sessions: snapshot.sessions.length, exercises: snapshot.exercises.length, sets: snapshot.sets.length });
           saveRuntime();
           return true;
@@ -2255,7 +1766,6 @@
           if (!appDataPersistenceConflict) {
             try { localStorage.removeItem(STORAGE_KEY); } catch { /* IndexedDB remains primary. */ }
           }
-          queueActiveWorkoutSync();
           recordPerformance("persistence:fullData", saveStartedAt, { sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
         }).catch(() => {
           persistenceReady = false;
@@ -2280,13 +1790,26 @@
         }, 1800);
       }
 
-      function activeWorkoutDraftSnapshot() {
+      function activeWorkoutDraftSnapshot(options = {}) {
         const session = activeWorkoutSession();
         if (!session) return null;
         const index = dataEntityIndex();
         const exercises = (index.exerciseIndicesBySession.get(session.id) || []).map((exerciseIndex) => data.exercises[exerciseIndex]);
         const sets = exercises.flatMap((exercise) => (index.setIndicesByExercise.get(exercise.id) || []).map((setIndex) => data.sets[setIndex]));
-        return { version: 1, workoutId: session.id, savedAt: isoNow(), session, exercises, sets };
+        const draftSequence = options.incrementSequence === false ? activeDraftSequence : ++activeDraftSequence;
+        return {
+          contractVersion: "comprehensive-fitness-active-draft/2.0.0",
+          version: 2,
+          workoutId: session.id,
+          savedAt: isoNow(),
+          dataRevision: Number(data.dataRevision || 0),
+          draftSequence,
+          session,
+          exercises,
+          sets,
+          timer: timer?.workoutId === session.id ? timer : null,
+          resolvedActions: Array.isArray(session.resolvedActions) ? session.resolvedActions : []
+        };
       }
 
       function scheduleActiveDraftSave() {
@@ -2305,23 +1828,233 @@
         return true;
       }
 
+      function validateActiveWorkoutDraftEnvelope(snapshot, baseData = data, options = {}) {
+        const isV2 = snapshot?.contractVersion === "comprehensive-fitness-active-draft/2.0.0" && Number(snapshot.version) === 2;
+        const isLegacyV1 = options.allowLegacyV1 !== false && snapshot && snapshot.contractVersion == null && Number(snapshot.version) === 1;
+        if (!isV2 && !isLegacyV1) return null;
+        const savedAt = new Date(snapshot.savedAt || "").getTime();
+        if (!Number.isFinite(savedAt) || savedAt > Date.now() + 5 * 60 * 1000) return null;
+        const existingSession = baseData.sessions.find((item) => item.id === snapshot.workoutId);
+        const session = existingSession || snapshot.session;
+        if (!session || (existingSession && isSessionSubmitted(existingSession))
+          || session.deletedAt || session.trashed || session.canceledAt || session.workoutState === "canceled"
+          || !snapshot.session || snapshot.session.id !== session.id || isSessionSubmitted(snapshot.session)
+          || snapshot.session.deletedAt || snapshot.session.trashed || snapshot.session.canceledAt || snapshot.session.workoutState === "canceled") return null;
+        if ((snapshot.session.title != null && (typeof snapshot.session.title !== "string" || snapshot.session.title.length > 256))
+          || (snapshot.session.notes != null && (typeof snapshot.session.notes !== "string" || snapshot.session.notes.length > 4096))) return null;
+        if (snapshot.session.durationSemanticsVersion != null) {
+          const activeStartedAt = snapshot.session.activeDurationStartedAt
+            ? workoutDurationTimestamp(snapshot.session.activeDurationStartedAt)
+            : null;
+          const pausedAt = snapshot.session.workoutPausedAt
+            ? workoutDurationTimestamp(snapshot.session.workoutPausedAt)
+            : null;
+          if (snapshot.session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION
+            || !Number.isSafeInteger(snapshot.session.activeDurationMs)
+            || snapshot.session.activeDurationMs < 0
+            || (snapshot.session.activeDurationStartedAt && activeStartedAt == null)
+            || (snapshot.session.workoutPausedAt && pausedAt == null)
+            || (snapshot.session.activeDurationStartedAt && snapshot.session.workoutPausedAt)) return null;
+        }
+        const sourceRevision = isV2 && Number.isSafeInteger(snapshot.dataRevision) && snapshot.dataRevision >= 0 ? snapshot.dataRevision : null;
+        const currentRevision = Number(baseData.dataRevision || 0);
+        const currentUpdatedAt = Date.parse(session.updatedAt || session.startedAt || "");
+        if (!options.ignoreSourceRevision && sourceRevision != null && sourceRevision < currentRevision) return null;
+        if (!options.ignoreSourceRevision && sourceRevision == null && Number.isFinite(currentUpdatedAt) && savedAt < currentUpdatedAt) return null;
+        if (!Array.isArray(snapshot.exercises) || !snapshot.exercises.length || snapshot.exercises.length > 500 || !Array.isArray(snapshot.sets) || snapshot.sets.length > 10000) return null;
+        const currentExercises = baseData.exercises.filter((exercise) => exercise.sessionId === session.id);
+        const currentExerciseIds = new Set(currentExercises.map((exercise) => exercise.id));
+        const currentSetCount = baseData.sets.filter((set) => currentExerciseIds.has(set.exerciseId)).length;
+        if (!options.ignoreSourceRevision && sourceRevision === currentRevision && (snapshot.exercises.length < currentExercises.length || snapshot.sets.length < currentSetCount)) return null;
+        const validId = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
+        const exerciseIds = new Set();
+        const preparedExercises = [];
+        for (const exercise of snapshot.exercises) {
+          if (!exercise || !validId(exercise.id) || exerciseIds.has(exercise.id) || exercise.sessionId !== session.id || typeof exercise.name !== "string" || !exercise.name.trim() || exercise.name.length > 256) return null;
+          if (exercise.notes != null && (typeof exercise.notes !== "string" || exercise.notes.length > 4096)) return null;
+          if (exercise.order != null && (!Number.isInteger(Number(exercise.order)) || Number(exercise.order) < 0)) return null;
+          if (exercise.resistanceType != null && !resistanceTypeValues.includes(exercise.resistanceType)) return null;
+          if (exercise.isBodyweight != null && typeof exercise.isBodyweight !== "boolean") return null;
+          for (const identityField of ["performanceExerciseId", "researchExerciseId", "canonicalExerciseId"]) {
+            if (exercise[identityField] != null && exercise[identityField] !== "" && !validId(exercise[identityField])) return null;
+          }
+          exerciseIds.add(exercise.id);
+          preparedExercises.push({ ...exercise });
+        }
+        const setIds = new Set();
+        const preparedSets = [];
+        const numericSetDomains = {
+          setNumber: { min: 0, integer: true },
+          sequenceIndex: { min: 0, integer: true },
+          sequence: { min: 0, integer: true },
+          setTypeIndex: { min: 0, integer: true },
+          reps: { min: 0, integer: true },
+          weight: { min: 0 },
+          addedLoad: { min: 0 },
+          assistanceLoad: { min: 0 },
+          durationSeconds: { min: 0, integer: true },
+          distance: { min: 0 },
+          rpe: { min: 0, max: 10, step: 0.5 },
+          targetReps: { min: 0, integer: true },
+          targetRepMin: { min: 0, integer: true },
+          targetRepMax: { min: 0, integer: true },
+          targetWeight: { min: 0 },
+          targetRpe: { min: 0, max: 10, step: 0.5 },
+          targetRpeMin: { min: 0, max: 10, step: 0.5 },
+          targetRpeMax: { min: 0, max: 10, step: 0.5 },
+          targetRpeTolerance: { min: 0, max: 10, step: 0.5 },
+          targetRestSeconds: { min: 0, max: 3600, integer: true },
+          originalTargetReps: { min: 0, integer: true },
+          originalTargetWeight: { min: 0 },
+          originalTargetRpe: { min: 0, max: 10, step: 0.5 }
+        };
+        const validSetTypes = new Set(["warmup", "straight", "working", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
+        const validClassificationSources = new Set(["manual", "app-explicit", "strong-explicit", "inferred", "recorded"]);
+        const validUndoFields = new Set(["setType", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "classificationSource", "classificationConfidence", "manualOverride", "reviewRequired"]);
+        for (const set of snapshot.sets) {
+          if (!set || !validId(set.id) || setIds.has(set.id) || !exerciseIds.has(set.exerciseId)) return null;
+          for (const [field, domain] of Object.entries(numericSetDomains)) {
+            if (set[field] == null || set[field] === "") continue;
+            const numeric = Number(set[field]);
+            const steps = domain.step == null ? 0 : (numeric - domain.min) / domain.step;
+            if (!Number.isFinite(numeric)
+              || numeric < domain.min
+              || (domain.max != null && numeric > domain.max)
+              || (domain.integer && !Number.isInteger(numeric))
+              || (domain.step != null && Math.abs(steps - Math.round(steps)) > 1e-9)) return null;
+          }
+          if (set.setNumber == null || set.setNumber === "") return null;
+          if (set.targetRepMin != null && set.targetRepMax != null && Number(set.targetRepMin) > Number(set.targetRepMax)) return null;
+          if (set.targetRpeMin != null && set.targetRpeMax != null && Number(set.targetRpeMin) > Number(set.targetRpeMax)) return null;
+          if (set.setType != null && !validSetTypes.has(set.setType)) return null;
+          if (set.classificationSource != null && !validClassificationSources.has(set.classificationSource)) return null;
+          for (const field of ["completed", "skipped", "edited", "isWarmup", "isBodyweight", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
+            if (set[field] != null && typeof set[field] !== "boolean") return null;
+          }
+          if (set.classificationConfidence != null && (!Number.isFinite(Number(set.classificationConfidence)) || Number(set.classificationConfidence) < 0 || Number(set.classificationConfidence) > 1)) return null;
+          if (set.classifierVersion != null && (!Number.isInteger(Number(set.classifierVersion)) || Number(set.classifierVersion) < 1)) return null;
+          if (set.classificationUndo != null) {
+            if (!set.classificationUndo || typeof set.classificationUndo !== "object" || Array.isArray(set.classificationUndo) || Object.keys(set.classificationUndo).some((field) => !validUndoFields.has(field))) return null;
+            if (set.classificationUndo.setType != null && !validSetTypes.has(set.classificationUndo.setType)) return null;
+            if (set.classificationUndo.classificationSource != null && !validClassificationSources.has(set.classificationUndo.classificationSource)) return null;
+            if (set.classificationUndo.classificationConfidence != null && (!Number.isFinite(Number(set.classificationUndo.classificationConfidence)) || Number(set.classificationUndo.classificationConfidence) < 0 || Number(set.classificationUndo.classificationConfidence) > 1)) return null;
+            for (const field of ["isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
+              if (set.classificationUndo[field] != null && typeof set.classificationUndo[field] !== "boolean") return null;
+            }
+          }
+          const canonicalSetType = set.setType === "working" ? "straight" : set.setType;
+          const semantics = setTypeSemantics({ ...set, setType: canonicalSetType });
+          setIds.add(set.id);
+          preparedSets.push({
+            ...set,
+            setType: semantics.type,
+            ...(set.classificationUndo ? { classificationUndo: { ...set.classificationUndo, setType: set.classificationUndo.setType === "working" ? "straight" : set.classificationUndo.setType } } : {}),
+            isWarmup: semantics.isWarmup,
+            countsTowardProgression: semantics.isWarmup ? false : semantics.countsTowardProgression
+          });
+        }
+        let timerSnapshot = null;
+        if (isV2 && snapshot.timer != null) {
+          const source = snapshot.timer;
+          if (!source || source.workoutId !== session.id || !setIds.has(source.setId) || !exerciseIds.has(source.exerciseId)) return null;
+          if (source.pendingNextSetId && !setIds.has(source.pendingNextSetId)) return null;
+          const durationSeconds = Number(source.durationSeconds);
+          const endsAt = Number(source.endsAt);
+          const version = Number(source.version || 1);
+          const remainingSeconds = Number(source.remainingSeconds || 0);
+          const overtimeSeconds = Number(source.overtimeSeconds || 0);
+          const backgroundedAt = Number(source.backgroundedAt || 0);
+          const ownerSet = preparedSets.find((set) => set.id === source.setId);
+          const pendingSet = source.pendingNextSetId ? preparedSets.find((set) => set.id === source.pendingNextSetId) : null;
+          if (!ownerSet || ownerSet.exerciseId !== source.exerciseId
+            || (pendingSet && !exerciseIds.has(pendingSet.exerciseId))
+            || !Number.isSafeInteger(version) || version < 1
+            || !Number.isFinite(durationSeconds) || durationSeconds < 5 || durationSeconds > 3600
+            || !Number.isFinite(endsAt)
+            || !Number.isFinite(remainingSeconds) || remainingSeconds < 0 || remainingSeconds > durationSeconds
+            || !Number.isFinite(overtimeSeconds) || overtimeSeconds < 0
+            || !Number.isFinite(backgroundedAt) || backgroundedAt < 0) return null;
+          timerSnapshot = {
+            id: typeof source.id === "string" && source.id ? source.id : id(),
+            version,
+            workoutId: session.id,
+            exerciseId: source.exerciseId,
+            setId: source.setId,
+            pendingNextSetId: source.pendingNextSetId || "",
+            durationSeconds,
+            remainingSeconds,
+            endsAt,
+            isActive: source.isActive !== false,
+            isPaused: source.isPaused === true,
+            isOvertime: source.isOvertime === true,
+            overtimeSeconds,
+            notificationStatus: String(source.notificationStatus || "disabled").slice(0, 32),
+            serverNotificationId: String(source.serverNotificationId || "").slice(0, 160),
+            backgroundedAt
+          };
+        }
+        const normalized = normalizeLoadedData({
+          ...emptyData(),
+          sessions: [{ ...session, ...snapshot.session, id: session.id, workoutStarted: true, workoutState: "active", submitted: false }],
+          exercises: preparedExercises,
+          sets: preparedSets,
+          settings: baseData.settings
+        });
+        if (normalized.exercises.length !== snapshot.exercises.length || normalized.sets.length !== snapshot.sets.length) return null;
+        const draftSequence = Number.isSafeInteger(snapshot.draftSequence) && snapshot.draftSequence >= 0 ? snapshot.draftSequence : 0;
+        const legacyActiveDurationMs = legacyDraftKnownActiveDurationMs(snapshot, savedAt, session);
+        return { snapshot, savedAt, sourceRevision, draftSequence, legacy: isLegacyV1, legacyActiveDurationMs, session: normalized.sessions[0], exercises: normalized.exercises, sets: normalized.sets, timer: timerSnapshot };
+      }
+
       async function restoreActiveWorkoutDraft() {
         let indexed = null;
         let local = null;
         try { indexed = await readIndexedValue("active-workout-draft"); } catch { /* Fall back below. */ }
         try { local = JSON.parse(localStorage.getItem(ACTIVE_DRAFT_KEY) || "null"); } catch { local = null; }
-        const snapshot = [indexed, local].filter((item) => item?.workoutId).sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || "")))[0];
-        if (!snapshot) return false;
-        const session = data.sessions.find((item) => item.id === snapshot.workoutId && !isSessionSubmitted(item));
-        if (!session || !Array.isArray(snapshot.exercises) || !Array.isArray(snapshot.sets)) return false;
+        const candidate = [[indexed, "indexed"], [local, "local"]]
+          .map(([snapshot, source]) => {
+            const validated = validateActiveWorkoutDraftEnvelope(snapshot, data);
+            return validated ? { ...validated, source } : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => b.savedAt - a.savedAt || b.draftSequence - a.draftSequence || (b.source === "local" ? 1 : -1))[0];
+        if (!candidate) return false;
+        const snapshot = candidate.snapshot;
         const existingExerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === snapshot.workoutId).map((exercise) => exercise.id));
-        data.sessions = data.sessions.map((item) => item.id === snapshot.workoutId ? { ...item, ...snapshot.session, workoutStarted: true, workoutState: "active" } : item);
-        data.exercises = [...data.exercises.filter((exercise) => exercise.sessionId !== snapshot.workoutId), ...snapshot.exercises];
-        data.sets = [...data.sets.filter((set) => !existingExerciseIds.has(set.exerciseId)), ...snapshot.sets];
+        const restoredResolvedActions = (Array.isArray(snapshot.resolvedActions)
+          ? snapshot.resolvedActions
+          : Array.isArray(snapshot.session?.resolvedActions) ? snapshot.session.resolvedActions : [])
+          .filter((action) => exceptionResolverApi?.validateResolvedAction(action)?.valid === true);
+        const loadedSession = data.sessions.find((item) => item.id === snapshot.workoutId);
+        const restoredCandidateSession = { ...(loadedSession || {}), ...candidate.session, resolvedActions: restoredResolvedActions, workoutStarted: true, workoutState: "active", submitted: false };
+        const durationSeededSession = candidate.legacyActiveDurationMs != null
+          && restoredCandidateSession.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION
+          ? {
+              ...restoredCandidateSession,
+              durationSemanticsVersion: WORKOUT_DURATION_SEMANTICS_VERSION,
+              activeDurationMs: candidate.legacyActiveDurationMs,
+              activeDurationStartedAt: "",
+              workoutPausedAt: ""
+            }
+          : restoredCandidateSession;
+        const restoredSession = durationSeededSession.durationSemanticsVersion === WORKOUT_DURATION_SEMANTICS_VERSION
+          && candidate.legacyActiveDurationMs == null
+          ? durationSeededSession
+          : startWorkoutDuration(durationSeededSession);
+        data.sessions = data.sessions.some((item) => item.id === snapshot.workoutId)
+          ? data.sessions.map((item) => item.id === snapshot.workoutId ? restoredSession : item)
+          : [restoredSession, ...data.sessions];
+        data.exercises = [...data.exercises.filter((exercise) => exercise.sessionId !== snapshot.workoutId), ...candidate.exercises];
+        data.sets = [...data.sets.filter((set) => !existingExerciseIds.has(set.exerciseId)), ...candidate.sets];
+        data.dataRevision = Math.max(Number(data.dataRevision || 0), Number(candidate.sourceRevision || 0)) + 1;
+        if (candidate.timer) timer = candidate.timer;
         activeWorkoutId = snapshot.workoutId;
         activeSessionId = snapshot.workoutId;
+        activeDraftSequence = Math.max(activeDraftSequence, candidate.draftSequence);
         entityStructureRevision += 1;
         entityIndexCache = null;
+        scheduleSave();
+        if (candidate.legacy) persistActiveWorkoutDraft();
         return true;
       }
 
@@ -2357,6 +2090,9 @@
           activeSetNotice = runtime.activeSetNotice || "";
         }
         if (data.sets.some((set) => set.id === runtime.pendingNextSetId)) pendingNextSetId = runtime.pendingNextSetId;
+        if (runtime.timer && data.sets.some((set) => set.id === runtime.timer.setId) && (!runtime.timer.workoutId || runtime.timer.workoutId === activeWorkoutId)) {
+          timer = { id: runtime.timer.id || id(), pendingNextSetId: runtime.timer.pendingNextSetId || runtime.pendingNextSetId || "", ...runtime.timer };
+        }
         timerCompleteNotice = runtime.timerCompleteNotice || null;
         restCompletionState = runtime.restCompletionState || null;
         if (restCompletionState && restCompletionController) {
@@ -2370,9 +2106,15 @@
           if (!restNavigationState) setRestNavigationState(timer, timer.isPaused ? "paused" : "active");
           pendingNextSetId = timer.pendingNextSetId || pendingNextSetId;
           if (timer.isActive && !timer.isPaused) {
-            timer.remainingSeconds = Math.max(0, Math.ceil((Number(timer.endsAt || 0) - Date.now()) / 1000));
-            if (timer.remainingSeconds > 0) startTimerInterval();
-            else window.setTimeout(completeTimer, 0);
+            if (timer.isOvertime) {
+              timer.remainingSeconds = 0;
+              timer.overtimeSeconds = Math.max(0, Math.floor((Date.now() - Number(timer.endsAt || Date.now())) / 1000));
+              startTimerInterval();
+            } else {
+              timer.remainingSeconds = Math.max(0, Math.ceil((Number(timer.endsAt || 0) - Date.now()) / 1000));
+              if (timer.remainingSeconds > 0) startTimerInterval();
+              else window.setTimeout(completeTimer, 0);
+            }
           }
         }
       }
@@ -2385,7 +2127,6 @@
         }
         data = { ...nextData, dataRevision: Number(data?.dataRevision || 0) + 1 };
         if (options.invalidateAnalysis !== false) invalidateCompletedAnalysis();
-        if (previousData.settings !== data.settings) applyTheme();
         if (isEditingHistorySession()) {
           historyEditFlow.dirty = true;
           if (shouldRender) render();
@@ -2397,17 +2138,8 @@
       }
 
       function applyTheme() {
-        const theme = data.settings?.theme === "dark" ? "dark" : "light";
-        const validPackages = new Set(["heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse", "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"]);
-        const colorPackage = validPackages.has(data.settings?.colorPackage) ? data.settings.colorPackage : defaultSettings.colorPackage;
-        document.documentElement.dataset.theme = theme;
-        document.documentElement.dataset.colorPackage = colorPackage;
-        const packageBackgrounds = { "heritage-atlas": "#f5e9c9", "signal-garden": "#fff8e8", "alpine-ledger": "#edf4f1", "training-hall": "#f4ebdd", "harbor-pulse": "#f4e5ce", "prairie-electric": "#f2e2b9", "redwood-circuit": "#f5e9d8", "mediterranean-set": "#f3efd9", "modern-primary": "#f7f5ef", "night-stadium": "#0c1727" };
-        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? packageBackgrounds[colorPackage] : "#081015");
-      }
-
-      function themeLabel() {
-        return data.settings.theme === "light" ? "Light" : "Dark";
+        document.documentElement.removeAttribute("data-theme");
+        document.documentElement.removeAttribute("data-color-package");
       }
 
       function createSession(title, options = {}) {
@@ -2417,7 +2149,7 @@
       }
 
       function defaultRecovery() {
-        return cleanRecovery();
+        return cleanRecovery({ illness: false, pain: false });
       }
 
       function sessionRecovery(session) {
@@ -2436,7 +2168,7 @@
           sequence: Number(previous?.sequence ?? previous?.sequenceIndex ?? setNumber),
           setTypeIndex: Number(previous?.setTypeIndex ?? 0),
           sourceTemplateSetId: previous?.sourceTemplateSetId || "",
-          reps: previous?.reps ?? 8,
+          reps: previous?.reps ?? "",
           weight,
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
           resistanceType,
@@ -2446,12 +2178,10 @@
           durationSeconds: Number(previous?.durationSeconds || 0),
           distance: Number(previous?.distance || 0),
           distanceUnit: previous?.distanceUnit || "m",
-          rpe: previous?.rpe ?? 8,
+          rpe: previous?.rpe ?? "",
           completed: previous?.completed ?? false,
           isWarmup: previous?.isWarmup ?? false,
           setType: normalizeSetTypeCode(previous?.setType, previous?.isWarmup),
-          countsTowardScore: previous?.countsTowardScore ?? !(previous?.isWarmup ?? false),
-          countsTowardVolume: previous?.countsTowardVolume ?? !(previous?.isWarmup ?? false),
           countsTowardProgression: previous?.countsTowardProgression ?? !(previous?.isWarmup ?? false),
           classificationSource: previous?.classificationSource || "app-explicit",
           classificationConfidence: previous?.classificationConfidence ?? 1,
@@ -2469,12 +2199,10 @@
           targetRpeMax: previous?.targetRpeMax ?? previous?.targetRpe ?? previous?.rpe,
           targetRpeTolerance: previous?.targetRpeTolerance ?? 0.5,
           targetRestSeconds: previous?.targetRestSeconds ?? exercise?.restSeconds ?? 0,
-          setPrescription: previous?.setPrescription ? { ...previous.setPrescription, previousComparableSet: previous.setPrescription.previousComparableSet ? { ...previous.setPrescription.previousComparableSet } : null } : null,
-          previousComparableSet: previous?.previousComparableSet ? { ...previous.previousComparableSet } : null,
-          prescriptionReason: previous?.prescriptionReason || "",
-          prescriptionMode: previous?.prescriptionMode || "",
-          prescriptionConfidence: previous?.prescriptionConfidence || "",
-          validationWarning: previous?.validationWarning || ""
+          originalTargetReps: previous?.originalTargetReps ?? previous?.targetReps ?? previous?.reps,
+          originalTargetWeight: previous?.originalTargetWeight ?? previous?.targetWeight ?? previous?.weight,
+          originalTargetRpe: previous?.originalTargetRpe ?? previous?.targetRpe ?? previous?.rpe,
+          previousComparableSet: previous?.previousComparableSet ? { ...previous.previousComparableSet } : null
         };
       }
 
@@ -2488,23 +2216,9 @@
         activeHistoryIdCache.clear();
         completedAnalysisIndexCache = null;
         exerciseCatalogCache = null;
-        completedEntriesCache = null;
-        exerciseScopeCache.clear();
-        exerciseWeekCache.clear();
-        hypertrophyWeekCache.clear();
-        hypertrophyQualificationCache.clear();
-        hypertrophyScoreCache.clear();
-        weeklyVolumeCache.clear();
-        fatigueFlagCache.clear();
-        templateAdviceCache.clear();
-        targetContextCache.clear();
-        actualExpectedCache.clear();
-        coachRecommendationCache.clear();
-        exerciseProgressCache.clear();
         previousPerformanceCache.clear();
         submittedPerformanceIndexCache.clear();
-        muscleAssignmentCache.clear();
-        prescriptionSnapshotCache.clear();
+        exerciseProgressCache.clear();
       }
 
       function arrayIdentityChanged(previous, next) {
@@ -2775,8 +2489,10 @@
       }
 
       function estimatedOneRepMax(set) {
-        if (set.weight <= 0 || set.reps <= 0) return 0;
-        return set.weight * (1 + set.reps / 30);
+        const reps = Number(set?.reps || 0);
+        const load = resistanceLoadInUnit(set, "external");
+        if (load <= 0 || reps < 1 || reps > 12) return 0;
+        return load * (1 + reps / 30);
       }
 
       function roundToIncrement(value, increment) {
@@ -2815,25 +2531,37 @@
           const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
           if (/^(?:custom|user)(?::|_)/.test(personalId)) return personalId;
         }
-        return `custom_${normalized.replace(/\s+/g, "_")}`;
+        return stableCustomPerformanceExerciseId(name);
+      }
+
+      function samePerformanceExercise(left, right) {
+        const leftExercise = typeof left === "string" ? { name: left } : (left || {});
+        const rightExercise = typeof right === "string" ? { name: right } : (right || {});
+        const leftPerformanceId = String(leftExercise.performanceExerciseId || "").trim();
+        const rightPerformanceId = String(rightExercise.performanceExerciseId || "").trim();
+        if (leftPerformanceId && rightPerformanceId) return leftPerformanceId === rightPerformanceId;
+        const leftResearchId = String(leftExercise.researchExerciseId || "").trim();
+        const rightResearchId = String(rightExercise.researchExerciseId || "").trim();
+        if (leftResearchId && rightResearchId) return leftResearchId === rightResearchId;
+        return exerciseMatches(leftExercise.name || "", rightExercise.name || "");
       }
 
       function exerciseCatalog() {
         if (exerciseCatalogCache?.revision === analysisRevision) return exerciseCatalogCache.items;
-        const analysisIndex = completedAnalysisIndex();
-        const sessions = analysisIndex.sessionById;
+        const sessions = new Map(data.sessions.filter((session) => isSessionSubmitted(session)).map((session) => [session.id, session]));
         const catalog = new Map();
-        analysisIndex.exerciseById.forEach((exercise) => {
-          const id = canonicalExerciseId(exercise);
+        data.exercises.forEach((exercise) => {
+          const canonicalId = canonicalExerciseId(exercise);
           const name = String(exercise?.name || "").trim();
-          if (!id || !name) return;
+          if (!canonicalId || !name) return;
           const session = sessions.get(exercise.sessionId);
-          const current = catalog.get(id) || { id, name, resistanceType: resistanceTypeFor(exercise), lastDate: "", submittedUses: 0 };
-          if (session) {
-            current.submittedUses += 1;
-            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = name; current.resistanceType = resistanceTypeFor(exercise); }
-          }
-          catalog.set(id, current);
+          if (!session) return;
+          const resistanceType = resistanceTypeFor(exercise);
+          const selectionId = canonicalId + "::resistance::" + resistanceType;
+          const current = catalog.get(selectionId) || { id: selectionId, canonicalId, name, resistanceType, lastDate: "", submittedUses: 0 };
+          current.submittedUses += 1;
+          if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = name; }
+          catalog.set(selectionId, current);
         });
         const items = Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name));
         exerciseCatalogCache = { revision: analysisRevision, items };
@@ -2865,11 +2593,11 @@
         const exactStructuredId = exactStructuredChartExerciseId(query);
         const recentRank = new Map(recentChartExerciseIds.map((id, index) => [id, index]));
         return exerciseCatalog()
-          .map((exercise) => ({ ...exercise, lexicalName: normalizeChartSearch(exercise.name), lexicalId: normalizeChartSearch(exercise.id) }))
-          .filter((exercise) => !lexicalQuery || exercise.lexicalName.includes(lexicalQuery) || exercise.lexicalId.includes(lexicalQuery) || exercise.id === exactStructuredId)
+          .map((exercise) => ({ ...exercise, lexicalName: normalizeChartSearch(exercise.name), lexicalId: normalizeChartSearch(exercise.canonicalId) }))
+          .filter((exercise) => !lexicalQuery || exercise.lexicalName.includes(lexicalQuery) || exercise.lexicalId.includes(lexicalQuery) || exercise.canonicalId === exactStructuredId)
           .sort((a, b) => {
-            const aExact = a.id === exactStructuredId || a.lexicalName === lexicalQuery ? 0 : a.lexicalName.startsWith(lexicalQuery) || a.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
-            const bExact = b.id === exactStructuredId || b.lexicalName === lexicalQuery ? 0 : b.lexicalName.startsWith(lexicalQuery) || b.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
+            const aExact = a.canonicalId === exactStructuredId || a.lexicalName === lexicalQuery ? 0 : a.lexicalName.startsWith(lexicalQuery) || a.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
+            const bExact = b.canonicalId === exactStructuredId || b.lexicalName === lexicalQuery ? 0 : b.lexicalName.startsWith(lexicalQuery) || b.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
             if (aExact !== bExact) return aExact - bExact;
             const aRecent = recentRank.has(a.id) ? recentRank.get(a.id) : 999;
             const bRecent = recentRank.has(b.id) ? recentRank.get(b.id) : 999;
@@ -2882,7 +2610,7 @@
       function renderExerciseSuggestions(query = chartExerciseDraft) {
         const matches = matchingChartExercises(query);
         if (!matches.length) return '<div class="exercise-search-empty">No matching logged exercise. Keep the current selection or try another name.</div>';
-        return matches.map((exercise, index) => '<button class="exercise-suggestion ' + (index === chartExerciseHighlight ? 'highlighted' : '') + '" type="button" data-action="select-chart-exercise" data-exercise-id="' + escapeHtml(exercise.id) + '"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + exercise.submittedUses + ' submitted workout' + (exercise.submittedUses === 1 ? '' : 's') + (exercise.lastDate ? ' · Last ' + formatDate(exercise.lastDate) : '') + '</span></button>').join('');
+        return matches.map((exercise, index) => '<button class="exercise-suggestion ' + (index === chartExerciseHighlight ? 'highlighted' : '') + '" type="button" data-action="select-chart-exercise" data-exercise-id="' + escapeHtml(exercise.id) + '"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + escapeHtml(resistanceTypeLabel(exercise.resistanceType)) + ' · ' + exercise.submittedUses + ' submitted workout' + (exercise.submittedUses === 1 ? '' : 's') + (exercise.lastDate ? ' · Last ' + formatDate(exercise.lastDate) : '') + '</span></button>').join('');
       }
 
       function updateExerciseSuggestionList() {
@@ -2899,16 +2627,12 @@
         if (!exercise) return false;
         selectedExerciseId = exercise.id;
         chartExerciseDraft = exercise.name;
-        hypertrophyWindowOffset = 0;
         chartExerciseSearchOpen = false;
         chartExerciseSearchError = "";
         chartExerciseHighlight = 0;
         recentChartExerciseIds = [exercise.id, ...recentChartExerciseIds.filter((id) => id !== exercise.id)].slice(0, 8);
         chartDetailPoint = null;
-        hypertrophyScoreExpanded = false;
-        hypertrophyScoreLoading = true;
         render();
-        window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 80);
         return true;
       }
 
@@ -2916,14 +2640,12 @@
         const matches = matchingChartExercises(chartExerciseDraft);
         const exactStructuredId = exactStructuredChartExerciseId(chartExerciseDraft);
         const lexicalQuery = normalizeChartSearch(chartExerciseDraft);
-        const exact = matches.find((exercise) => exercise.id === exactStructuredId || normalizeChartSearch(exercise.name) === lexicalQuery);
+        const exact = matches.find((exercise) => exercise.canonicalId === exactStructuredId || normalizeChartSearch(exercise.name) === lexicalQuery);
         return selectChartExercise((exact || matches[chartExerciseHighlight] || matches[0])?.id || "");
       }
 
       function exerciseMatches(storedName, requestedName) {
-        const stored = String(storedName || "").trim().toLowerCase();
-        const requested = String(requestedName || "").trim().toLowerCase();
-        return stored === requested || exerciseKey(storedName) === exerciseKey(requestedName);
+        return normalizePrescriptionIdentity(storedName) === normalizePrescriptionIdentity(requestedName);
       }
 
       // RESISTANCE_MODEL_START
@@ -2958,10 +2680,16 @@
         return resistanceTypeValues.map((type) => '<option value="' + type + '" ' + (type === selected ? 'selected' : '') + '>' + resistanceTypeLabel(type) + '</option>').join('');
       }
 
-      function resistanceLoad(set, type) {
+      function storedResistanceLoad(set, type) {
         if (type === "bodyweight_plus_load") return Number(set?.addedLoad ?? set?.weight ?? 0);
         if (type === "assisted_bodyweight") return Number(set?.assistanceLoad ?? set?.weight ?? 0);
         return Number(set?.weight || 0);
+      }
+
+      function resistanceLoad(set, type, toUnit = data.settings.weightUnit) {
+        const load = storedResistanceLoad(set, type);
+        const fromUnit = set?.weightUnit === "kg" || set?.weightUnit === "lb" ? set.weightUnit : data.settings.weightUnit;
+        return Number(convertWeightValue(load, fromUnit, toUnit));
       }
 
       function formatLoadNumber(value) {
@@ -2971,7 +2699,8 @@
       function roundLoadForUnit(value, unit = data.settings.weightUnit, increment = 0) {
         const numeric = Number(value || 0);
         if (!Number.isFinite(numeric)) return 0;
-        if (unit === "lb") return Math.round(numeric * 2) / 2;
+        const displayUnit = Number(increment) > 0 ? unit : data.settings.weightUnit;
+        if (displayUnit === "lb") return Math.round(numeric * 2) / 2;
         if (Number(increment) > 0) return Number((Math.round(numeric / Number(increment)) * Number(increment)).toFixed(3));
         return Number(numeric.toFixed(3));
       }
@@ -2982,7 +2711,7 @@
 
       function formatResistance(value, exercise = null) {
         const type = inferResistanceType(exercise?.name || "", value || exercise || {}, value ? [value] : []);
-        const unit = value?.weightUnit || data.settings.weightUnit;
+        const unit = data.settings.weightUnit;
         const load = resistanceLoad(value, type);
         if (type === "bodyweight") return "BW";
         if (type === "bodyweight_plus_load") return load > 0 ? "BW + " + displayLoadNumber(load, unit) + " " + unit : "BW";
@@ -3014,61 +2743,22 @@
         };
       }
 
-      const convertibleLoadKeys = new Set([
-        "weight", "targetWeight", "originalTargetWeight", "addedLoad", "assistanceLoad",
-        "increment", "targetLoad", "nextLoad"
-      ]);
-
       function convertWeightValue(value, fromUnit, toUnit) {
         const numeric = Number(value);
         if (!Number.isFinite(numeric) || fromUnit === toUnit) return value;
         const converted = fromUnit === "lb" && toUnit === "kg" ? numeric / 2.2046226218 : numeric * 2.2046226218;
-        return roundLoadForUnit(converted, toUnit);
+        return toUnit === "lb" ? Math.round(converted * 2) / 2 : Number(converted.toFixed(3));
       }
 
-      function convertWeightFields(value, fromUnit, toUnit, key = "") {
-        if (value == null || fromUnit === toUnit) return value;
-        if (key === "personalEvidencePackage" || key === "rawImports") return value;
-        if (Array.isArray(value)) return value.map((item) => convertWeightFields(item, fromUnit, toUnit));
-        if (typeof value !== "object") return convertibleLoadKeys.has(key) ? convertWeightValue(value, fromUnit, toUnit) : value;
-        const converted = {};
-        const hasExplicitUnitField = Object.prototype.hasOwnProperty.call(value, "weightUnit");
-        Object.entries(value).forEach(([field, item]) => {
-          if (field === "prescribedLoad" && item && typeof item === "object") {
-            converted[field] = { ...item, target: convertWeightValue(item.target, fromUnit, toUnit), previous: convertWeightValue(item.previous, fromUnit, toUnit), unit: item.unit ? toUnit : item.unit };
-          } else if (field === "load" && item && typeof item === "object" && ("from" in item || "to" in item)) {
-            converted[field] = { ...item, from: convertWeightValue(item.from, fromUnit, toUnit), to: convertWeightValue(item.to, fromUnit, toUnit) };
-          } else {
-            converted[field] = convertWeightFields(item, fromUnit, toUnit, field);
-          }
-        });
-        if (hasExplicitUnitField) converted.weightUnit = toUnit;
-        if (converted.recommendationId && converted.checksum && typeof window !== "undefined" && window.ComprehensiveFitnessPrescriptionEngine?.refreshRecommendationChecksum) {
-          return window.ComprehensiveFitnessPrescriptionEngine.refreshRecommendationChecksum(converted);
-        }
-        return converted;
+      function resistanceLoadInUnit(set, type, toUnit = data.settings.weightUnit) {
+        return resistanceLoad(set, type, toUnit);
       }
 
-      function convertAppWeightUnit(model, toUnit) {
-        const fromUnit = model?.settings?.weightUnit === "kg" ? "kg" : "lb";
-        if (!model || !["lb", "kg"].includes(toUnit) || fromUnit === toUnit) return model;
-        const converted = convertWeightFields(model, fromUnit, toUnit);
-        converted.settings = { ...model.settings, weightUnit: toUnit };
-        converted.personalEvidencePackage = model.personalEvidencePackage;
-        converted.rawImports = model.rawImports;
-        return converted;
+      function setAppWeightUnitPreference(model, toUnit) {
+        if (!model || !["lb", "kg"].includes(toUnit) || model.settings?.weightUnit === toUnit) return model;
+        return { ...model, settings: { ...model.settings, weightUnit: toUnit } };
       }
       // RESISTANCE_MODEL_END
-
-      function getExerciseSets(exerciseName, options = {}) {
-        const canonicalId = options.canonicalExerciseId || canonicalExerciseId(exerciseName);
-        const key = analysisRevision + "|" + canonicalId;
-        if (!exerciseScopeCache.has(key)) {
-          const index = completedAnalysisIndex();
-          exerciseScopeCache.set(key, { exercises: index.exercisesByCanonical.get(canonicalId) || [], sets: index.setsByCanonical.get(canonicalId) || [] });
-        }
-        return exerciseScopeCache.get(key);
-      }
 
       function progressionProfileForExercise(name) {
         const key = exerciseKey(name);
@@ -3106,320 +2796,11 @@
         let seconds = profile.kind === "compound" ? 180 : profile.kind === "machine" ? 120 : 75;
         if (reps <= 5 || rpe >= 9) seconds += profile.kind === "isolation" ? 15 : 30;
         if (reps >= 15 && profile.kind === "isolation") seconds = Math.min(seconds, 75);
-        const recentDurations = (completedAnalysisIndex().exercisesByCanonical.get(canonicalExerciseId(exerciseName)) || [])
-          .filter((exercise) => Number(exercise.restSeconds) > 0)
-          .map((exercise) => Number(exercise.restSeconds))
-          .sort((a, b) => a - b)
-          .slice(-6);
-        if (recentDurations.length) {
-          const historical = recentDurations[Math.floor(recentDurations.length / 2)];
-          seconds = Math.round((seconds * 2 + historical) / 3);
-        }
-        const latestWeek = summarizeExerciseByWeek(exerciseName, options)[0];
-        if (latestWeek && (latestWeek.failedSets >= 2 || (latestWeek.averageRpe >= 9.2 && latestWeek.completedSets >= 2))) seconds += 30;
         return Math.max(60, Math.min(300, Math.round(seconds / 15) * 15));
       }
 
-      function nextLoadForExercise(name, currentWeight, incrementOverride) {
-        const profile = progressionProfileForExercise(name);
-        const increment = Number(incrementOverride || profile.increment);
-        if (currentWeight <= 0) return 0;
-        const raw = currentWeight + increment;
-        const rounded = roundToIncrement(raw, increment);
-        const jumpRatio = (rounded - currentWeight) / currentWeight;
-        return jumpRatio > profile.maxJumpRatio ? currentWeight : rounded;
-      }
-
-      function summarizeExerciseByWeek(exerciseName, options = {}) {
-        const canonicalId = options.canonicalExerciseId || canonicalExerciseId(exerciseName);
-        const cacheKey = [analysisRevision, canonicalId, options.excludeSessionId || "", options.retentionAsOfDate || todayIso(), options.throughDate || options.asOfDate || todayIso()].join("|");
-        if (exerciseWeekCache.has(cacheKey)) return exerciseWeekCache.get(cacheKey);
-        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
-        const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || options.asOfDate || todayIso() }).map((session) => [session.id, session]));
-        const grouped = new Map();
-        scoped.sets.forEach((set) => {
-          const exercise = exerciseById.get(set.exerciseId);
-          const session = exercise ? sessionById.get(exercise.sessionId) : null;
-          if (!session || !isWorkingSet(set, "score")) return;
-          if (options.excludeSessionId && session.id === options.excludeSessionId) return;
-          const week = startOfWeekIso(session.date);
-          const bucket = grouped.get(week) || { sessions: new Set(), travelCount: 0, sets: [], deloadFlags: [], intentionalReductionFlags: [], intentionalReductionReasons: [] };
-          if (!bucket.sessions.has(session.id) && session.isTravel) bucket.travelCount += 1;
-          bucket.sessions.add(session.id);
-          bucket.sets.push(set);
-          bucket.deloadFlags.push(Boolean(exercise.isDeload));
-          const recommendationType = exercise.recommendationSnapshot?.finalPrescription?.recommendationType || exercise.finalPrescription?.recommendationType || exercise.prescription?.interventionType || exercise.prescription?.mode || "";
-          const intentionallyReduced = Boolean(exercise.prescription?.adjusted || exercise.adjustmentReason || ["light_session", "reduce_volume", "exercise_deload", "muscle_group_deload", "full_program_deload", "readiness_adjusted", "deload", "light"].includes(recommendationType));
-          bucket.intentionalReductionFlags.push(intentionallyReduced);
-          if (intentionallyReduced) bucket.intentionalReductionReasons.push(exercise.adjustmentReason || exercise.prescription?.adjustmentReason || exercise.recommendationSnapshot?.finalPrescription?.readinessAdjustment?.explanation || presentationLabel(recommendationType));
-          grouped.set(week, bucket);
-        });
-        const summaries = Array.from(grouped.entries()).map(([weekStart, bucket]) => {
-          const completed = bucket.sets.filter((set) => set.completed);
-          const rpeSets = bucket.sets.filter((set) => set.rpe > 0);
-          const representativeExercise = exerciseById.get(bucket.sets[0]?.exerciseId);
-          const resistanceType = resistanceTypeFor(representativeExercise, completed[0]);
-          const positiveLoads = completed.map((set) => resistanceLoad(set, resistanceType)).filter((value) => value > 0);
-          const topWeight = positiveLoads.length ? (resistanceType === "assisted_bodyweight" ? Math.min(...positiveLoads) : Math.max(...positiveLoads)) : 0;
-          const topWeightSets = completed.filter((set) => set.weight === topWeight);
-          const setsBelowTopWeight = topWeight > 0 ? completed.filter((set) => set.weight > 0 && set.weight < topWeight).length : 0;
-          const topWeightRpeSets = topWeightSets.filter((set) => set.rpe > 0);
-          return {
-            weekStart,
-            travelCount: bucket.travelCount,
-            isDeload: bucket.deloadFlags.length > 0 && bucket.deloadFlags.every(Boolean),
-            intentionalReduction: bucket.intentionalReductionFlags.some(Boolean),
-            intentionalReductionReasons: Array.from(new Set(bucket.intentionalReductionReasons.filter(Boolean))),
-            topWeight,
-            topWeightSetCount: topWeightSets.length,
-            setsBelowTopWeight,
-            maxRepsAtTopWeight: Math.max(0, ...topWeightSets.map((set) => set.reps)),
-            minRepsAtTopWeight: topWeightSets.length ? Math.min(...topWeightSets.map((set) => set.reps)) : 0,
-            averageRpeAtTopWeight: topWeightRpeSets.length
-              ? topWeightRpeSets.reduce((sum, set) => sum + set.rpe, 0) / topWeightRpeSets.length
-              : 0,
-            plannedSets: bucket.sets.length,
-            completedSets: completed.length,
-            failedSets: bucket.sets.filter((set) => !set.completed && !set.skipped).length,
-            averageRpe: rpeSets.length ? rpeSets.reduce((sum, set) => sum + set.rpe, 0) / rpeSets.length : 0,
-            bestEstimatedOneRepMax: Math.max(0, ...completed.map((set) => ["external", "bodyweight_plus_load"].includes(resistanceType) ? estimatedOneRepMax(set) : resistanceType === "assisted_bodyweight" ? Math.max(0, 10000 - resistanceLoad(set, resistanceType) * 10 + set.reps) : resistanceType === "duration" ? Number(set.durationSeconds || 0) : resistanceType === "distance" ? Number(set.distance || 0) : Number(set.reps || 0)))
-          };
-        }).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
-        summaries.forEach((summary, index) => {
-          const previous = summaries[index + 1];
-          summary.isLikelyDeload = summary.isDeload;
-          summary.deloadBaselineWeek = summary.isDeload ? previous?.weekStart || "" : "";
-        });
-        exerciseWeekCache.set(cacheKey, summaries);
-        return summaries;
-      }
-
-      function deloadEvidence(deloadWeek, baselineWeek, loadFormatter = null) {
-        if (!deloadWeek || !baselineWeek) return "";
-        const loadText = deloadWeek.topWeight > 0 && baselineWeek.topWeight > 0
-          ? " resistance moved from " + (loadFormatter ? loadFormatter(baselineWeek.topWeight) : baselineWeek.topWeight + " " + data.settings.weightUnit) + " to " + (loadFormatter ? loadFormatter(deloadWeek.topWeight) : deloadWeek.topWeight + " " + data.settings.weightUnit) + ","
-          : "";
-        return "You marked " + formatWeek(deloadWeek.weekStart).toLowerCase() + " as a deload/recovery week:" + loadText + " it is skipped as the baseline and " + formatWeek(baselineWeek.weekStart).toLowerCase() + " is used for the next target.";
-      }
-
-      function recommendForExerciseWeek(exerciseName, weekStart, options = {}) {
-        const summaries = summarizeExerciseByWeek(exerciseName, options);
-        const scopedExercise = getExerciseSets(exerciseName, options).exercises[0] || { name: exerciseName, resistanceType: "external" };
-        const resistanceType = resistanceTypeFor(scopedExercise);
-        const loadText = (value) => formatResistance({ weight: value, addedLoad: resistanceType === "bodyweight_plus_load" ? value : 0, assistanceLoad: resistanceType === "assisted_bodyweight" ? value : 0, resistanceType, weightUnit: data.settings.weightUnit }, scopedExercise);
-        const selectedIndex = summaries.findIndex((summary) => summary.weekStart === weekStart);
-        const rawIndex = selectedIndex >= 0 ? selectedIndex : 0;
-        const rawCurrent = summaries[rawIndex];
-        const skippedDeload = rawCurrent?.isLikelyDeload ? rawCurrent : null;
-        const effectiveIndex = skippedDeload
-          ? summaries.findIndex((summary, index) => index > rawIndex && !summary.isLikelyDeload)
-          : rawIndex;
-        const current = summaries[effectiveIndex >= 0 ? effectiveIndex : rawIndex];
-        const previous = summaries.slice((effectiveIndex >= 0 ? effectiveIndex : rawIndex) + 1).find((summary) => !summary.isLikelyDeload);
-        const older = summaries.slice((effectiveIndex >= 0 ? effectiveIndex : rawIndex) + 1, (effectiveIndex >= 0 ? effectiveIndex : rawIndex) + 6).filter((summary) => !summary.isLikelyDeload);
-        const profile = progressionProfileForExercise(exerciseName);
-        const increment = profile.increment;
-        if (!current) {
-          return {
-            decision: "hold",
-            label: "Need more data",
-            reason: "There is not enough history for this lift yet.",
-            action: "Log at least one complete session, then review again.",
-            evidence: ["No completed sets found for the selected exercise."],
-            confidence: "low"
-          };
-        }
-        const travelAdjusted = current.travelCount > 0;
-        const hardWeek = current.averageRpe >= 9;
-        const failedMultipleSets = current.failedSets >= 2;
-        const performanceDrop = previous && current.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax < previous.bestEstimatedOneRepMax * 0.92;
-        const repeatedFailures = older.filter((week) => week.failedSets > 0 || week.averageRpe >= 9.5).length >= 2 && current.failedSets > 0;
-        const flatWeeks = older.length >= 3 && older.every((week) => Math.abs(week.bestEstimatedOneRepMax - current.bestEstimatedOneRepMax) <= current.bestEstimatedOneRepMax * 0.025);
-        const evidence = [
-          current.completedSets + " completed set" + (current.completedSets === 1 ? "" : "s") + " and " + current.failedSets + " missed set" + (current.failedSets === 1 ? "" : "s") + ".",
-          "Average RPE " + (current.averageRpe ? current.averageRpe.toFixed(1) : "not logged") + ".",
-          (resistanceType === "external" ? "Best estimated 1RM " : "Best comparable performance index ") + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + ".",
-          current.topWeight > 0 ? current.topWeightSetCount + " of " + current.completedSets + " completed sets used " + loadText(current.topWeight) + "." : resistanceType === "bodyweight" ? "Bodyweight-only work was logged." : "No comparable load was found."
-        ];
-        if (skippedDeload && skippedDeload !== current) evidence.unshift(deloadEvidence(skippedDeload, current, loadText));
-        if (travelAdjusted) evidence.push("Travel was logged this week, so the recommendation is less punitive for a dip.");
-        if (skippedDeload && skippedDeload !== current) {
-          const targetLoad = current.topWeight > 0 ? loadText(current.topWeight) : "the prior normal resistance";
-          const targetReps = current.maxRepsAtTopWeight > 0 ? " for about " + current.maxRepsAtTopWeight + " reps" : "";
-          return {
-            decision: "hold",
-            label: "Return from deload",
-            reason: "The latest work looks like a planned recovery break, so it should not reset your working weights downward.",
-            action: "Use the prior normal baseline next time: " + targetLoad + targetReps + ". Keep RPE controlled, then resume progression after that session confirms performance.",
-            evidence,
-            confidence: "high"
-          };
-        }
-        if (flatWeeks && (hardWeek || repeatedFailures)) {
-          return { decision: "change", label: "Consider changing variation", reason: "This lift looks stalled across several recent weeks.", action: "Swap to a close variation for 4-6 weeks, then retest the original lift.", evidence, confidence: "medium" };
-        }
-        if ((failedMultipleSets || repeatedFailures || performanceDrop) && !travelAdjusted) {
-          const target = roundToIncrement(current.topWeight * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment);
-          return { decision: "deload", label: "Deload", reason: "Recent performance suggests fatigue or an overly aggressive load.", action: (resistanceType === "assisted_bodyweight" ? "Increase assistance" : "Reduce added or external load") + " about 10% next time, aiming near " + loadText(target) + ", and keep 1-3 reps in reserve.", evidence, confidence: "high" };
-        }
-        if (hardWeek || current.failedSets > 0 || current.completedSets < 3 || travelAdjusted) {
-          return { decision: "hold", label: "Hold", reason: travelAdjusted ? "The travel context makes this a good week to repeat before judging progress." : "The work was close enough to the limit that repeating is the cleaner next step.", action: "Repeat the same load and rep target next time; progress only if RPE settles below 9.", evidence, confidence: travelAdjusted ? "medium" : "high" };
-        }
-        if (current.topWeight > 0 && current.setsBelowTopWeight > 0 && (profile.kind === "isolation" || current.topWeightSetCount < Math.max(2, current.completedSets - 1))) {
-          return {
-            decision: "hold",
-            label: "Consolidate load",
-            reason: "Your top set is ahead of your back-off sets, so the next progression is making the current load repeatable.",
-            action: "Keep " + loadText(current.topWeight) + " as the top resistance and work later sets up to it before progressing.",
-            evidence,
-            confidence: "high"
-          };
-        }
-        const canAddLoad = current.topWeight > 0 && current.maxRepsAtTopWeight >= profile.upperRep && current.averageRpeAtTopWeight > 0 && current.averageRpeAtTopWeight <= 8.5;
-        const nextWeight = resistanceType === "assisted_bodyweight" ? Math.max(0, roundToIncrement(Math.max(0, current.topWeight - increment), increment)) : nextLoadForExercise(exerciseName, current.topWeight);
-        if (profile.kind === "isolation" && !canAddLoad) {
-          const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
-          return { decision: "progress", label: "Progress reps", reason: "You completed the work, but this is an isolation lift where load jumps are large.", action: "Keep " + loadText(current.topWeight) + " and add reps first, targeting about " + nextReps + " reps before increasing load.", evidence, confidence: previous ? "high" : "medium" };
-        }
-        if (["bodyweight", "bodyweight_plus_load", "assisted_bodyweight"].includes(resistanceType) && !canAddLoad) {
-          const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
-          return { decision: "progress", label: "Progress reps", reason: "The current bodyweight resistance has not yet reached the top of its programmed rep range at a confirmed manageable RPE.", action: "Keep " + loadText(current.topWeight) + " and build toward " + nextReps + "-" + profile.upperRep + " controlled reps before changing added load or assistance.", evidence, confidence: previous ? "high" : "medium" };
-        }
-        if (nextWeight === current.topWeight && current.topWeight > 0) {
-          const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
-          return { decision: "progress", label: "Progress reps", reason: "The next load jump is too large relative to the current working weight.", action: "Keep " + loadText(current.topWeight) + " and add reps toward " + nextReps + "-" + profile.upperRep + " before increasing load.", evidence, confidence: previous ? "high" : "medium" };
-        }
-        return { decision: "progress", label: "Progress load", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? (resistanceType === "assisted_bodyweight" ? "Reduce assistance to " : "Target ") + loadText(nextWeight) + " next time." : resistanceType === "bodyweight" ? "Add reps or a harder bodyweight variation next time." : "Use the programmed working load and add a controlled rep before increasing resistance.", evidence, confidence: previous ? "high" : "medium" };
-      }
-
-      // COACH_RECOMMENDATION_ENGINE_START
-      function coachRecommendationForExercise(exerciseName, options = {}) {
-        const cacheAvailable = typeof coachRecommendationCache !== "undefined";
-        const cacheKey = [typeof analysisRevision === "undefined" ? 0 : analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), options.weekStart || "", options.throughDate || options.asOfDate || todayIso(), options.historical ? "historical" : "current"].join("|");
-        if (cacheAvailable && coachRecommendationCache.has(cacheKey)) return coachRecommendationCache.get(cacheKey);
-        if (typeof unifiedPrescriptionSnapshot === "function") {
-          const snapshot = unifiedPrescriptionSnapshot(exerciseName, {
-            throughDate: options.throughDate || options.asOfDate || todayIso(),
-            historical: Boolean(options.historical),
-            recovery: options.recovery || {},
-            template: options.template,
-            mesocycle: options.historical ? null : undefined
-          });
-          if (isUsableWorkoutPrescriptionSnapshot(snapshot)) {
-            const unified = legacyRecommendationFromSnapshot(snapshot, exerciseName);
-            unified.sourceWindow = { weekStart: options.weekStart || "", throughDate: options.throughDate || todayIso(), historical: Boolean(options.historical) };
-            unified.asOfDate = options.throughDate || todayIso();
-            if (cacheAvailable) coachRecommendationCache.set(cacheKey, unified);
-            return unified;
-          }
-        }
-        const weeks = summarizeExerciseByWeek(exerciseName, options);
-        const weekStart = options.weekStart || weeks[0]?.weekStart || "";
-        const summary = weeks.find((week) => week.weekStart === weekStart) || weeks[0];
-        const base = weekStart ? recommendForExerciseWeek(exerciseName, weekStart, options) : { decision: "hold", label: "Establish baseline", reason: "No recent qualifying working-set history is available.", action: "Use the current program target with controlled technique.", evidence: [], confidence: "low" };
-        const profile = progressionProfileForExercise(exerciseName);
-        const representativeExercise = getExerciseSets(exerciseName, options).exercises.find((exercise) => canonicalExerciseId(exercise.name) === (options.canonicalExerciseId || canonicalExerciseId(exerciseName))) || { name: exerciseName, resistanceType: "external" };
-        const resistanceType = resistanceTypeFor(representativeExercise);
-        let progressionAction = base.decision === "progress" ? (/rep/i.test(base.label) ? "increase_reps" : "increase_load") : base.decision === "hold" ? "repeat" : base.decision;
-        let targetLoad = Number(summary?.topWeight || 0);
-        let targetReps = Number(summary?.maxRepsAtTopWeight || 0);
-        if (progressionAction === "increase_reps") targetReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, targetReps + 1));
-        if (progressionAction === "increase_load" && targetLoad > 0) targetLoad = resistanceType === "assisted_bodyweight" ? Math.max(0, roundToIncrement(targetLoad - profile.increment, profile.increment)) : nextLoadForExercise(exerciseName, targetLoad);
-        let interventionType = "normal";
-        let severity = "normal";
-        let durationInSessions = 1;
-        let loadAdjustment = 0;
-        let setAdjustment = 0;
-        let rpeTarget = null;
-        let progressionExpected = base.decision === "progress";
-        let removeIntensificationTechniques = false;
-        let returnToNormalCriteria = "Continue normal programming while reps and RPE remain inside target.";
-        const reasonCodes = [];
-        if (base.decision === "deload") {
-          interventionType = "deload";
-          severity = "high";
-          durationInSessions = 1;
-          loadAdjustment = -0.1;
-          setAdjustment = -0.35;
-          rpeTarget = 6.5;
-          progressionExpected = false;
-          removeIntensificationTechniques = true;
-          returnToNormalCriteria = "Resume normal programming after one deload exposure when the next warm-up is normal and comparable performance no longer declines at rising RPE.";
-          reasonCodes.push("repeated-misses-or-regression");
-        } else if (base.decision === "change") {
-          interventionType = "stop_modify";
-          severity = "high";
-          durationInSessions = 4;
-          progressionExpected = false;
-          removeIntensificationTechniques = true;
-          returnToNormalCriteria = "Return after 4-6 weeks with a close variation, or earlier only after the pain, safety, or repeated-stall concern is resolved.";
-          reasonCodes.push("persistent-stall");
-        } else if (summary && (summary.failedSets === 1 || summary.averageRpe >= 9 || (weeks[1] && summary.bestEstimatedOneRepMax < weeks[1].bestEstimatedOneRepMax * 0.95))) {
-          interventionType = "light";
-          severity = "moderate";
-          loadAdjustment = -0.05;
-          setAdjustment = -1;
-          rpeTarget = 7;
-          progressionExpected = false;
-          removeIntensificationTechniques = true;
-          returnToNormalCriteria = "Return to normal after one light exposure if all planned reps are completed at or below the target RPE and performance stabilizes.";
-          reasonCodes.push(summary.failedSets === 1 ? "single-missed-set" : summary.averageRpe >= 9 ? "high-effort" : "moderate-performance-decline");
-        } else {
-          reasonCodes.push(base.decision === "progress" ? "progression-supported" : "repeat-or-hold-supported");
-        }
-        const result = {
-          ...base,
-          interventionType,
-          progressionAction,
-          affectedExerciseIds: [canonicalExerciseId(exerciseName)],
-          affectedExerciseName: exerciseName,
-          reasonCodes,
-          humanReadableReason: base.reason,
-          severity,
-          loadAdjustment,
-          setAdjustment,
-          repRangeAdjustment: null,
-          targetLoad,
-          targetReps,
-          resistanceType,
-          rpeTarget,
-          restAdjustment: interventionType === "light" || interventionType === "deload" ? 15 : 0,
-          removeIntensificationTechniques,
-          progressionExpected,
-          durationInSessions,
-          returnToNormalCriteria,
-          sourceWindow: { weekStart, throughDate: options.throughDate || todayIso(), historical: Boolean(options.historical) },
-          asOfDate: options.throughDate || todayIso()
-        };
-        if (cacheAvailable) coachRecommendationCache.set(cacheKey, result);
-        return result;
-      }
-      // COACH_RECOMMENDATION_ENGINE_END
-
       function templateExerciseCount(template) {
         return template.exercises.reduce((sum, exercise) => sum + Number(exercise.sets || 0), 0);
-      }
-
-      function researchVolumeTarget() {
-        const records = prescriptionEngine?.evidence?.research?.muscleGroupRecommendations || [];
-        const experienceLevel = data.settings.experienceLevel || "all";
-        const matched = records.filter((item) => !item.training_status || item.training_status === experienceLevel || item.training_status === "all" || item.training_status === "mixed");
-        return matched.length
-          ? `${matched.length} muscle/subdivision-specific weekly ranges from research database ${prescriptionEvidenceStatus.researchVersion}`
-          : "the exercise-specific research fallback stored in each prescription";
-      }
-
-      function goalContext() {
-        const phase = data.settings.nutritionPhase || "all";
-        const experienceLevel = data.settings.experienceLevel || "all";
-        const records = prescriptionEngine?.evidence?.research?.nutritionStrategies || [];
-        const strategy = records.find((item) => item.nutrition_phase === phase && item.training_status === experienceLevel)
-          || records.find((item) => item.nutrition_phase === phase && ["all", "mixed"].includes(item.training_status))
-          || records.find((item) => item.nutrition_phase === phase)
-          || records.find((item) => item.nutrition_phase === "all");
-        if (!strategy) return "Nutrition and recovery modify the prescription only when supported by the available evidence markers.";
-        return [strategy.training_volume_adjustment, strategy.training_intensity_adjustment, strategy.recovery_guidance].filter(Boolean).join(" ");
       }
 
       function getMostRecentWorkoutPerformance(exerciseName, options = {}) {
@@ -3479,222 +2860,39 @@
         return getMostRecentWorkoutPerformance(exerciseName, options)?.sets || [];
       }
 
-      function strongHistoryFallbackForTemplateExercise(templateExercise, options = {}, rejection = null) {
-        const fallbackReasons = new Set(["unknown_exercise_identity", "invalid_muscle_identity", "no_dynamic_direct_target"]);
-        if (!fallbackReasons.has(String(rejection?.reason || ""))) return null;
-        const identity = resolveExerciseIdentityProfile(templateExercise);
-        if (identity.status !== "resolved" || !identity.performanceExerciseId) return null;
-        const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
-        const performance = getMostRecentWorkoutPerformance(templateExercise.name, {
-          ...options,
-          canonicalExerciseId: identity.performanceExerciseId,
-          resistanceType
-        });
-        if (!performance?.sets?.length || performance.session?.source !== "strong") return null;
-        const validStructure = Number(templateExercise.sets || 0) >= 1
-          && Number(templateExercise.reps || 0) >= 1
-          && ((templateExercise.setTypes || []).length > 0 || Number(templateExercise.sets || 0) > 0);
-        if (!validStructure) return null;
-        return { identity, performance, resistanceType };
-      }
-
-      function latestSkippedDeloadForExercise(exerciseName, options = {}) {
-        const weeks = summarizeExerciseByWeek(exerciseName, options);
-        if (!weeks[0]?.isLikelyDeload) return null;
-        const baseline = weeks.slice(1).find((week) => !week.isLikelyDeload);
-        return baseline ? { deload: weeks[0], baseline } : null;
-      }
-
-      function coachTargetForTemplateExercise(templateExercise, options = {}) {
-        let historyFallback = null;
-        if (typeof unifiedPrescriptionSnapshot === "function") {
-          let snapshot;
-          try {
-            snapshot = unifiedPrescriptionSnapshot(templateExercise, {
-              throughDate: options.throughDate || options.asOfDate || todayIso(),
-              historical: Boolean(options.historical),
-              recovery: {},
-              template: options.template,
-              role: templateExercise.role,
-              equipmentIncrement: templateExercise.increment,
-              mesocycle: options.historical ? null : undefined
-            });
-          } catch (error) {
-            const detail = error?.error || error;
-            const code = String(detail?.code || "");
-            if (detail?.hardConstraint === true || ["hard_constraint_rejection", "engine_failure"].includes(detail?.type || detail?.kind) || /^HARD_CONSTRAINT_/i.test(code)) return detail;
-            throw error;
-          }
-          if (snapshot?.executionBlocked === true && snapshot?.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot?.type || snapshot?.kind)) {
-            historyFallback = strongHistoryFallbackForTemplateExercise(templateExercise, options, snapshot);
-            if (!historyFallback) return snapshot;
-          }
-          if (!historyFallback && isUsableWorkoutPrescriptionSnapshot(snapshot)) {
-            const executableSnapshot = prescriptionSnapshotWithTemplateStandard(snapshot, templateExercise, options);
-            return legacyTargetFromSnapshot(executableSnapshot, templateExercise);
-          }
-        }
-        const profile = progressionProfileForExercise(templateExercise.name);
-        const sessionType = sessionTypeForTemplate(options.template);
-        const programContext = exerciseTargetContext(options.template, templateExercise, { source: "Current workout template" });
-        const scoredTypes = (programContext?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
-        const primaryType = scoredTypes.find((type) => type.type === "top") || scoredTypes.find((type) => type.type === "straight") || scoredTypes[0];
-        const activeLowerRep = Number(primaryType?.repMin || templateExercise.repMin || profile.lowerRep || 0);
-        const activeUpperRep = Number(primaryType?.repMax || templateExercise.repMax || templateExercise.reps || profile.upperRep || activeLowerRep);
-        const activeProfile = { ...profile, lowerRep: activeLowerRep, upperRep: activeUpperRep };
-        const targetReps = Number(templateExercise.reps || activeUpperRep || 8);
-        const plannedSets = Math.max(1, scoredTypes.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || Number(templateExercise.sets || 1));
-        const weeks = summarizeExerciseByWeek(templateExercise.name, options);
-        const recommendation = historyFallback ? null : coachRecommendationForExercise(templateExercise.name, { ...options, weekStart: weeks[0]?.weekStart || "" });
-        const recentSets = getMostRecentWorkoutSets(templateExercise.name, options);
-        const last = getLastCompletedSet(templateExercise.name, options);
-        const skippedDeload = latestSkippedDeloadForExercise(templateExercise.name, options);
-        const increment = Number(templateExercise.increment || profile.increment);
-        const resistanceType = templateExercise.resistanceType || last?.set?.resistanceType || inferResistanceType(templateExercise.name, templateExercise, recentSets);
-        const recentLoads = [...recentSets.map((set) => resistanceLoad(set, resistanceType)), resistanceLoad(last?.set, resistanceType)].filter((value) => value > 0);
-        const recentTop = recentLoads.length ? (resistanceType === "assisted_bodyweight" ? Math.min(...recentLoads) : Math.max(...recentLoads)) : 0;
-        const topSets = recentSets.filter((set) => set.weight === recentTop);
-        const recentReps = Math.max(0, ...topSets.map((set) => set.reps), last?.set?.reps || 0);
-        const representativeSet = topSets.slice().sort((a, b) => b.reps - a.reps || (a.rpe || 99) - (b.rpe || 99))[0] || last?.set;
-        const recentRpe = Number(representativeSet?.rpe || 0);
-        const knownBodyweight = isBodyweightResistance(resistanceType);
-        const daysSinceLast = last?.session?.date ? Math.floor((Date.now() - new Date(last.session.date + "T12:00:00").getTime()) / 86400000) : 0;
-        let sets = plannedSets;
-        let reps = Math.max(activeLowerRep, Math.min(activeUpperRep, recentReps || targetReps));
-        let weight = recentTop;
-        let rpe = programmedRpeForExercise(templateExercise, profile, sessionType, recentRpe);
-        let mode = recentSets.length ? "maintenance" : "baseline";
-        let reason = "No prior completed sets found. Use a controlled load near RPE 7-8.";
-
-        if (historyFallback) {
-          reason = "Using your latest imported Strong performance and the saved workout structure. Research-based progression is unavailable until this exercise is mapped to the research library.";
-        }
-
-        if (sessionType === "deload") {
-          mode = "deload";
-          reason = "Planned deload: reduce fatigue with lower load, fewer sets, and lower effort.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
-          sets = Math.max(1, Math.ceil(plannedSets * 0.65));
-          reps = Math.max(activeLowerRep, Math.min(targetReps, activeUpperRep));
-          rpe = Math.min(Number(templateExercise.targetRpe || 6.5), 6.5);
-        } else if (sessionType === "light" || sessionType === "technique") {
-          mode = sessionType;
-          reason = sessionType === "light" ? "Programmed light session: preserve movement quality while limiting fatigue." : "Technique-focused session: prioritize repeatable positions and bar path over loading.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
-          rpe = Math.min(Number(templateExercise.targetRpe || 7), 7);
-        } else if (daysSinceLast >= 35 && recentTop > 0) {
-          mode = "return";
-          reason = "Return from a training gap of " + daysSinceLast + " days: use a small ramp-in before resuming normal progression.";
-          weight = roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.05 : 0.95), increment);
-          sets = Math.max(1, plannedSets - 1);
-          rpe = Number(templateExercise.targetRpe || 7.5);
-        } else if (skippedDeload) {
-          mode = "return-from-deload";
-          reason = "The most recent week looks like a deload/recovery break, so this target skips that reduced week and returns to the prior normal training baseline before progressing again.";
-        } else if (recommendation?.interventionType === "light") {
-          mode = "light";
-          reason = recommendation.reason + " One light exposure is prescribed before normal progression resumes.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.05 : 0.95), increment) : 0;
-          sets = Math.max(1, plannedSets - 1);
-          rpe = Math.min(Number(templateExercise.targetRpe || recommendation.rpeTarget || 7), Number(recommendation.rpeTarget || 7));
-        } else if (recommendation?.decision === "progress") {
-          const shouldAddLoad = recommendation.progressionAction === "increase_load" && Number(recommendation.targetLoad || 0) > 0;
-          if (shouldAddLoad) {
-            mode = "load-progression";
-            reason = resistanceType === "assisted_bodyweight"
-              ? "You reached the top of the programmed rep range at a manageable RPE, so the next assistance reduction is appropriate."
-              : resistanceType === "bodyweight_plus_load"
-                ? "You reached the top of the programmed rep range at a manageable RPE, so the next added-load increment is appropriate."
-                : "You reached the top of the programmed rep range at a manageable RPE, so the next available load increment is appropriate.";
-            weight = Number(recommendation.targetLoad);
-            reps = Math.max(activeLowerRep, Math.min(activeUpperRep, targetReps - Math.max(2, Math.round((activeUpperRep - activeLowerRep) * 0.35))));
-          } else {
-            mode = "rep-progression";
-            reason = profile.kind === "isolation"
-              ? "Progress this lift by adding reps first; load jumps are large for isolation work."
-              : "Progress by adding reps before taking the next load jump.";
-            reps = Math.min(activeUpperRep, Math.max(activeLowerRep, Number(recommendation.targetReps || 0), recentReps + 1, targetReps));
-          }
-        } else if (recommendation?.decision === "deload") {
-          mode = "deload";
-          reason = "Recent work suggests fatigue or misses. Reduce load and volume.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
-          sets = Math.max(1, Math.ceil(plannedSets * 0.65));
-          reps = Math.max(activeLowerRep, Math.min(reps, activeUpperRep));
-          rpe = Math.min(Number(templateExercise.targetRpe || 6.5), 6.5);
-        } else if (recommendation?.decision === "change") {
-          mode = "substitution";
-          reason = "This pattern looks stalled. Consider swapping the lift for 4-6 weeks.";
-        } else if (recommendation) {
-          mode = "maintenance";
-          reason = recentTop > 0
-            ? "Repeat the prior top performance and aim for cleaner execution or a lower achieved RPE before adding load."
-            : "Repeat the target and make it cleaner before adding workload.";
-        }
-        let target = validatePrescription({
-          decision: recommendation?.decision || "hold",
-          mode,
+      function stableTargetForTemplateExercise(templateExercise, options = {}) {
+        const stable = normalizeStableTemplateExercise(templateExercise);
+        const workingTypes = (stable.setTypes || []).filter((type) => type.countsTowardProgression !== false && !type.isWarmup);
+        const primaryType = workingTypes.find((type) => normalizeSetTypeCode(type.type) === "top")
+          || workingTypes.find((type) => normalizeSetTypeCode(type.type) === "straight")
+          || workingTypes[0]
+          || {};
+        const repLow = Math.max(1, Number(primaryType.repMin || stable.repMin || stable.reps || 1));
+        const repHigh = Math.max(repLow, Number(primaryType.repMax || stable.repMax || stable.reps || repLow));
+        const targetRpe = Math.max(1, Number(primaryType.rpeMax || stable.targetRpe || 8));
+        const sets = Math.max(1, workingTypes.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || Number(stable.sets || 1));
+        const resistanceType = stable.resistanceType || options.resistanceType || inferResistanceType(stable.name, stable);
+        return {
+          decision: "stable_target",
+          mode: "stable-target",
           sets,
-          reps,
-          repLow: activeLowerRep,
-          repHigh: activeUpperRep,
-          weight,
-          rpe,
+          reps: Math.max(repLow, Math.min(repHigh, Number(stable.reps || repLow))),
+          repLow,
+          repHigh,
+          rpe: targetRpe,
+          restSeconds: Math.max(0, Number(stable.restSeconds || defaultSettings.defaultRestSeconds || 90)),
+          increment: Math.max(0.01, Number(stable.increment || 1)),
+          weight: Math.max(0, Number(stable.defaultLoad ?? stable.targetLoad ?? stable.weight ?? 0)),
+          addedLoad: 0,
+          assistanceLoad: 0,
           weightUnit: data.settings.weightUnit,
           resistanceType,
-          addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
-          assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
-          isBodyweight: knownBodyweight,
-          isDeload: mode === "deload",
-          reason,
-          increment,
-          confidence: prescriptionConfidence(weeks, daysSinceLast),
-          coachRecommendation: recommendation,
-          programTargetContext: programContext
-        }, recentSets, activeProfile);
-        if (historyFallback) {
-          target = {
-            ...target,
-            executionBlocked: false,
-            executable: true,
-            recommendationStatus: "history_fallback",
-            recommendationUnavailableReason: "research_identity_unavailable",
-            performanceExerciseId: historyFallback.identity.performanceExerciseId,
-            researchExerciseId: null,
-            reason
-          };
-        }
-        target.text = targetText(target, target.reason);
-        return target;
-      }
-
-      function prescriptionSnapshotWithTemplateStandard(snapshot, templateExercise = {}, options = {}) {
-        if (!snapshot?.finalPrescription || templateExercise.standardWorkloadOverride !== true || !prescriptionEngine) return snapshot;
-        const current = snapshot.finalPrescription;
-        const savedRoles = templateExercise.standardRoleWorkload;
-        const setCount = Number(templateExercise.sets || 0);
-        const repMin = Number(templateExercise.repMin || 0);
-        const repMax = Number(templateExercise.repMax || 0);
-        const override = {};
-        if (savedRoles?.setStructure === current.setStructure && savedRoles?.topSet && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure)) {
-          const savedTop = { count: Number(savedRoles.topSet.count), repRange: { min: Number(savedRoles.topSet.repRange?.min), max: Number(savedRoles.topSet.repRange?.max) } };
-          const currentTopRange = current.topSet?.repRange || current.repRange;
-          if (savedTop.count !== Number(current.topSet?.count || 0) || savedTop.repRange.min !== Number(currentTopRange.min) || savedTop.repRange.max !== Number(currentTopRange.max)) override.topSet = savedTop;
-          if (current.setStructure === "top_set_backoff" && savedRoles.backoffSets) {
-            const savedBackoff = { count: Number(savedRoles.backoffSets.count), repRange: { min: Number(savedRoles.backoffSets.repRange?.min), max: Number(savedRoles.backoffSets.repRange?.max) } };
-            const currentBackoffRange = current.backoffSets?.repRange || current.repRange;
-            if (savedBackoff.count !== Number(current.backoffSets?.count || 0) || savedBackoff.repRange.min !== Number(currentBackoffRange.min) || savedBackoff.repRange.max !== Number(currentBackoffRange.max)) override.backoffSets = savedBackoff;
-          }
-        } else {
-          if (Number.isInteger(setCount) && setCount >= 1 && setCount !== Number(current.workingSets?.target || 0)) override.setCount = setCount;
-          if (repMin >= 1 && repMax >= repMin && (repMin !== Number(current.repRange?.min || 0) || repMax !== Number(current.repRange?.max || 0))) override.repRange = { min: repMin, max: repMax };
-        }
-        if (!Object.keys(override).length) return snapshot;
-        return prescriptionEngine.applyManualOverride(snapshot, override, {
-          workoutId: options.workoutId || options.template?.id || "saved-standard-workload",
-          reason: "Saved standard workload preference",
-          createdAt: options.createdAt || isoNow()
-        });
+          isBodyweight: isBodyweightResistance(resistanceType),
+          adjusted: false,
+          adjustmentReason: "",
+          triggerLabels: [],
+          stableTarget: true
+        };
       }
 
       function sessionTypeForTemplate(template) {
@@ -3707,109 +2905,6 @@
         return "normal";
       }
 
-      function programmedRpeForExercise(templateExercise, profile, sessionType, recentRpe) {
-        const explicit = Number(templateExercise.targetRpe || 0);
-        if (explicit > 0) return explicit;
-        if (sessionType === "deload" || sessionType === "light" || sessionType === "technique") return 6.5;
-        if (sessionType === "heavy" && profile.kind === "compound") return 8.5;
-        if (recentRpe >= 7 && recentRpe <= 9) return Math.round(recentRpe * 2) / 2;
-        return profile.kind === "isolation" ? 8.5 : 8;
-      }
-
-      function prescriptionConfidence(weeks, daysSinceLast) {
-        if (daysSinceLast >= 35 || weeks.length < 1) return "low";
-        if (weeks.length < 3) return "moderate";
-        return "high";
-      }
-
-      function validatePrescription(target, recentSets, profile) {
-        const result = { ...target };
-        const assisted = result.resistanceType === "assisted_bodyweight";
-        const recentValues = recentSets.map((set) => resistanceLoad(set, result.resistanceType)).filter((value) => value > 0);
-        const recentTop = recentValues.length ? (assisted ? Math.min(...recentValues) : Math.max(...recentValues)) : 0;
-        const recentTopSets = recentSets.filter((set) => Number(set.weight || 0) === recentTop);
-        const recentBest = recentTopSets.slice().sort((a, b) => b.reps - a.reps)[0];
-        const intentionalRegression = ["deload", "light", "technique", "return"].includes(result.mode);
-        const guardrails = [];
-        result.reps = Math.max(profile.lowerRep, Math.min(profile.upperRep, Number(result.reps || profile.lowerRep)));
-        if (recentBest && !intentionalRegression && !assisted) {
-          const loadDrop = recentTop > 0 && result.weight > 0 ? 1 - result.weight / recentTop : 0;
-          const loweredEffort = recentBest.rpe > 0 && result.rpe < recentBest.rpe;
-          if (loadDrop > 0.1 && result.reps >= recentBest.reps - 1) {
-            result.weight = recentTop;
-            guardrails.push("prevented an unexplained load reduction greater than 10% after the prior successful top set");
-          }
-          if (result.weight < recentTop && loweredEffort && result.reps >= recentBest.reps - 1) {
-            result.weight = recentTop;
-            guardrails.push("prevented load and effort from both regressing in a normal session");
-          }
-        }
-        if (result.resistanceType === "bodyweight_plus_load") result.addedLoad = Number(result.weight || 0);
-        if (result.resistanceType === "assisted_bodyweight") result.assistanceLoad = Number(result.weight || 0);
-        if (guardrails.length) result.reason += " Guardrail: " + guardrails.join("; ") + ".";
-        return result;
-      }
-
-      function targetText(target, reason) {
-        const weightText = formatResistance(target);
-        return "Target " + target.sets + " x " + target.reps + " @ " + weightText + ", aim RPE " + target.rpe + ". " + reason;
-      }
-
-      function exerciseGuidanceFor(name) {
-        const key = exerciseKey(name);
-        const base = {
-          cues: [
-            "Use a controlled eccentric and pause if momentum creeps in.",
-            "Stop the set when positions break, not when pride says one more.",
-            "Progress only after target reps look repeatable and controlled."
-          ]
-        };
-        const patterns = [
-          { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, cues: ["Move slowly through a comfortable range.", "Keep the jaw relaxed and avoid jerking into end range.", "Progress conservatively; small muscles do not need big jumps."] },
-          { match: /side plank/, cues: ["Keep ribs and pelvis stacked instead of rotating toward the floor.", "Move through the trunk under control without pushing from the shoulder.", "Add reps or a small external load only after the same range stays crisp."] },
-          { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl/, cues: ["Keep hips pinned and control the stretched position.", "Curl without letting the low back or hips pop up.", "Add reps before load when the contraction gets sloppy."] },
-          { match: /leg press/, cues: ["Brace before the descent and keep pressure through the whole foot.", "Use a repeatable depth without the pelvis rolling off the pad.", "Let the active program's top-set and back-off ranges determine today's target."] },
-          { match: /squat|lunge|split squat/, cues: ["Brace before the descent and keep pressure through midfoot.", "Let knees track with toes; do not dive-bomb the bottom.", "Use a depth you can repeat without lumbar rounding."] },
-          { match: /deadlift|rdl|romanian|hinge|good morning/, cues: ["Start by pushing hips back, not by squatting the weight.", "Keep lats tight and the load close to the body.", "End the set when back position or hamstring tension breaks."] },
-          { match: /bench|chest press|push up|pushup|dip|chest|pec/, cues: ["Set shoulder blades before the first rep and keep wrists stacked.", "Lower under control to a consistent touch point or depth.", "Press without bouncing or letting shoulders roll forward."] },
-          { match: /row|pulldown|pull up|chin|lat pulldown|\blat\b/, cues: ["Lead with elbows and keep ribs down.", "Pause briefly in the shortened position instead of yanking.", "Control the stretch without losing shoulder position."] },
-          { match: /shoulder|overhead|lateral raise|rear delt/, cues: ["Keep ribs stacked and avoid turning it into a low-back lift.", "Use a smooth path and stop before joint irritation.", "For raises, chase tension and control rather than load."] },
-          { match: /curl|tricep|extension|pushdown|skull/, cues: ["Pin the upper arm and move through the elbow.", "Use full range you can control without swinging.", "Add reps before load when jumps are large."] },
-          { match: /calf/, cues: ["Use a full stretch and hard top contraction.", "Pause instead of bouncing through the ankle.", "Keep reps consistent before adding load."] },
-          { match: /plank|crunch|leg raise|hanging raise|knee raise|ab|core/, cues: ["Brace as if resisting motion, not just chasing burn.", "Keep pelvis controlled and avoid low-back takeover.", "Make the range harder before making it sloppy."] }
-        ];
-        const found = patterns.find((item) => item.match.test(key));
-        return found ? { ...base, ...found } : base;
-      }
-
-      function renderExerciseGuidance(exercise) {
-        const guidance = exerciseGuidanceFor(exercise.name);
-        const snapshot = recommendationSnapshotForDisplay(exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise));
-        const prescription = snapshot?.finalPrescription;
-        const setText = prescription && prescription.workingSets.min !== null && prescription.workingSets.max !== null
-          ? `${prescription.workingSets.min}-${prescription.workingSets.max}${prescription.workingSets.target !== null ? ` (target ${prescription.workingSets.target})` : ""}`
-          : "See saved prescription";
-        const repText = prescription && prescription.repRange.min !== null && prescription.repRange.max !== null ? `${prescription.repRange.min}-${prescription.repRange.max} reps` : "Evidence unavailable";
-        const effortText = prescription && prescription.targetRpe.min !== null && prescription.targetRpe.max !== null
-          ? `RPE ${prescription.targetRpe.min}-${prescription.targetRpe.max}`
-          : prescription && prescription.targetRir.min !== null && prescription.targetRir.max !== null ? `RIR ${prescription.targetRir.min}-${prescription.targetRir.max}` : "See saved prescription";
-        return `
-          <aside class="exercise-guidance guidance-benchmark-strip" aria-label="Broad exercise guidance benchmark">
-            <div class="guidance-benchmark-heading">
-              <div><strong>Program benchmark</strong><span>Informational · not an input</span></div>
-              <b>Program reference</b>
-            </div>
-            <div class="guidance-benchmark-values" aria-label="Read-only benchmark values">
-              <span>${escapeHtml(setText)} sets</span>
-              <span>${escapeHtml(repText)}</span>
-              <span>${escapeHtml(effortText)}</span>
-            </div>
-            <p class="muted-note">Broad exercise guidance · these values are already set by the saved prescription.</p>
-            <ul class="cue-list">${guidance.cues.map((cue) => "<li>" + escapeHtml(cue) + "</li>").join("")}</ul>
-          </aside>
-        `;
-      }
-
       function muscleOptions(selectedValue, includeAuto = false, autoLabel = "Auto") {
         const selected = selectedValue || "";
         const options = includeAuto ? ['<option value="" ' + (selected === "" ? "selected" : "") + ">" + escapeHtml(autoLabel) + "</option>"] : [];
@@ -3817,67 +2912,20 @@
       }
 
       function renderMuscleSelectors(exercise) {
-        const auto = musclesForExercise(exercise.name, { ignoreManual: true });
-        const autoText = auto.length ? auto.map((item) => item.muscle + " " + item.weight + "x").join(", ") : "Unclassified";
         return `
           <div class="muscle-select-grid">
             <label>Primary muscle
               <select data-action="exercise-primary-muscle" data-exercise-id="${exercise.id}" aria-label="Primary muscle for ${escapeHtml(exercise.name)}">
-                ${muscleOptions(exercise.primaryMuscle || "", true, "Auto: " + autoText)}
+                ${muscleOptions(exercise.primaryMuscle || "", true, "Not specified")}
               </select>
             </label>
             <label>Secondary muscle
               <select data-action="exercise-secondary-muscle" data-exercise-id="${exercise.id}" aria-label="Secondary muscle for ${escapeHtml(exercise.name)}">
-                ${muscleOptions(exercise.secondaryMuscle || "", true, "None / auto")}
+                ${muscleOptions(exercise.secondaryMuscle || "", true, "None")}
               </select>
             </label>
           </div>
         `;
-      }
-
-      function recoverySessionLabel(recoveryAdvice, hasHistory) {
-        if (recoveryAdvice?.decision === "rest") return "Today's start guidance: recovery / technique only";
-        if (recoveryAdvice?.decision === "light_session") return "Today's start guidance: readiness-adjusted light session";
-        if (recoveryAdvice?.decision === "deload") return "Today's start guidance: deload";
-        if (recoveryAdvice?.decision === "hold") return hasHistory ? "Today's start guidance: hold the plan" : "Today's start guidance: establish baseline";
-        return hasHistory ? "Today's start guidance: planned progression" : "Today's start guidance: establish baseline";
-      }
-
-      function recoverySessionDetail(recoveryAdvice) {
-        if (recoveryAdvice?.decision === "rest") return "Today's readiness is low enough that hard loading is not the target. Rest is preferred; if you train, use reduced volume, reduced load, and technique-focused sets.";
-        if (recoveryAdvice?.decision === "light_session") return "Today's converging recovery markers support a temporary lower-fatigue session. The base mesocycle remains unchanged and normal progression resumes when the affected markers and warm-ups normalize.";
-        if (recoveryAdvice?.decision === "deload") return "Today's readiness is below your normal band. Use the plan as a structure, but reduce load 10-15%, reduce volume 30-50%, and keep effort around RPE 6-7.";
-        if (recoveryAdvice?.decision === "hold") return "Today's readiness is inside your normal band. Train the plan as written and do not change load just because of normal day-to-day fluctuation.";
-        if (recoveryAdvice?.decision === "progress") return "Today's readiness is above your normal band. You may take planned progressions if warmups move normally, but do not force a max.";
-        return "";
-      }
-
-      function recommendForTemplate(template, recoveryAdvice, options = {}) {
-        if (!template || template.exercises.length === 0) {
-          return { label: "Build the plan first", detail: "Add exercises, sets, and target reps before starting this template.", items: [] };
-        }
-        const items = template.exercises.map((exercise) => {
-          const original = coachTargetForTemplateExercise(exercise, { ...options, template });
-          const target = recoveryAdvice ? adjustTargetForRecovery(original, recoveryAdvice, { recovery: options.recovery || {}, exerciseName: exercise.name, template }) : original;
-          return { name: exercise.name, text: target.text, target, recommendationSnapshot: target.recommendationSnapshot };
-        });
-        const totalSets = items.reduce((sum, item) => sum + Number(item.target?.sets || 0), 0);
-        const hasHistory = items.some((item) => getLastCompletedSet(item.name, options));
-        const label = recoverySessionLabel(recoveryAdvice, hasHistory);
-        const baseDetail = hasHistory
-          ? "Personal performance is weighted first where the sample is reliable. Follow each card's exact progression, hold, regression, or deload rule. " + goalContext()
-          : "No reliable personal comparison exists for at least one lift, so its saved prescription uses the research database as the fallback. " + goalContext();
-        const recoveryDetail = recoverySessionDetail(recoveryAdvice);
-        const detail = recoveryDetail ? recoveryDetail + " " + baseDetail : baseDetail;
-        const context = " Evidence source: " + researchVolumeTarget() + "; exact sets, reps, effort, rest, and progression remain exercise-specific in the unified cards.";
-        return { label, detail: detail + " Planned volume: " + totalSets + " working sets." + context, items, totalSets, recommendationIds: items.map((item) => item.recommendationSnapshot?.recommendationId).filter(Boolean) };
-      }
-
-      function cachedTemplateAdvice(template, recoveryAdvice, options = {}) {
-        const recovery = cleanRecovery(options.recovery || {});
-        const key = [analysisRevision, template.id, template.updatedAt || template.createdAt || "", recoveryAdvice?.decision || "", JSON.stringify(recovery)].join("|");
-        if (!templateAdviceCache.has(key)) templateAdviceCache.set(key, recommendForTemplate(template, recoveryAdvice, options));
-        return templateAdviceCache.get(key);
       }
 
       function createTemplateFromSession(sessionId) {
@@ -3909,7 +2957,6 @@
               increment: progressionProfileForExercise(exercise.name).increment,
               restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representative?.reps || 8 }),
               setTypes: templateSetTypesFromHistory(workingSets, exercise.restSeconds),
-              standardWorkloadOverride: true,
               warmups: sets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
@@ -3918,45 +2965,18 @@
 
       function tabFromLocation() {
         const hash = window.location.hash.replace(/^#/, "").toLowerCase();
-        if (["progress-overview", "progress-lifts", "progress-history", "dashboard", "charts"].includes(hash)) return "progress";
-        if (["lift", "workout"].includes(hash)) return "today";
-        if (["data", "settings"].includes(hash)) return "more";
-        if (primaryTabIds?.includes(hash)) return hash;
-        const legacyView = new URLSearchParams(window.location.search).get("view");
-        return legacyView === "settings" ? "more" : "today";
-      }
-
-      function progressViewFromLocation() {
-        const hash = window.location.hash.replace(/^#/, "").toLowerCase();
-        if (["charts", "progress-lifts"].includes(hash)) return "lifts";
-        if (hash === "progress-history") return "history";
-        return "overview";
+        return currentDestinationIds.includes(hash) ? hash : "today";
       }
 
       function tabUrl(tab) {
         const url = new URL(window.location.href);
         ["view", "rest", "workout", "set", "exercise", "workoutId", "exerciseId", "completedSetId", "nextSetId", "timerId", "notificationId", "timerVersion"].forEach((key) => url.searchParams.delete(key));
-        url.hash = tab === "progress" ? `progress-${progressView}` : tab;
+        url.hash = tab;
         return url.pathname + url.search + url.hash;
       }
 
       function normalizedDestination(tab) {
-        if (["lift", "workout", "today"].includes(tab)) return "today";
-        if (["dashboard", "charts", "progress"].includes(tab)) return "progress";
-        if (["data", "settings", "more"].includes(tab)) return "more";
-        return tab === "plan" ? "plan" : "today";
-      }
-
-      function setProgressView(nextView, options = {}) {
-        const next = ["overview", "lifts", "history"].includes(nextView) ? nextView : "overview";
-        progressView = next;
-        dashboardDetail = null;
-        dashboardFocusStack.length = 0;
-        viewRenderError = null;
-        if (activeTab !== "progress") return setActiveTab("progress", options);
-        if (options.updateUrl !== false) window.history.pushState({ ...(window.history.state || {}), tab: "progress", progressView: next }, "", tabUrl("progress"));
-        queuePostRenderFocus({ kind: "main" });
-        render();
+        return currentDestinationIds.includes(tab) ? tab : "today";
       }
 
       function actionFocusDescriptor(action, dataValues = {}, ordinal = 0) {
@@ -4053,6 +3073,7 @@
 
       function activeDialogKey() {
         if (templateStartFlow) return `template:${templateStartFlow.templateId}:${templateStartFlow.step}`;
+        if (optionalReadinessFlow) return `readiness:${optionalReadinessFlow.templateId || optionalReadinessFlow.sessionId}`;
         if (cancelWorkoutFlow) return `cancel:${cancelWorkoutFlow.sessionId}`;
         if (historyEditConfirm) return `history:${historyEditConfirm}`;
         if (clearDataFlow?.open) return "clear";
@@ -4061,14 +3082,9 @@
 
       function activeDialogInitialFocusDescriptor() {
         if (templateStartFlow) {
-          const action = ({
-            "active-conflict": "return-active-workout",
-            confirm: "log-today-readiness",
-            readiness: "template-readiness-sleep-hours",
-            review: "start-adjusted-workout"
-          })[templateStartFlow.step] || "log-today-readiness";
-          return actionFocusDescriptor(action);
+          return actionFocusDescriptor("resume-active-workout");
         }
+        if (optionalReadinessFlow) return actionFocusDescriptor("template-readiness-deviation");
         if (cancelWorkoutFlow) return actionFocusDescriptor("keep-workout");
         if (historyEditConfirm) return actionFocusDescriptor("keep-history-editing");
         if (clearDataFlow?.open) return actionFocusDescriptor("cancel-clear-data");
@@ -4084,56 +3100,14 @@
         return window.innerWidth <= 380 && rootFontSize >= 24;
       }
 
-      function openDashboardDetailView(nextDetail, originElement) {
-        const previousDetail = dashboardDetail ? { ...dashboardDetail } : null;
-        const origin = focusDescriptorForElement(originElement) || { kind: "main" };
-        const scrollY = window.scrollY;
-        dashboardFocusStack.push({ origin, previousDetail, scrollY });
-        dashboardReturnScroll = scrollY;
-        dashboardDetail = nextDetail;
-        const rootDetail = ["history", "sessions", "muscles", "fatigue"].includes(nextDetail?.type);
-        queuePostRenderFocus(actionFocusDescriptor(rootDetail ? "close-dashboard-detail" : "dashboard-detail-parent"));
-        render();
-        window.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
-      }
-
-      function closeDashboardDetailView() {
-        const returnState = dashboardFocusStack.pop();
-        if (returnState) {
-          dashboardDetail = returnState.previousDetail;
-          queuePostRenderFocus(returnState.origin);
-          render();
-          window.setTimeout(() => window.scrollTo({ top: returnState.scrollY, behavior: "auto" }), 0);
-          return;
-        }
-        if (dashboardDetail?.type === "session") dashboardDetail = { type: dashboardDetail.parent === "fatigue-flag" ? "fatigue" : "sessions" };
-        else if (dashboardDetail?.type === "fatigue-flag") dashboardDetail = { type: "fatigue" };
-        else dashboardDetail = null;
-        queuePostRenderFocus({ kind: "main" });
-        render();
-      }
-
       function setActiveTab(nextTab, options = {}) {
-        if (nextTab === "charts") progressView = "lifts";
-        else if (nextTab === "dashboard") progressView = "overview";
         const next = normalizedDestination(nextTab);
-        if (historyEditFlow && next !== "today" && !options.allowHistoryExit) {
+        if (historyEditFlow && next !== "workout" && !options.allowHistoryExit) {
           requestHistoryEditConfirmation("cancel", { preserveOrigin: true });
           return;
         }
         const previous = activeTab;
         if (previous === next && !options.force) {
-          if (next === "progress" && dashboardDetail) {
-            dashboardDetail = null;
-            dashboardFocusStack.length = 0;
-            queuePostRenderFocus({ kind: "main" });
-            render();
-          }
-          if (next === "plan" && planVolumeDetailId) {
-            planVolumeDetailId = "";
-            queuePostRenderFocus({ kind: "main" });
-            render();
-          }
           if (options.focus !== false) {
             const mainContent = document.getElementById("main-content");
             if (mainContent && document.activeElement !== mainContent) mainContent.focus({ preventScroll: true });
@@ -4143,7 +3117,6 @@
         tabScrollPositions.set(previous, window.scrollY);
         activeTab = next;
         viewRenderError = null;
-        if (previous === "progress" && next !== "progress") dashboardFocusStack.length = 0;
         if (options.focus !== false && options.renderNow === false) queuePostRenderFocus({ kind: "main" });
         if (options.updateUrl !== false) {
           const state = { ...(window.history.state || {}), tab: next };

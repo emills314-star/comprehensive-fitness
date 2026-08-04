@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/redesign-active-draft.v2.schema.json",
+  "title": "Comprehensive Fitness Active Workout Draft",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "version",
+    "workoutId",
+    "savedAt",
+    "dataRevision",
+    "session",
+    "exercises",
+    "sets"
+  ],
+  "properties": {
+    "contractVersion": { "const": "comprehensive-fitness-active-draft/2.0.0" },
+    "version": { "const": 2 },
+    "workoutId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "savedAt": { "type": "string", "format": "date-time" },
+    "dataRevision": { "type": "integer", "minimum": 0 },
+    "draftSequence": { "type": "integer", "minimum": 0 },
+    "session": { "type": "object" },
+    "exercises": { "type": "array", "items": { "type": "object" } },
+    "sets": { "type": "array", "items": { "type": "object" } },
+    "timer": { "type": ["object", "null"] },
+    "resolvedActions": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": true,
+  "x-contract-version": "comprehensive-fitness-active-draft/2.0.0",
+  "x-preservation": "Entered incomplete values, identity, order, notes, and timer context are recoverable."
+}

@@ -70,32 +70,6 @@ async function withRedisMock(commandHandler, callback) {
   }
 }
 
-function validWorkoutBody(overrides = {}) {
-  const sessionId = overrides.sessionId || "session-1";
-  return {
-    installationId: INSTALLATION_ID,
-    mutationId: "mutation-1",
-    sessionId,
-    revision: "2026-07-12T12:00:00.000Z",
-    payload: {
-      session: { id: sessionId, name: "Synthetic session" },
-      exercises: [{ id: "exercise-1", sessionId, name: "Synthetic press" }],
-      sets: [{ id: "set-1", exerciseId: "exercise-1", reps: 8, weight: 100 }]
-    },
-    ...overrides
-  };
-}
-
-function authorizationRedis(command, commitResult = "synced") {
-  if (command[0] === "HGETALL" && command[1] === `cf:install:${INSTALLATION_ID}`) {
-    return redisResponse(["installationId", INSTALLATION_ID, "secretHash", hashSecret(TOKEN), "active", "1", "status", "active", "syncConsent", "1"]);
-  }
-  if (command[0] === "EXPIRE") return redisResponse(1);
-  if (command[0] === "EVAL" && String(command[1]).includes("INCR")) return redisResponse([1, 3600]);
-  if (command[0] === "EVAL" && String(command[1]).includes("HSET") && String(command[1]).includes("status='synced'")) return redisResponse(commitResult);
-  throw new Error(`Unexpected Redis command: ${JSON.stringify(command)}`);
-}
-
 async function testValidationAndBoundaries() {
   assert.equal(validation.validInstallationId(INSTALLATION_ID), true);
   assert.equal(validation.validInstallationId("../../other"), false);
@@ -106,69 +80,21 @@ async function testValidationAndBoundaries() {
   assert.equal(validation.validHttpsUrl("https://push.example.test/subscription"), true);
   assert.equal(validation.validHttpsUrl("http://push.example.test/subscription"), false);
 
-  const unsupported = response();
-  await workoutHandler(request(validWorkoutBody(), { headers: { authorization: `Bearer ${TOKEN}`, "content-type": "text/plain" } }), unsupported);
-  assert.equal(unsupported.statusCode, 415);
-  assert.equal(unsupported.headers["Cache-Control"], "no-store");
-  assert.equal(unsupported.headers["X-Content-Type-Options"], "nosniff");
-
-  const oversized = response();
-  const huge = validWorkoutBody();
-  huge.payload.session.notes = "x".repeat(workoutHandler.MAX_WORKOUT_BYTES);
-  await workoutHandler(request(huge), oversized);
-  assert.equal(oversized.statusCode, 413);
-}
-
-async function testWorkoutAuthorizationAtomicityAndIdempotency() {
-  await withRedisMock((command) => authorizationRedis(command), async (commands) => {
-    const denied = response();
-    await workoutHandler(request(validWorkoutBody(), { headers: { authorization: "Bearer wrong-token", "content-type": "application/json" } }), denied);
-    assert.equal(denied.statusCode, 401);
-    assert.equal(commands.some((command) => command[0] === "EVAL" && String(command[1]).includes("status='synced'")), false);
-  });
-
-  await withRedisMock((command) => authorizationRedis(command, "duplicate"), async (commands) => {
-    const duplicate = response();
-    await workoutHandler(request(validWorkoutBody()), duplicate);
-    assert.equal(duplicate.statusCode, 200);
-    assert.equal(duplicate.body.status, "duplicate");
-    const commitCommands = commands.filter((command) => command[0] === "EVAL" && String(command[1]).includes("status='synced'"));
-    assert.equal(commitCommands.length, 1, "one Redis script must own payload persistence and the mutation marker");
-    const script = commitCommands[0][1];
-    assert.ok(script.indexOf("HSET") < script.indexOf("SET',KEYS[1]"), "payload persistence must precede the duplicate marker");
-    assert.ok(script.includes("EXISTS"), "the atomic script must check idempotency before writing");
-  });
-
   await withRedisMock((command) => {
-    if (command[0] === "EVAL" && String(command[1]).includes("status='synced'")) return redisResponse(null, { ok: false, status: 500, error: "synthetic payload write failure" });
-    return authorizationRedis(command);
+    throw new Error(`Disabled workout endpoint attempted Redis: ${JSON.stringify(command)}`);
   }, async (commands) => {
-    const failed = response();
-    await workoutHandler(request(validWorkoutBody()), failed);
-    assert.equal(failed.statusCode, 500);
-    assert.equal(failed.body.error, "The service could not complete this request.");
-    assert.equal(commands.some((command) => command[0] === "SET" && String(command[1]).startsWith("cf:mutation:")), false, "a failed payload write must not be followed by a standalone duplicate marker");
-  });
-
-  await withRedisMock((command) => authorizationRedis(command), async () => {
-    const hostile = validWorkoutBody();
-    hostile.payload.sets[0].exerciseId = "unrelated-exercise";
-    const rejected = response();
-    await workoutHandler(request(hostile), rejected);
-    assert.equal(rejected.statusCode, 400);
-    assert.match(rejected.body.error, /set reference/);
-  });
-}
-
-async function testRateLimit() {
-  await withRedisMock((command) => {
-    if (command[0] === "EVAL" && String(command[1]).includes("INCR")) return redisResponse([241, 123]);
-    return authorizationRedis(command);
-  }, async () => {
-    const limited = response();
-    await workoutHandler(request(validWorkoutBody()), limited);
-    assert.equal(limited.statusCode, 429);
-    assert.equal(limited.headers["Retry-After"], "123");
+    const disabled = response();
+    await workoutHandler(request({
+      installationId: INSTALLATION_ID,
+      mutationId: "mutation-1",
+      payload: { notes: "must not be processed" }
+    }), disabled);
+    assert.equal(disabled.statusCode, 410);
+    assert.equal(disabled.body.status, "disabled");
+    assert.match(disabled.body.error, /No workout mutation was accepted/);
+    assert.equal(commands.length, 0);
+    assert.equal(disabled.headers["Cache-Control"], "no-store");
+    assert.equal(disabled.headers["X-Content-Type-Options"], "nosniff");
   });
 }
 
@@ -289,7 +215,7 @@ function testPackagingAndNativeGuards() {
   assert.match(sync, /StartsWith\(\$resolvedPublicRoot[\s\S]+Remove-Item -LiteralPath \$resolvedCandidate -Recurse -Force/);
   assert.ok(sync.indexOf("Remove-Item") < sync.indexOf("Copy-Item"), "private payload pruning must precede public copying");
   assert.doesNotMatch(sync, /personal_fitness_data\\derived|Included private aggregate/);
-  for (const required of ["programming-family-ledger.js", "guided-mesocycle.js", "secondary-page.css", "nutrition_strategies.json", "icon-1024.png"]) {
+  for (const required of ["secondary-page.css", "nutrition_strategies.json", "icon-1024.png"]) {
     assert.ok(sync.includes(required), `sync list must include ${required}`);
     assert.ok(verify.includes(required), `parity list must include ${required}`);
   }
@@ -305,13 +231,11 @@ function testPackagingAndNativeGuards() {
 
 async function main() {
   await testValidationAndBoundaries();
-  await testWorkoutAuthorizationAtomicityAndIdempotency();
-  await testRateLimit();
   await testDeletionScopeAndRevocation();
   testTimerScopingAndPublicUrl();
   testServiceWorkerPrivacy();
   testPackagingAndNativeGuards();
-  console.log("Security/platform tests passed (schemas, auth, quotas, atomic sync, deletion, cache privacy, and native packaging)." );
+  console.log("Security/platform tests passed (schemas, disabled workout upload, deletion, cache privacy, and native packaging)." );
 }
 
 main().catch((error) => {

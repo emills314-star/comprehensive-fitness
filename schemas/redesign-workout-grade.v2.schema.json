@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/redesign-workout-grade.v2.schema.json",
+  "title": "Comprehensive Fitness Actual-Work Grade",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "algorithmVersion",
+    "letter",
+    "reasons",
+    "sourceSessionId",
+    "createdAt"
+  ],
+  "properties": {
+    "contractVersion": { "const": "comprehensive-fitness-workout-grade/2.0.0" },
+    "algorithmVersion": { "type": "string", "minLength": 1 },
+    "letter": { "enum": ["A", "B", "C", "D", "F"] },
+    "reasons": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["code", "text"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "text": { "type": "string", "minLength": 1, "maxLength": 280 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "sourceSessionId": { "type": "string", "minLength": 1 },
+    "resolvedActionDecisionIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "x-contract-version": "comprehensive-fitness-workout-grade/2.0.0",
+  "x-history-rule": "Stored legacy grades retain their original value and version and are never silently recomputed."
+}

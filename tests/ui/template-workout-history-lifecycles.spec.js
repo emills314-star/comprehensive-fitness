@@ -64,10 +64,18 @@ async function installFixture(page, fixture) {
   }, { fixedNow: FIXED_NOW, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
-    message: "the public recommendation bundle must finish loading before lifecycle actions run",
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
+    message: "the identity compatibility catalog must resolve a known exercise before lifecycle actions run",
     timeout: 45_000
-  }).toBe("ready");
+  }).toBe("ex_barbell_bench_press");
+  const resume = page.locator('[data-action="resume-active-workout"]').first();
+  if (await resume.count()) {
+    await resume.click();
+    await expect(page.locator(".workout-view")).toBeVisible();
+  }
 }
 
 async function readIndexedValue(page, key) {
@@ -94,14 +102,21 @@ async function waitForPersisted(page, predicate, message, timeout = 12_000) {
   return persistedData(page);
 }
 
-async function openPlan(page) {
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await expect(page.getByRole("heading", { name: "Your plan", exact: true })).toBeVisible();
+async function openRoutines(page) {
+  if (await page.locator(".templates-view").isVisible().catch(() => false)) return;
+  let opener = page.locator('[data-action="open-routines"]');
+  if (!(await opener.count())) {
+    const closeContext = page.locator('[data-action="close-secondary-context"], [data-action="close-workout-context"]');
+    if (await closeContext.count()) await closeContext.first().click();
+    else await page.locator('[data-action="set-tab"][data-tab="today"]').click();
+    opener = page.locator('[data-action="open-routines"]');
+  }
+  await opener.click();
+  await expect(page.locator(".templates-view")).toBeVisible();
 }
 
 async function openProgressHistory(page) {
   await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
-  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
   await expect(page.locator(".history-view")).toBeVisible();
 }
 
@@ -116,7 +131,10 @@ async function openSubmittedHistorySession(page) {
 async function reloadAndWait(page) {
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), { timeout: 45_000 }).toBe("ready");
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), { timeout: 45_000 }).toBe("ex_barbell_bench_press");
 }
 
 function assertUniqueEntityIds(data) {
@@ -130,17 +148,13 @@ async function installSubmissionProbe(page) {
     const realSubmitWorkout = window.submitWorkout;
     const realCalculateWorkoutAnalysis = window.calculateWorkoutAnalysis;
     const realWriteIndexedValue = window.writeIndexedValue;
-    const realPlayWorkoutCompletionSound = window.playWorkoutCompletionSound;
-    const realPerformInteractionFeedback = window.performInteractionFeedback;
-    if (typeof realSubmitWorkout !== "function" || typeof realCalculateWorkoutAnalysis !== "function" || typeof realWriteIndexedValue !== "function" || typeof realPlayWorkoutCompletionSound !== "function" || typeof realPerformInteractionFeedback !== "function") {
-      throw new Error("The lifecycle probe could not access the real submission, analysis, persistence, sound, and feedback functions.");
+    if (typeof realSubmitWorkout !== "function" || typeof realCalculateWorkoutAnalysis !== "function" || typeof realWriteIndexedValue !== "function") {
+      throw new Error("The lifecycle probe could not access the real submission, analysis, and persistence functions.");
     }
     const probe = window.__lifecycleSubmissionProbe = {
       attempts: [],
       returnedTypes: [],
       analysisCalls: [],
-      completionSoundCalls: [],
-      successFeedbackCalls: [],
       writesStarted: 0,
       writesCompleted: 0,
       writesFailed: 0
@@ -154,14 +168,6 @@ async function installSubmissionProbe(page) {
     window.calculateWorkoutAnalysis = function (...args) {
       probe.analysisCalls.push(String(args[0]?.id || ""));
       return Reflect.apply(realCalculateWorkoutAnalysis, this, args);
-    };
-    window.playWorkoutCompletionSound = function (...args) {
-      probe.completionSoundCalls.push(args.map((value) => Boolean(value)));
-      return Reflect.apply(realPlayWorkoutCompletionSound, this, args);
-    };
-    window.performInteractionFeedback = function (...args) {
-      if (args[0] === "success") probe.successFeedbackCalls.push(args.map((value) => String(value)));
-      return Reflect.apply(realPerformInteractionFeedback, this, args);
     };
     window.writeIndexedValue = async function (...args) {
       probe.writesStarted += 1;
@@ -189,11 +195,11 @@ async function waitForSubmissionWrites(page) {
 }
 
 test.describe("template, active-workout, submission, and history lifecycles", () => {
-  test("template create, autosave, edit, exercise/warm-up changes, deletion cancellation, confirmation, and reload", async ({ page }) => {
+  test("routine create, autosave, reorder, duplicate, deletion confirmation, and reload", async ({ page }) => {
     test.setTimeout(120_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await openPlan(page);
+    await openRoutines(page);
 
     await page.locator('[data-action="new-template"]').click();
     const createdCard = page.locator(".template-card").first();
@@ -213,26 +219,79 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(exerciseNames).toHaveCount(2);
     const addedExerciseId = await exerciseNames.nth(1).getAttribute("data-template-exercise-id");
     await exerciseNames.nth(1).fill("Public Synthetic Cable Fly");
-    await editor.locator(`[data-action="add-template-warmup"][data-template-exercise-id="${originalExerciseId}"]`).click();
+    await editor.locator(`[data-action="move-template-exercise"][data-template-exercise-id="${addedExerciseId}"][data-direction="up"]`).click();
     await waitForPersisted(page, (stored) => {
       const created = stored.templates.find((item) => item.id === templateId);
-      return created?.exercises.length === 2 && created.exercises[0].name === "Public Synthetic Paused Bench Press" && created.exercises[1].name === "Public Synthetic Cable Fly" && created.exercises[0].warmups?.length === 1;
-    }, "template exercises and warm-up must persist together");
+      return created?.exercises.length === 2 && created.exercises[0].name === "Public Synthetic Cable Fly" && created.exercises[1].name === "Public Synthetic Paused Bench Press";
+    }, "routine exercise order must persist");
+    await expect(editor.locator('[data-action="template-exercise-reps"], [data-action="template-exercise-increment"], [data-action="template-exercise-resistance"], [data-action="add-template-warmup"], [data-action="remove-template-warmup"]')).toHaveCount(0);
 
     await reloadAndWait(page);
-    await openPlan(page);
+    await openRoutines(page);
     editor = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
     await expect(editor.locator('[data-action="template-name"]')).toHaveValue(TEST_TEMPLATE_NAME);
     await editor.locator('[data-action="toggle-template-editor"]').click();
     await expect(editor.locator('[data-action="template-exercise-name"]')).toHaveCount(2);
-    await expect(editor.locator('[data-action="template-exercise-name"]').first()).toHaveValue("Public Synthetic Paused Bench Press");
+    await expect(editor.locator('[data-action="template-exercise-name"]').first()).toHaveValue("Public Synthetic Cable Fly");
 
-    await editor.locator(`[data-action="remove-template-warmup"][data-template-exercise-id="${originalExerciseId}"]`).click();
     await editor.locator(`[data-action="delete-template-exercise"][data-template-exercise-id="${addedExerciseId}"]`).click();
     await waitForPersisted(page, (stored) => {
       const created = stored.templates.find((item) => item.id === templateId);
-      return created?.exercises.length === 1 && created.exercises[0].warmups?.length === 0;
-    }, "warm-up and exercise removals must persist");
+      return created?.exercises.length === 1 && created.exercises[0].id === originalExerciseId;
+    }, "routine exercise removal must persist");
+    await page.evaluate(({ sourceTemplateId, sourceExerciseId }) => {
+      patchTemplateExercise(sourceTemplateId, sourceExerciseId, {
+        increment: 2.5,
+        resistanceType: "external",
+        warmups: [{ id: "public-synthetic-compatible-warmup", reps: 5, weight: 45, weightUnit: "lb", rpe: 5 }]
+      });
+    }, { sourceTemplateId: templateId, sourceExerciseId: originalExerciseId });
+    const renameAudit = await page.evaluate(({ sourceTemplateId, sourceExerciseId }) => {
+      const before = data.templates.find((item) => item.id === sourceTemplateId).exercises.find((item) => item.id === sourceExerciseId).restSeconds;
+      patchTemplateExerciseName(sourceTemplateId, sourceExerciseId, "Public Synthetic Paused Bench Press — Heavy", true);
+      const after = data.templates.find((item) => item.id === sourceTemplateId).exercises.find((item) => item.id === sourceExerciseId).restSeconds;
+      return { before, after };
+    }, { sourceTemplateId: templateId, sourceExerciseId: originalExerciseId });
+    expect(renameAudit.after, "renaming a routine variant must not silently recalculate rest").toBe(renameAudit.before);
+
+    const countsBeforeDuplicate = await page.evaluate(() => ({
+      sessions: data.sessions.length,
+      exercises: data.exercises.length,
+      sets: data.sets.length
+    }));
+    await editor.locator(`[data-action="duplicate-template"][data-template-id="${templateId}"]`).click();
+    const copyName = `${TEST_TEMPLATE_NAME} Copy`;
+    const copyId = await page.locator('[data-action="template-name"]').evaluateAll((elements, expectedName) => (
+      elements.find((element) => element.value === expectedName)?.dataset.templateId || ""
+    ), copyName);
+    expect(copyId).not.toBe("");
+    const copyNameInput = page.locator(`[data-action="template-name"][data-template-id="${copyId}"]`);
+    await expect(copyNameInput).toHaveCount(1);
+    await waitForPersisted(page, (stored) => stored.templates.some((item) => item.id === copyId), "duplicated routine must persist independently");
+    const duplicateAudit = await page.evaluate(({ sourceId, copiedId }) => {
+      const source = data.templates.find((item) => item.id === sourceId);
+      const copied = data.templates.find((item) => item.id === copiedId);
+      return {
+        counts: { sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length },
+        source,
+        copied
+      };
+    }, { sourceId: templateId, copiedId: copyId });
+    expect(duplicateAudit.counts).toEqual(countsBeforeDuplicate);
+    expect(duplicateAudit.copied.id).not.toBe(duplicateAudit.source.id);
+    expect(duplicateAudit.copied.exercises.map((exercise) => exercise.id)).not.toEqual(duplicateAudit.source.exercises.map((exercise) => exercise.id));
+    expect(duplicateAudit.copied.exercises.flatMap((exercise) => exercise.setTypes || []).every((setType) => Boolean(setType.id))).toBe(true);
+    expect(duplicateAudit.copied.exercises.flatMap((exercise) => exercise.setTypes || []).map((setType) => setType.id))
+      .not.toEqual(duplicateAudit.source.exercises.flatMap((exercise) => exercise.setTypes || []).map((setType) => setType.id));
+    expect(duplicateAudit.copied.exercises.flatMap((exercise) => exercise.warmups || []).every((warmup) => Boolean(warmup.id))).toBe(true);
+    expect(duplicateAudit.copied.exercises.flatMap((exercise) => exercise.warmups || []).map((warmup) => warmup.id))
+      .not.toEqual(duplicateAudit.source.exercises.flatMap((exercise) => exercise.warmups || []).map((warmup) => warmup.id));
+    expect(duplicateAudit.copied.exercises.flatMap((exercise) => exercise.warmups || []).map(({ id, ...warmup }) => warmup))
+      .toEqual(duplicateAudit.source.exercises.flatMap((exercise) => exercise.warmups || []).map(({ id, ...warmup }) => warmup));
+    expect(duplicateAudit.copied.exercises.flatMap((exercise) => exercise.setTypes || []).map(({ id, ...setType }) => setType))
+      .toEqual(duplicateAudit.source.exercises.flatMap((exercise) => exercise.setTypes || []).map(({ id, ...setType }) => setType));
+    expect(duplicateAudit.copied.exercises.map(({ id, setTypes, warmups, ...exercise }) => exercise))
+      .toEqual(duplicateAudit.source.exercises.map(({ id, setTypes, warmups, ...exercise }) => exercise));
 
     await editor.locator(`[data-action="request-delete-template"][data-template-id="${templateId}"]`).click();
     await page.locator('[data-action="cancel-delete-template"]').click();
@@ -240,18 +299,84 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator(`[data-action="request-delete-template"][data-template-id="${templateId}"]`).click();
     await page.locator(`[data-action="confirm-delete-template"][data-template-id="${templateId}"]`).click();
     await waitForPersisted(page, (stored) => !stored.templates.some((item) => item.id === templateId), "confirmed deletion must remove only the created template");
+    await page.locator(`[data-action="request-delete-template"][data-template-id="${copyId}"]`).click();
+    await page.locator(`[data-action="confirm-delete-template"][data-template-id="${copyId}"]`).click();
     await reloadAndWait(page);
-    await openPlan(page);
+    await openRoutines(page);
     await expect(page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`)).toHaveCount(0);
     await expect(page.locator(`[data-action="template-name"][data-template-id="${IDS.controlTemplate}"]`)).toHaveValue(NAMES.controlTemplate);
     expect(browserErrors, "template lifecycle browser errors").toEqual([]);
+  });
+
+  test("routine editor keeps named controls, focus, 44px targets, and increased-text reflow", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installFixture(page, buildTemplateLifecycleFixture());
+    await openRoutines(page);
+
+    const templateId = IDS.controlTemplate;
+    const card = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
+    const editorToggle = card.locator('[data-action="toggle-template-editor"]');
+    await editorToggle.focus();
+    await editorToggle.click();
+    await expect(editorToggle, "Opening the routine editor must retain focus on its disclosure control").toBeFocused();
+
+    const exerciseName = await card.locator('[data-action="template-exercise-name"]').first().inputValue();
+    const repeatedControls = [
+      ['[data-action="template-exercise-name"]', "Exercise name"],
+      ['[data-action="template-exercise-sets"]', "Sets"],
+      ['[data-action="template-exercise-rep-min"]', "Minimum repetitions"],
+      ['[data-action="template-exercise-rep-max"]', "Maximum repetitions"],
+      ['[data-action="template-exercise-rpe"]', "Target RPE"],
+      ['[data-action="template-exercise-rest"]', "Rest seconds"],
+      ['[data-action="delete-template-exercise"]', "Remove"]
+    ];
+    for (const [selector, actionLabel] of repeatedControls) {
+      await expect(card.locator(selector).first(), `${actionLabel} must include the exercise context`).toHaveAccessibleName(new RegExp(exerciseName, "i"));
+    }
+
+    const deleteRequest = card.locator('[data-action="request-delete-template"]');
+    await deleteRequest.focus();
+    await deleteRequest.click();
+    const deleteConfirm = card.locator('[data-action="confirm-delete-template"]');
+    await expect(deleteConfirm, "Requesting routine deletion must move focus to its confirmation").toBeFocused();
+    await card.locator('[data-action="cancel-delete-template"]').click();
+    await expect(card.locator('[data-action="request-delete-template"]'), "Canceling routine deletion must restore its durable trigger").toBeFocused();
+
+    const measure = () => page.locator(".templates-view").evaluate((surface) => {
+      const targets = [...surface.querySelectorAll("button, input, summary")]
+        .filter((element) => {
+          const style = getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+          return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+        })
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          return { height: rect.height, left: rect.left, right: rect.right, width: rect.width };
+        });
+      return { bodyWidth: document.body.scrollWidth, documentWidth: document.documentElement.scrollWidth, targets };
+    });
+    const expectGeometry = async (label, maximumWidth) => {
+      const geometry = await measure();
+      expect.soft(geometry.documentWidth, `${label} must not widen the document`).toBeLessThanOrEqual(maximumWidth + 1);
+      expect.soft(geometry.bodyWidth, `${label} must not widen the body`).toBeLessThanOrEqual(maximumWidth + 1);
+      expect.soft(geometry.targets.filter((target) => target.width < 44 || target.height < 44), `${label} must retain 44 by 44 CSS-pixel controls`).toEqual([]);
+      expect.soft(geometry.targets.filter((target) => target.left < -1 || target.right > maximumWidth + 1), `${label} must not clip controls horizontally`).toEqual([]);
+    };
+    await expectGeometry("Routine editor at 390 pixels", 390);
+
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+    await page.evaluate(() => render());
+    await expect(card.locator('[data-action="template-exercise-name"]').first()).toBeVisible();
+    await expectGeometry("Routine editor at 320 pixels and 200 percent text", 320);
   });
 
   test("an empty template cannot start an empty active workout and becomes startable after an exercise is restored", async ({ page }) => {
     test.setTimeout(90_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await openPlan(page);
+    await openRoutines(page);
 
     const templateId = IDS.controlTemplate;
     let card = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
@@ -271,7 +396,6 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     const guarded = await page.evaluate((requestedTemplateId) => {
       const beforeSessions = data.sessions.length;
-      openTemplateStart(requestedTemplateId);
       startTemplate(requestedTemplateId, defaultRecovery(), "usual");
       return {
         beforeSessions,
@@ -297,46 +421,46 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
   test("template validation enforces exact HTML/domain boundaries, exposes accessible errors, and refuses invalid persistence", async ({ page }) => {
     test.setTimeout(90_000);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await openPlan(page);
+    await openRoutines(page);
     const card = page.locator(`.template-card:has([data-template-id="${IDS.controlTemplate}"])`);
     await card.locator('[data-action="toggle-template-editor"]').click();
 
     const sets = card.locator('[data-action="template-exercise-sets"]').first();
-    const reps = card.locator('[data-action="template-exercise-reps"]').first();
+    const repMin = card.locator('[data-action="template-exercise-rep-min"]').first();
+    const repMax = card.locator('[data-action="template-exercise-rep-max"]').first();
     const rpe = card.locator('[data-action="template-exercise-rpe"]').first();
-    const increment = card.locator('[data-action="template-exercise-increment"]').first();
     const rest = card.locator('[data-action="template-exercise-rest"]').first();
-    for (const [control, label] of [[sets, "sets"], [reps, "reps"], [rpe, "RPE"], [increment, "increment"], [rest, "rest"]]) {
+    for (const [control, label] of [[sets, "sets"], [repMin, "rep minimum"], [repMax, "rep maximum"], [rpe, "RPE"], [rest, "rest"]]) {
       await expect.soft(control, `${label} must expose native required semantics in addition to custom draft validation`).toHaveAttribute("required", "");
     }
     await expect(sets).toHaveAttribute("min", "1");
-    await expect(reps).toHaveAttribute("min", "1");
+    await expect(repMin).toHaveAttribute("min", "1");
+    await expect(repMax).toHaveAttribute("min", "1");
     await expect(rpe).toHaveAttribute("min", "5");
     await expect(rpe).toHaveAttribute("max", "10");
     await expect(rpe).toHaveAttribute("step", "0.5");
-    await expect(increment).toHaveAttribute("min", "0.5");
-    await expect(increment).toHaveAttribute("step", "0.5");
     await expect(rest).toHaveAttribute("min", "15");
     await expect(rest).toHaveAttribute("step", "15");
+    await expect(card.locator('[data-action="template-exercise-reps"], [data-action="template-exercise-increment"], [data-action="template-exercise-resistance"], [data-action="add-template-warmup"]')).toHaveCount(0);
 
     const before = await persistedData(page);
     const beforeExercise = before.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
     await sets.fill("");
     expect(await sets.evaluate((element) => ({ valid: element.validity.valid, valueMissing: element.validity.valueMissing })), "an empty required number must fail the browser constraint before custom validation").toEqual({ valid: false, valueMissing: true });
     await sets.fill("0");
-    await reps.fill("0");
+    await repMin.fill("0");
+    await repMax.fill("0");
     await rpe.fill("4.5");
-    await increment.fill("0");
     await rest.fill("0");
-    for (const [control, label] of [[sets, "sets"], [reps, "reps"], [rpe, "RPE"], [increment, "increment"], [rest, "rest"]]) {
+    for (const [control, label] of [[sets, "sets"], [repMin, "rep minimum"], [repMax, "rep maximum"], [rpe, "RPE"], [rest, "rest"]]) {
       expect(await control.evaluate((element) => element.validity.valid), `${label} must fail the browser's declared HTML constraint`).toBe(false);
     }
 
     await expect.soft(card.locator('[role="alert"]'), "invalid template fields must expose a rendered accessible error").toHaveCount(1, { timeout: 750 });
     await expect.soft(sets, "the invalid sets control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
-    await expect.soft(reps, "the invalid reps control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
+    await expect.soft(repMin, "the invalid rep-minimum control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
+    await expect.soft(repMax, "the invalid rep-maximum control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
     await expect.soft(rpe, "the invalid RPE control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
-    await expect.soft(increment, "the invalid increment control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
     await expect.soft(rest, "the invalid rest control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
 
     await page.waitForTimeout(2_200);
@@ -344,9 +468,9 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const afterExercise = after.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
     expect.soft(after.dataRevision, "invalid edits must not create a persisted data revision").toBe(before.dataRevision);
     expect.soft(afterExercise.sets, "invalid sets must not replace the last valid persisted value").toBe(beforeExercise.sets);
-    expect.soft(afterExercise.reps, "invalid reps must not replace the last valid persisted value").toBe(beforeExercise.reps);
+    expect.soft(afterExercise.repMin, "invalid rep minimum must not replace the last valid persisted value").toBe(beforeExercise.repMin);
+    expect.soft(afterExercise.repMax, "invalid rep maximum must not replace the last valid persisted value").toBe(beforeExercise.repMax);
     expect.soft(afterExercise.targetRpe, "invalid RPE must not replace the last valid persisted value").toBe(beforeExercise.targetRpe);
-    expect.soft(afterExercise.increment, "invalid increment must not replace the last valid persisted value").toBe(beforeExercise.increment);
     expect.soft(afterExercise.restSeconds, "invalid rest must not replace the last valid persisted value").toBe(beforeExercise.restSeconds);
 
     const correctionRevision = await page.evaluate(() => {
@@ -368,9 +492,9 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     });
     const correctedValues = [
       ["template-exercise-sets", "4"],
-      ["template-exercise-reps", "12"],
+      ["template-exercise-rep-max", "12"],
+      ["template-exercise-rep-min", "8"],
       ["template-exercise-rpe", "8.5"],
-      ["template-exercise-increment", "2.5"],
       ["template-exercise-rest", "150"]
     ];
     await page.evaluate(({ templateId, exerciseId, values }) => {
@@ -384,7 +508,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     }, { templateId: IDS.controlTemplate, exerciseId: IDS.controlBenchTemplateExercise, values: correctedValues });
 
     await expect(card.locator('[role="alert"]'), "correcting every invalid field must clear the single accessible validation alert").toHaveCount(0);
-    for (const [control, label] of [[sets, "sets"], [reps, "reps"], [rpe, "RPE"], [increment, "increment"], [rest, "rest"]]) {
+    for (const [control, label] of [[sets, "sets"], [repMin, "rep minimum"], [repMax, "rep maximum"], [rpe, "RPE"], [rest, "rest"]]) {
       await expect.soft(control, `correcting ${label} must clear its programmatic invalid state`).not.toHaveAttribute("aria-invalid", "true");
     }
     await expect.poll(() => page.evaluate(() => structuredClone(window.__templateCorrectionWriteProbe)), {
@@ -394,71 +518,43 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     const corrected = await persistedData(page);
     const correctedExercise = corrected.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
-    expect.soft(corrected.dataRevision, "five valid field corrections must create five coherent logical revisions before one debounced persistence write").toBe(correctionRevision + 5);
+    expect.soft(corrected.dataRevision, "four changed field corrections must create four coherent logical revisions before one debounced persistence write").toBe(correctionRevision + 4);
     expect.soft(correctedExercise, "the corrected template values must persist exactly as entered").toMatchObject({
       sets: 4,
-      reps: 12,
+      repMin: 8,
+      repMax: 12,
       targetRpe: 8.5,
-      increment: 2.5,
       restSeconds: 150
     });
+    const rangeRevision = corrected.dataRevision;
+    await repMin.fill("13");
+    await expect(repMin, "a minimum above the stored maximum must be rejected instead of clamped").toHaveAttribute("aria-invalid", "true");
+    await page.waitForTimeout(2_200);
+    const rejectedRange = await persistedData(page);
+    expect(rejectedRange.dataRevision).toBe(rangeRevision);
+    expect(rejectedRange.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise)).toMatchObject({ repMin: 8, repMax: 12 });
+    await repMin.fill("8");
     expect.soft(await page.evaluate(() => Number(data.dataRevision)), "the durable revision must equal the current in-memory revision").toBe(corrected.dataRevision);
   });
 
-  test("template evidence to usual baseline starts one coherent workout and survives reload", async ({ page }) => {
+  test("the expected workout starts directly and survives reload", async ({ page }) => {
     test.setTimeout(120_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await openPlan(page);
-    await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
-    await expect(page.getByRole("dialog", { name: `Start ${NAMES.controlTemplate}?` })).toBeVisible();
-    await page.locator('[data-action="use-usual-readiness"]').click();
+    await page.locator(`[data-action="start-next-template"][data-template-id="${IDS.controlTemplate}"]`).click();
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("In progress", { exact: true })).toBeVisible();
     await expect(page.locator(".exercise-card"), "the active workout must render every exercise in one continuous document").toHaveCount(2);
     const firstExercise = page.locator(".exercise-card").first();
     await expect(firstExercise.locator(".set-current-editor .set-previous"), "a newly started template begins with its warm-up editor and must label that role rather than invent working-set history").toContainText("Warm-up");
-    const lastTimeFact = firstExercise.locator(".role-performance-fact").filter({ hasText: "Last performed" }).first();
-    await expect(lastTimeFact, "the always-visible working-set evidence must retain the ordered prior performance while the warm-up is current").toContainText("145");
-    await expect(lastTimeFact).toContainText("8");
-    await expect(lastTimeFact).toContainText("July 16");
-    const generatedTarget = await page.evaluate(() => {
-      const session = activeWorkoutSession();
-      const exercise = data.exercises.filter((item) => item.sessionId === session.id).sort((a, b) => a.order - b.order)[0];
-      const set = setsForExercise(exercise.id).find((item) => isWorkingSet(item, "score"));
-      return {
-        load: formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0) }),
-        reps: String(Number(set.targetReps || set.reps || 0))
-      };
-    });
-    const recommendationClaim = firstExercise.locator(".unified-prescription > .prescription-claim");
-    await expect(recommendationClaim, "the recommendation claim must show the exact generated load that prepopulates the row").toContainText(generatedTarget.load);
-    await expect(recommendationClaim, "the recommendation claim must show the exact generated rep target that prepopulates the row").toContainText(`x ${generatedTarget.reps} reps`);
-    await expect(firstExercise.locator(".unified-prescription > summary"), "prescription evidence must not retain a disclosure stop").toHaveCount(0);
-    await expect(firstExercise.locator(".role-prescription-list"), "always-visible rationale must reuse the generated role rows").toContainText(`${generatedTarget.reps} reps`);
-    await expect(recommendationClaim.locator('a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'), "the always-visible claim and evidence must not introduce a keyboard stop").toHaveCount(0);
-    const precedingExerciseMenu = firstExercise.locator(".exercise-overflow > summary");
-    const recommendationSections = firstExercise.locator(".recommendation-section > summary");
-    const nextSetControl = firstExercise.locator(".set-block").first().locator('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])').first();
-    await precedingExerciseMenu.focus();
-    await expect(precedingExerciseMenu, "the traversal must begin at the real control immediately before the prescription surface").toBeFocused();
-    await expect(recommendationSections, "the compact prescription must expose its three native disclosure controls").toHaveCount(3);
-    for (let index = 0; index < await recommendationSections.count(); index += 1) {
-      await page.keyboard.press("Tab");
-      await expect(recommendationSections.nth(index), "Tab must traverse the prescription, confidence, and evidence disclosures in order").toBeFocused();
-    }
-    await page.keyboard.press("Tab");
-    await expect(nextSetControl, "Tab must leave the recommendation disclosures for the next real workout control").toBeFocused();
-
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
       if (sessions.length !== 1) return false;
       const exerciseIds = data.exercises.filter((item) => item.sessionId === sessions[0].id).map((item) => item.id);
       return exerciseIds.length === 2 && data.sets.filter((item) => exerciseIds.includes(item.exerciseId)).length >= 4;
-    }, "usual readiness start must persist one active workout with both template exercises", 30_000);
+    }, "direct routine start must persist one active workout with both template exercises", 30_000);
     const started = stored.sessions.find((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
     expect(started.readinessMode).toBe("usual");
-    expect(started.adjustmentSummary).toContain("No recovery adjustments");
 
     await reloadAndWait(page);
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible();
@@ -466,57 +562,29 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "template-start lifecycle browser errors").toEqual([]);
   });
 
-  test("daily readiness compares stored baselines, explains every lift, and starts the reviewed targets", async ({ page }) => {
+  test("optional readiness is secondary and starts without a review gate", async ({ page }) => {
     test.setTimeout(120_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await openPlan(page);
-    await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
+    await page.locator(`[data-action="log-template-readiness"][data-template-id="${IDS.controlTemplate}"]`).click();
 
-    const confirm = page.getByRole("dialog", { name: `Start ${NAMES.controlTemplate}?` });
-    await expect(confirm).toBeVisible();
-    await expect(confirm.locator(".readiness-evidence-summary .meter"), "the start decision must lead with the least-certain stored prescription confidence").toHaveCount(1);
-    await expect(confirm.getByRole("button", { name: "Log today’s readiness", exact: true })).toBeVisible();
-    await expect(confirm.getByRole("button", { name: "Use my usual baseline", exact: true })).toBeVisible();
-    await confirm.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
-
-    const readiness = page.getByRole("dialog", { name: "How did you arrive?", exact: true });
+    const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
     await expect(readiness).toBeVisible();
-    const sleep = readiness.getByRole("spinbutton", { name: "Sleep", exact: true });
-    await expect(readiness.getByText("usual 7.5 h", { exact: true })).toBeVisible();
-    await sleep.fill("5.5");
-    await expect(readiness.locator('[data-readiness-delta="sleepHours"]'), "sleep must be compared with the stored personal baseline as it is entered").toHaveText("−2 h vs usual");
-    await readiness.getByRole("radiogroup", { name: "Sleep quality", exact: true }).getByRole("radio", { name: "2", exact: true }).check();
-    await expect(readiness.locator('[data-readiness-delta="sleepQuality"]')).toHaveText("−2/5 vs usual");
-    await readiness.getByRole("radiogroup", { name: "Soreness", exact: true }).getByRole("radio", { name: "4", exact: true }).check();
-    await expect(readiness.locator('[data-readiness-delta="soreness"]')).toHaveText("+2/5 vs usual");
-    await readiness.getByRole("radiogroup", { name: "Nutrition today", exact: true }).getByRole("radio", { name: "Low energy", exact: true }).check();
-    await readiness.getByRole("button", { name: "See what this changes", exact: true }).click();
-
-    const review = page.locator(".readiness-review-sheet");
-    await expect(review).toBeVisible();
-    await expect(review.locator(".dhead .plan")).toHaveText("Base plan");
-    await expect(review.locator(".dhead .act")).toHaveText("Today");
-    await expect(review.locator(".dhead .dlt")).toHaveText("Δ");
-    await expect(review.locator(".readiness-change-entry"), "the review must account for every exercise, including unchanged lifts").toHaveCount(2);
-    await expect(review.locator(".readiness-change-entry.changed"), "the deliberately adverse synthetic metrics must create visible engine-backed adjustments").toHaveCount(2);
-    await expect(review.locator(".readiness-change-entry .meter"), "each base prescription must carry its stored confidence").toHaveCount(2);
-    await expect(review.getByText("What triggered this", { exact: true })).toBeVisible();
-    await expect(review.locator(".callout"), "the review must name the engine's converging readiness signals rather than infer new reasons in the view").toContainText("Sleep was materially below the personal baseline");
-    await expect(review.locator(".callout")).toContainText("Soreness or fatigue is high enough to affect training quality");
-    await expect(review.getByText(/Why this changed:/).first()).toBeVisible();
-    await expect(review.getByText("The saved template is not rewritten.", { exact: false })).toBeVisible();
-
-    await review.getByRole("button", { name: "Start adjusted workout", exact: true }).click();
+    await readiness.getByRole("radio", { name: "Meaningfully poor", exact: true }).check();
+    await readiness.getByRole("checkbox", { name: "Pain or injury", exact: true }).check();
+    await readiness.getByLabel("Affected area", { exact: true }).selectOption({ label: "Back" });
+    await readiness.getByLabel("Optional context", { exact: true }).fill("Public synthetic readiness context.");
+    await expect(page.locator(".readiness-review-sheet"), "optional readiness must not introduce a mandatory review screen").toHaveCount(0);
+    await readiness.locator('[data-action="start-workout-with-readiness"]').click();
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
     const stored = await waitForPersisted(page, (data) => {
       const session = data.sessions.find((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
-      return session?.readinessMode === "daily" && String(session.adjustmentSummary || "").includes("adjust");
-    }, "the reviewed daily-readiness targets must persist as one coherent active workout", 30_000);
+      return session?.readinessMode === "daily";
+    }, "optional readiness must persist with the one coherent active workout", 30_000);
     const started = stored.sessions.find((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
     expect(started.readinessMode).toBe("daily");
-    expect(String(started.adjustmentSummary || "")).not.toContain("No recovery adjustments");
-    expect(browserErrors, "daily-readiness lifecycle browser errors").toEqual([]);
+    expect(started.recovery).toMatchObject({ readinessDeviation: "meaningfully_poor", pain: true, affectedMuscle: "Back" });
+    expect(browserErrors, "optional-readiness lifecycle browser errors").toEqual([]);
   });
 
   test("an equipment-ineligible lift stays bounded in Progress and a newly started template", async ({ page }) => {
@@ -550,22 +618,22 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await installFixture(page, fixture);
 
     await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
-    await page.locator('[data-action="set-progress-view"][data-progress-view="lifts"]').click();
     await expect(page.locator(".destination-error"), "an unavailable-equipment recommendation must not crash the selected-lift destination").toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(unavailableName, { timeout: 45_000 });
-    await expect(page.locator(".recommendation.blocked-recommendation")).toContainText("unavailable");
+    await expect(page.locator(".recommendation.blocked-recommendation"), "Equipment metadata must not create a logging block in Progress").toHaveCount(0);
 
-    await openPlan(page);
+    await openRoutines(page);
     await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
-    await page.locator('[data-action="use-usual-readiness"]').click();
     await expect(page.locator(".destination-error"), "a newly started unavailable-equipment exercise must remain inside its workout card").toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Public Synthetic New Cable Exercise", exact: true })).toBeVisible({ timeout: 45_000 });
     await expect(page.locator(".exercise-card")).toHaveCount(1);
-    await expect(page.locator(".exercise-card .program-warning.blocking")).toContainText("cannot be used");
+    await expect(page.locator(".exercise-card .program-warning.blocking"), "Equipment metadata must not block the active logger").toHaveCount(0);
+    await page.locator(".exercise-card details.exercise-details > summary").click();
+    await expect(page.locator(".exercise-card [data-action=\"add-set\"]")).toBeEnabled();
     expect(browserErrors, "bounded unavailable-equipment paths must not emit browser errors").toEqual([]);
   });
 
-  test("a persisted partial active recommendation renders without rewriting its audit snapshot", async ({ page }) => {
+  test("a persisted active recommendation snapshot remains inert audit history without blocking the logger", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
     const fixture = buildActiveWorkoutLifecycleFixture();
     const partialSnapshot = {
@@ -588,15 +656,15 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await expect(page.locator(".destination-error"), "a persisted partial recommendation must not replace Today with the destination error surface").toHaveCount(0);
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
-    const prescription = page.locator(`#exercise-${IDS.activeBenchExercise} .unified-prescription`);
-    await expect(prescription).toContainText("1x Top set");
-    await expect(prescription).toContainText("1x Back-off set");
-    const inMemoryBytes = await page.evaluate((exerciseId) => JSON.stringify(data.exercises.find((exercise) => exercise.id === exerciseId).recommendationSnapshot), IDS.activeBenchExercise);
-    expect(inMemoryBytes, "display normalization must leave the stored active snapshot byte-equivalent").toBe(JSON.stringify(partialSnapshot));
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .unified-prescription`), "Legacy analytical recommendations must stay out of the active logger").toHaveCount(0);
+    await page.locator(`#exercise-${IDS.activeBenchExercise} details.exercise-details > summary`).click();
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} [data-action="add-set"]`)).toBeEnabled();
+    const hasActiveSnapshot = await page.evaluate((exerciseId) => Object.hasOwn(data.exercises.find((exercise) => exercise.id === exerciseId), "recommendationSnapshot"), IDS.activeBenchExercise);
+    expect(hasActiveSnapshot, "the original active-workout reference must survive as inert recovery/audit history").toBe(true);
     expect(browserErrors, "partial active recommendation presentation must not emit browser errors").toEqual([]);
   });
 
-  test("a persisted structured legacy prescription reason remains renderable on Today", async ({ page }) => {
+  test("a persisted structured legacy prescription reason remains inert and hidden on Today", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
     const fixture = buildActiveWorkoutLifecycleFixture();
     const exercise = fixture.exercises.find((item) => item.id === IDS.activeBenchExercise);
@@ -613,20 +681,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     };
     await installFixture(page, fixture);
 
-    const renderDiagnostic = await page.evaluate((exerciseId) => {
-      try {
-        const candidate = data.exercises.find((item) => item.id === exerciseId);
-        return { error: "", html: renderPrescriptionDetails(candidate) };
-      } catch (error) {
-        return { error: `${error?.name || "Error"}: ${error?.message || "Unknown render error"}`, html: "" };
-      }
-    }, IDS.activeBenchExercise);
-    expect(renderDiagnostic.error, "the legacy prescription renderer must accept structured explanation data").toBe("");
-
     await expect(page.locator(".destination-error"), "a structured legacy reason must not replace Today with the destination error surface").toHaveCount(0);
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
-    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .prescription-brief`)).toContainText("Public synthetic structured legacy explanation");
-    expect(browserErrors, "structured legacy prescription presentation must not emit browser errors").toEqual([]);
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .prescription-brief`), "Legacy explanation copy must not re-enter the normal workout interface").toHaveCount(0);
+    const hasLegacyPrescription = await page.evaluate((exerciseId) => Object.hasOwn(data.exercises.find((item) => item.id === exerciseId), "prescription"), IDS.activeBenchExercise);
+    expect(hasLegacyPrescription, "the original active-workout prescription reference must survive without becoming current authority").toBe(true);
+    expect(browserErrors, "inert structured legacy prescription data must not emit browser errors").toEqual([]);
   });
 
   test("compact set rows and Progress History keep logged facts in plain ink", async ({ page }) => {
@@ -646,8 +706,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       return {
         collapsed: !block.querySelector(".set-tools-disclosure").open,
         height: block.getBoundingClientRect().height,
-        previousCenter: previous.top + previous.height / 2,
-        loadCenter: load.top + load.height / 2,
+        previousTop: previous.top,
+        previousWidth: previous.width,
+        loadBottom: load.bottom,
+        editorWidth: block.querySelector(".set-current-editor").getBoundingClientRect().width,
         bodyBackground: style.backgroundColor
       };
     });
@@ -660,11 +722,11 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(pendingLayout.collapsed, "pending set controls should start collapsed").toBe(true);
     expect(pendingLayout.mode, "a pending set must use the V3 target-only shape").toBe("pending");
     expect(pendingLayout.height, "the pending target line must remain vertically cheaper than the current editor").toBeLessThan(currentLayout.height);
-    expect(Math.abs(currentLayout.previousCenter - currentLayout.loadCenter), "Previous must sit beside the current boxes instead of below them").toBeLessThanOrEqual(10);
+    expect(currentLayout.previousTop, "Previous history must follow the three primary M1 entry boxes").toBeGreaterThanOrEqual(currentLayout.loadBottom - 1);
+    expect(currentLayout.previousWidth, "Previous history must remain a compact full-width strip rather than a fourth primary entry box").toBeGreaterThanOrEqual(currentLayout.editorWidth * 0.85);
     expect(currentLayout.bodyBackground, "the light application canvas must be true white").toBe("rgb(255, 255, 255)");
 
     await page.evaluate(() => setActiveTab("progress"));
-    await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
     await expect(page.locator(".history-view")).toBeVisible();
     const card = page.locator(`.history-session-row[data-session-id="${IDS.historySession}"]`);
     const title = card.locator(".ri-copy b");
@@ -733,7 +795,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       const activeSets = stored.sets.filter((set) => set.exerciseId === IDS.activeRowExercise && !set.isWarmup);
       const historySets = stored.sets.filter((set) => set.exerciseId === IDS.historyRowExercise && !set.isWarmup);
       const session = stored.sessions.find((item) => item.id === IDS.activeSession);
-      const audit = stored.manualOverrides.find((item) => item.sessionId === IDS.activeSession && item.exerciseRuntimeId === IDS.activeRowExercise && item.action === "exercise_default_targets");
+      const audit = stored.exercises.find((item) => item.id === IDS.activeRowExercise)?.manualOverrides
+        ?.find((item) => item.sessionId === IDS.activeSession && item.exerciseRuntimeId === IDS.activeRowExercise && item.action === "exercise_default_targets");
       return activeSets.length === 3
         && activeSets.every((set) => set.targetRepMin === 12 && set.targetRepMax === 14 && set.targetRpeMin === 8 && set.targetRpeMax === 9 && set.targetRestSeconds === 135)
         && historySets.length === 2
@@ -769,9 +832,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       warmups: []
     }];
     await installFixture(page, fixture);
-    await openPlan(page);
+    await openRoutines(page);
     await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
-    await page.locator('[data-action="use-usual-readiness"]').click();
     await expect(page.getByRole("heading", { name: "Public Synthetic Legacy Back Projection", exact: true })).toBeVisible({ timeout: 45_000 });
 
     const stored = await waitForPersisted(page, (data) => {
@@ -783,90 +845,17 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(exercise.executionBlocked, "legacy/UI Back must not become a hard invalid-identity block for a catalog row").not.toBe(true);
     expect.soft(exercise.safetyRestriction?.reason, "legacy/UI Back must not fail canonical target validation").not.toBe("invalid_exercise_identity");
     expect.soft(stored.sets.filter((item) => item.exerciseId === exercise.id).length, "a valid catalog row must retain executable working sets").toBeGreaterThan(0);
-    expect.soft(exercise.programTargetContext?.exerciseId, "the program audit must retain the catalog identity").toBe("ex_seated_cable_row");
-    expect.soft(exercise.recommendationSnapshot?.exerciseId, "the recommendation snapshot must retain the catalog identity").toBe("ex_seated_cable_row");
-    expect.soft(exercise.recommendationSnapshot?.muscleGroupId, "legacy/UI Back must resolve to the catalog's direct canonical target").toBe("mg_upper_back");
+    expect.soft(exercise.researchExerciseId, "the active exercise must retain the catalog identity").toBe("ex_seated_cable_row");
+    expect.soft(exercise.stableTargetSnapshot, "the active exercise must retain its approved stable logging target").toMatchObject({
+      sets: 2,
+      repLow: 10,
+      repHigh: 10,
+      rpe: 8,
+      restSeconds: 105
+    });
   });
 
-  const frontendHardRejectionCases = [
-    { reason: "no_dynamic_direct_target", stage: "target" },
-    { reason: "ambiguous_dynamic_direct_target", stage: "target" },
-    { reason: "invalid_reconciled_identity", stage: "identity" },
-    { reason: "ambiguous_public_exercise_identity", stage: "identity" },
-    { reason: "personal_public_identity_collision", stage: "identity" },
-    { reason: "unknown_exercise_identity", stage: "identity" }
-  ];
-
-  for (const scenario of frontendHardRejectionCases) {
-    test(`frontend preserves ${scenario.reason} as a zero-execution hard rejection without prescribing`, async ({ page }) => {
-      await installFixture(page, buildTemplateLifecycleFixture());
-      const observed = await page.evaluate(({ reason, stage }) => {
-        const calls = { identity: [], target: [], prescribe: [] };
-        prescriptionEngine.resolveExerciseIdentity = function (...args) {
-          calls.identity.push(args.map((value) => typeof value === "string" ? value : JSON.stringify(value)));
-          if (stage === "identity") return { status: "unresolved", reason };
-          return { status: "resolved", exerciseId: "ex_barbell_bench_press", source: "public-synthetic-resolver-probe" };
-        };
-        prescriptionEngine.resolveDefaultPrescriptionTarget = function (...args) {
-          calls.target.push(args.map((value) => typeof value === "string" ? value : JSON.stringify(value)));
-          return { status: "ineligible", exerciseId: "ex_barbell_bench_press", reason };
-        };
-        prescriptionEngine.prescribeExercise = function (...args) {
-          calls.prescribe.push(args.map((value) => JSON.stringify(value)));
-          return {
-            recommendationId: "public-synthetic-unexpected-prescription",
-            executable: true,
-            finalPrescription: { executable: true, executionBlocked: false, sets: 3, reps: 8 }
-          };
-        };
-        const result = unifiedPrescriptionSnapshot({
-          name: "Barbell Bench Press",
-          primaryMuscle: "Chest",
-          secondaryMuscle: "Triceps",
-          sets: 3,
-          reps: 8,
-          targetRpe: 8,
-          restSeconds: 120
-        }, {
-          history: [],
-          availableEquipment: ["all"],
-          includedMuscleGroupIds: ["mg_pectoralis_major"],
-          sessionDurationMinutes: 45
-        });
-        return { calls, result };
-      }, scenario);
-
-      expect.soft(observed.calls.identity.length, "the frontend must consult the engine's canonical identity resolver").toBeGreaterThan(0);
-      expect.soft(observed.calls.target.length, "only a resolved identity may proceed to the engine's default-target resolver").toBe(scenario.stage === "target" ? 1 : 0);
-      expect.soft(observed.calls.prescribe, "an ineligible or unresolved adapter result must never reach prescribeExercise").toEqual([]);
-      expect.soft(observed.result, "the adapter failure must retain the ordinary hard-rejection contract").toMatchObject({
-        type: "hard_constraint_rejection",
-        kind: "hard_constraint_rejection",
-        hardConstraint: true,
-        executionBlocked: true,
-        executable: false,
-        status: "blocked",
-        reason: scenario.reason,
-        decision: "hold",
-        mode: "stop-modify",
-        interventionType: "stop_modify",
-        sets: 0,
-        reps: 0,
-        repLow: 0,
-        repHigh: 0,
-        weight: 0,
-        addedLoad: 0,
-        assistanceLoad: 0,
-        rpe: 0,
-        restSeconds: 0,
-        warmups: [],
-        executableActions: [],
-        safetyRestriction: { status: "blocked", reason: scenario.reason }
-      });
-    });
-  }
-
-  test("an existing stored recommendation snapshot bypasses identity and default-target resolution byte-equivalently", async ({ page }) => {
+  test("legacy root state is discarded while an embedded historical snapshot remains byte-equivalent", async ({ page }) => {
     const fixture = buildHistoryLifecycleFixture();
     const storedSnapshot = {
       schemaVersion: "prescription-snapshot/public-synthetic",
@@ -885,84 +874,72 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     };
     fixture.exercises.find((item) => item.id === IDS.historyBenchExercise).recommendationSnapshot = storedSnapshot;
     fixture.recommendationHistory = [structuredClone(storedSnapshot)];
+    fixture.manualOverrides = [{
+      overrideId: "public-synthetic-legacy-history-override",
+      sessionId: IDS.historySession,
+      exerciseRuntimeId: IDS.historyBenchExercise,
+      action: "exercise_default_targets"
+    }];
+    fixture.personalEvidencePackage = {
+      schemaVersion: "public-synthetic-legacy-evidence",
+      rows: []
+    };
     await installFixture(page, fixture);
 
     const observed = await page.evaluate((exerciseId) => {
       const exercise = data.exercises.find((item) => item.id === exerciseId);
-      const calls = { identity: 0, target: 0, prescribe: 0 };
-      prescriptionEngine.resolveExerciseIdentity = function () { calls.identity += 1; throw new Error("Stored snapshots must bypass identity resolution."); };
-      prescriptionEngine.resolveDefaultPrescriptionTarget = function () { calls.target += 1; throw new Error("Stored snapshots must bypass default-target resolution."); };
-      prescriptionEngine.prescribeExercise = function () { calls.prescribe += 1; throw new Error("Stored snapshots must bypass fresh prescription."); };
-      const beforeBytes = JSON.stringify(exercise.recommendationSnapshot);
-      const result = unifiedPrescriptionSnapshot(exercise);
       return {
-        calls,
-        sameReference: result === exercise.recommendationSnapshot,
-        beforeBytes,
-        afterBytes: JSON.stringify(result)
+        exerciseBytes: JSON.stringify(exercise.recommendationSnapshot),
+        hasRecommendationHistory: Object.hasOwn(data, "recommendationHistory"),
+        hasManualOverrides: Object.hasOwn(data, "manualOverrides"),
+        hasPersonalEvidencePackage: Object.hasOwn(data, "personalEvidencePackage"),
+        personalRows: [
+          prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
+          prescriptionEngine?.evidence?.personal?.exerciseScores,
+          prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
+        ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0)
       };
     }, IDS.historyBenchExercise);
 
-    expect(observed.calls).toEqual({ identity: 0, target: 0, prescribe: 0 });
-    expect(observed.sameReference).toBe(true);
-    expect(observed.afterBytes).toBe(observed.beforeBytes);
+    expect(observed.exerciseBytes).toBe(JSON.stringify(storedSnapshot));
+    expect(observed.hasRecommendationHistory, "legacy top-level recommendation history must not become active state").toBe(false);
+    expect(observed.hasManualOverrides, "legacy top-level override state must not become active state").toBe(false);
+    expect(observed.hasPersonalEvidencePackage, "legacy personal evidence must not become active state").toBe(false);
+    expect(observed.personalRows, "Historical evidence must not enrich the identity-only runtime").toBe(0);
   });
 
-  test("a corrupt active executable snapshot fails closed without prescribing or entering the recommendation cache", async ({ page }) => {
-    await installFixture(page, buildActiveWorkoutLifecycleFixture());
-    const observed = await page.evaluate((exerciseId) => {
-      const exercise = data.exercises.find((item) => item.id === exerciseId);
-      exercise.recommendationSnapshot = {
-        recommendationId: "public-synthetic-corrupt-active-snapshot",
-        exerciseId: "ex_barbell_bench_press",
-        muscleGroupId: "mg_chest_sternal",
-        executable: true,
-        finalPrescription: { executable: true, executionBlocked: false, sets: 5, reps: 5 }
-      };
-      const calls = { prescribe: 0 };
-      const originalPrescribe = prescriptionEngine.prescribeExercise;
-      prescriptionEngine.prescribeExercise = function (...args) {
-        calls.prescribe += 1;
-        return originalPrescribe.apply(this, args);
-      };
-      const cacheSizeBefore = prescriptionSnapshotCache.size;
-      const result = unifiedPrescriptionSnapshot(exercise);
-      return { calls, cacheSizeBefore, cacheSizeAfter: prescriptionSnapshotCache.size, result };
-    }, IDS.activeBenchExercise);
-
-    expect(observed.calls.prescribe, "a corrupt stored executable snapshot must never reach fresh prescription").toBe(0);
-    expect(observed.cacheSizeAfter, "a rejected stored snapshot must not enter the recommendation cache").toBe(observed.cacheSizeBefore);
-    expect(observed.result).toMatchObject({
-      type: "hard_constraint_rejection",
-      kind: "hard_constraint_rejection",
-      hardConstraint: true,
-      executionBlocked: true,
-      executable: false,
-      status: "blocked",
-      reason: "invalid_stored_recommendation_snapshot",
-      sets: 0,
-      reps: 0,
-      repLow: 0,
-      repHigh: 0,
-      weight: 0,
-      addedLoad: 0,
-      assistanceLoad: 0,
-      rpe: 0,
-      restSeconds: 0,
-      warmups: [],
-      executableActions: [],
-      safetyRestriction: { status: "blocked", reason: "invalid_stored_recommendation_snapshot" }
-    });
+  test("a corrupt active legacy snapshot remains inert and cannot block active-workout logging", async ({ page }) => {
+    const fixture = buildActiveWorkoutLifecycleFixture();
+    const corruptSnapshot = {
+      recommendationId: "public-synthetic-corrupt-active-snapshot",
+      exerciseId: "ex_barbell_bench_press",
+      muscleGroupId: "mg_chest_sternal",
+      executable: true,
+      finalPrescription: { executable: true, executionBlocked: false, sets: 99, reps: 99 }
+    };
+    fixture.exercises.find((item) => item.id === IDS.activeBenchExercise).recommendationSnapshot = corruptSnapshot;
+    await installFixture(page, fixture);
+    const card = page.locator(`#exercise-${IDS.activeBenchExercise}`);
+    const beforeCount = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).length, IDS.activeBenchExercise);
+    await card.locator("details.exercise-details > summary").click();
+    await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
+    await card.locator('[data-action="add-set"]').click();
+    await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).length, IDS.activeBenchExercise)).toBe(beforeCount + 1);
+    const hasActiveSnapshot = await page.evaluate((exerciseId) => Object.hasOwn(data.exercises.find((item) => item.id === exerciseId), "recommendationSnapshot"), IDS.activeBenchExercise);
+    expect(hasActiveSnapshot, "logging must preserve the original snapshot bytes without executing them").toBe(true);
   });
 
-  test("active workout rename, reorder, add/remove exercises and sets, save-as-template, and reload remain coherent", async ({ page }) => {
+  test("active workout substitution, reorder, add/remove exercises and sets, save-as-template, and reload remain coherent", async ({ page }) => {
     test.setTimeout(120_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildActiveWorkoutLifecycleFixture());
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
 
     const renamed = "Public Synthetic Paused Bench Press — Session Edit";
-    await page.locator(`[data-action="exercise-name"][data-exercise-id="${IDS.activeBenchExercise}"]`).fill(renamed);
+    const sourceCard = page.locator(`#exercise-${IDS.activeBenchExercise}`);
+    await sourceCard.locator("details.exercise-details > summary").click();
+    await sourceCard.locator('[data-action="exercise-substitute-name"]').fill(renamed);
+    await sourceCard.locator('[data-action="apply-exercise-substitution"]').click();
     await page.locator(`#exercise-${IDS.activeRowExercise} details.exercise-overflow > summary`).click();
     await page.locator(`[data-action="move-exercise"][data-exercise-id="${IDS.activeRowExercise}"][data-direction="-1"]`).click();
     await page.locator("details.add-exercise-panel > summary").click();
@@ -974,8 +951,25 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const custom = stored.exercises.find((item) => item.sessionId === IDS.activeSession && item.name === "Public Synthetic Custom Cable Fly");
     expect(custom.primaryMuscle).toBe("Chest");
     expect(custom.secondaryMuscle).toBe("Triceps");
-    await page.locator(`[id="exercise-${custom.id}"] details.exercise-overflow > summary`).click();
-    await page.locator(`[data-action="delete-exercise"][data-exercise-id="${custom.id}"]`).click();
+    const afterAddRenderError = await page.evaluate(() => {
+      try {
+        renderWorkout();
+        return "";
+      } catch (error) {
+        return `${error?.name || "Error"}: ${error?.message || "Unknown render error"}\n${error?.stack || ""}`;
+      }
+    });
+    expect(afterAddRenderError, "adding a custom exercise must leave the active workout renderable").toBe("");
+    await page.evaluate((exerciseId) => {
+      const control = document.createElement("button");
+      control.type = "button";
+      control.dataset.action = "delete-exercise";
+      control.dataset.exerciseId = exerciseId;
+      root.appendChild(control);
+      control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      control.remove();
+    }, custom.id);
+    await expect.poll(() => page.evaluate((exerciseId) => data.exercises.some((item) => item.id === exerciseId), custom.id)).toBe(false);
 
     const initialBenchSetCount = stored.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise).length;
     await page.locator(`#exercise-${IDS.activeBenchExercise} details.exercise-details > summary`).click();
@@ -986,7 +980,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator(`[data-action="delete-set"][data-set-id="${addedSet.id}"]`).click();
     await page.locator('[data-action="session-menu"]').click();
     await page.locator('[data-action="save-template"]').click();
-    await expect(page.getByRole("heading", { name: "Your plan", exact: true })).toBeVisible();
+    await expect(page.locator(".templates-view")).toBeVisible();
 
     stored = await waitForPersisted(page, (data) => {
       const activeExercises = data.exercises.filter((item) => item.sessionId === IDS.activeSession).sort((a, b) => a.order - b.order);
@@ -998,8 +992,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await reloadAndWait(page);
     await page.locator('[data-action="set-tab"][data-tab="today"]').click();
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
-    await expect(page.locator(`[data-action="exercise-name"][data-exercise-id="${IDS.activeBenchExercise}"]`)).toHaveValue(renamed);
-    await expect(page.locator('[data-action="exercise-name"]')).toHaveCount(2);
+    await page.locator('[data-action="resume-active-workout"]').first().click();
+    await expect(page.locator(".workout-view")).toBeVisible();
+    await expect(page.locator(`.exercise-card[aria-label="Exercise: ${renamed}"]`)).toHaveCount(1);
+    await expect(page.locator('[data-action="exercise-name"]')).toHaveCount(0);
     expect(browserErrors, "active-edit lifecycle browser errors").toEqual([]);
   });
 
@@ -1014,7 +1010,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(sessionMenu).toHaveAttribute("open", "");
     await sessionMenu.getByRole("button", { name: "Cancel workout" }).click();
     await expect(page.getByRole("dialog", { name: "Cancel this workout?" })).toBeVisible();
-    await page.getByRole("button", { name: "Keep Workout", exact: true }).click();
+    await page.getByRole("button", { name: "Keep workout", exact: true }).click();
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
     expect((await persistedData(page)).sessions.some((item) => item.id === IDS.activeSession)).toBe(true);
 
@@ -1029,7 +1025,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(after.templates.find((item) => item.id === IDS.controlTemplate)).toEqual(before.templates.find((item) => item.id === IDS.controlTemplate));
 
     await reloadAndWait(page);
-    await expect(page.getByRole("heading", { name: "What the plan asks today.", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     expect((await persistedData(page)).sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     expect(browserErrors, "cancel-workout lifecycle browser errors").toEqual([]);
   });
@@ -1038,20 +1034,6 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     test.setTimeout(150_000);
     const browserErrors = collectBrowserErrors(page);
     const fixture = buildActiveWorkoutLifecycleFixture();
-    const controlRecommendation = {
-      recommendationId: "public-synthetic-control-recommendation",
-      sessionId: IDS.historySession,
-      source: "public-synthetic-idempotency-control"
-    };
-    const controlOverride = {
-      overrideId: "public-synthetic-control-override",
-      recommendationId: controlRecommendation.recommendationId,
-      sessionId: IDS.historySession,
-      exerciseRuntimeId: IDS.historyBenchExercise,
-      outcomeEvaluation: { result: "inconclusive", evaluatedAt: FIXED_NOW }
-    };
-    fixture.recommendationHistory = [controlRecommendation];
-    fixture.manualOverrides = [controlOverride];
     await installFixture(page, fixture);
 
     const first = page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`);
@@ -1075,8 +1057,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator('[data-action="request-submit-workout"]').click();
     await page.locator('[data-action="confirm-submit-workout"]').click();
 
-    await expect(page.locator('[aria-label="Post-workout grade and analysis"]')).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]')).toContainText("Workout logged");
+    await expect(page.locator('[aria-label="Workout completion"]')).toBeVisible({ timeout: 45_000 });
+    await expect(page.locator('.completed-summary[aria-label="Workout completion"]')).toContainText("Session logged");
     const afterFirst = await waitForPersisted(page, (data) => data.sessions.filter((item) => item.id === IDS.activeSession && item.submitted).length === 1, "the UI confirmation must persist one submitted session");
     await waitForSubmissionWrites(page);
     expect(await submissionProbe(page)).toMatchObject({
@@ -1085,9 +1067,6 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       analysisCalls: [IDS.activeSession],
       writesFailed: 0
     });
-    const firstEffectProbe = await submissionProbe(page);
-    expect.soft(firstEffectProbe.completionSoundCalls, "the first accepted submission must route workout-completion sound exactly once").toHaveLength(1);
-    expect.soft(firstEffectProbe.successFeedbackCalls, "the accepted UI confirmation and completed workout must each route their deliberate success-feedback signal").toHaveLength(2);
     expect(afterFirst.dataRevision, "the first routed submission must create exactly one data revision").toBe(Number(beforeSubmit.dataRevision) + 1);
 
     const secondRoute = await page.evaluate(() => {
@@ -1116,8 +1095,6 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(finalProbe.attempts, "both independent application-level attempts must reach the real submit function").toEqual([[IDS.activeSession], [IDS.activeSession]]);
     expect.soft(finalProbe.returnedTypes, "both real submit calls must return to their callers").toEqual(["undefined", "undefined"]);
     expect.soft(finalProbe.analysisCalls, "two submission attempts must calculate the durable analysis only once").toEqual([IDS.activeSession]);
-    expect.soft(finalProbe.completionSoundCalls, "the retry must not replay workout-completion sound").toEqual(firstEffectProbe.completionSoundCalls);
-    expect.soft(finalProbe.successFeedbackCalls, "the direct retry must not add a third success-feedback signal after the UI confirmation and first completion effect").toEqual(firstEffectProbe.successFeedbackCalls);
 
     const after = await persistedData(page);
     const firstSession = afterFirst.sessions.find((item) => item.id === IDS.activeSession);
@@ -1129,11 +1106,15 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(after.sets.find((item) => item.id === IDS.activeBenchSet1).completed).toBe(true);
     expect.soft(after.sets.find((item) => item.id === IDS.activeRowSet2).skipped).toBe(true);
     expect.soft(finalSession.workoutAnalysis, "the one stored analysis must remain identical after the retry").toEqual(firstSession.workoutAnalysis);
-    expect.soft(finalSession.workoutAnalysis.metrics.completedSets).toBe(1);
-    expect.soft(after.recommendationHistory, "the existing recommendation record must remain singular and unchanged").toEqual([controlRecommendation]);
-    expect.soft(after.manualOverrides, "the existing manual-override record must remain singular and unchanged").toEqual([controlOverride]);
-    expect.soft(new Set(after.recommendationHistory.map((item) => item.recommendationId)).size).toBe(after.recommendationHistory.length);
-    expect.soft(new Set(after.manualOverrides.map((item) => item.overrideId)).size).toBe(after.manualOverrides.length);
+    expect.soft(finalSession.workoutAnalysis).toMatchObject({
+      contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
+      algorithmVersion: "actual-work-rubric/1.1.0",
+      sourceSessionId: IDS.activeSession
+    });
+    expect.soft(finalSession.workoutAnalysis.reasons.length).toBeGreaterThanOrEqual(2);
+    expect.soft(finalSession.workoutAnalysis.reasons.length).toBeLessThanOrEqual(3);
+    expect.soft(Object.hasOwn(after, "recommendationHistory"), "submission must not recreate deleted recommendation-history state").toBe(false);
+    expect.soft(Object.hasOwn(after, "manualOverrides"), "submission must not recreate deleted top-level override state").toBe(false);
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
@@ -1143,8 +1124,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(reloaded.dataRevision, "reload must preserve the single submission effect").toBe(Number(beforeSubmit.dataRevision) + 1);
     expect.soft(reloaded.sessions.filter((item) => item.id === IDS.activeSession)).toHaveLength(1);
     expect.soft(reloaded.sessions.find((item) => item.id === IDS.activeSession).workoutAnalysis).toEqual(firstSession.workoutAnalysis);
-    expect.soft(reloaded.recommendationHistory).toEqual([controlRecommendation]);
-    expect.soft(reloaded.manualOverrides).toEqual([controlOverride]);
+    expect.soft(Object.hasOwn(reloaded, "recommendationHistory")).toBe(false);
+    expect.soft(Object.hasOwn(reloaded, "manualOverrides")).toBe(false);
     expect(browserErrors, "submit lifecycle browser errors").toEqual([]);
   });
 
@@ -1175,10 +1156,17 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "history-discard lifecycle browser errors").toEqual([]);
   });
 
-  test("history edit save persists nested set changes, recalculates derived analysis, creates no duplicates, and survives reload", async ({ page }) => {
+  test("history edit save persists nested set changes, preserves the stored grade, creates no duplicates, and survives reload", async ({ page }) => {
     test.setTimeout(150_000);
     const browserErrors = collectBrowserErrors(page);
-    await installFixture(page, buildHistoryLifecycleFixture());
+    const fixture = buildHistoryLifecycleFixture();
+    const storedHistoricalGrade = {
+      version: 1,
+      grade: "B+",
+      rationale: "Stored public synthetic historical grade."
+    };
+    fixture.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis = structuredClone(storedHistoricalGrade);
+    await installFixture(page, fixture);
     await openSubmittedHistorySession(page);
     await page.locator('[data-action="begin-history-edit"]').click();
     await page.locator("summary").filter({ hasText: "Workout details" }).click();
@@ -1190,16 +1178,13 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("dialog", { name: "Save these history edits?" })).toBeVisible();
     await page.locator('[data-action="confirm-save-history-edits"]').click();
 
-    const after = await waitForPersisted(page, (data) => data.sessions.find((item) => item.id === IDS.historySession)?.title === EDITED_HISTORY_TITLE && data.sessions.find((item) => item.id === IDS.historySession)?.workoutAnalysis?.version === 1, "saved history edits must persist with recalculated analysis");
+    const after = await waitForPersisted(page, (data) => data.sessions.find((item) => item.id === IDS.historySession)?.title === EDITED_HISTORY_TITLE && data.sets.find((item) => item.id === IDS.historyBenchSet1)?.reps === 11, "saved history edits must persist while retaining the stored grade");
     expect(after.sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     expect(after.exercises.filter((item) => item.sessionId === IDS.historySession)).toHaveLength(2);
     expect(after.sets.filter((item) => item.exerciseId === IDS.historyBenchExercise)).toHaveLength(2);
     expect(after.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
     const savedAnalysis = after.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis;
-    const savedBenchResult = savedAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
-    expect(savedAnalysis.metrics.completedSets).toBe(4);
-    expect(savedBenchResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 11, load: 145 });
-    expect(savedBenchResult.bestSet.text).toContain("11 reps");
+    expect(savedAnalysis).toEqual(storedHistoricalGrade);
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
@@ -1209,15 +1194,13 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(card).toContainText(EDITED_HISTORY_TITLE);
     await card.click();
     await expect(page.getByRole("heading", { name: EDITED_HISTORY_TITLE, exact: true })).toBeVisible();
-    const result = page.locator(".workout-exercise-result").filter({ hasText: NAMES.bench });
-    await result.locator("summary").click();
-    await expect(result).toContainText("11 reps");
-    await expect(result).toContainText("145 lb");
+    const editedSet = page.locator(`#set-${IDS.historyBenchSet1}`);
+    await expect(editedSet).toContainText("11");
+    await expect(editedSet).toContainText("145 lb");
     const reloaded = await persistedData(page);
     const reloadedSession = reloaded.sessions.find((item) => item.id === IDS.historySession);
-    const reloadedBenchResult = reloadedSession.workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
     expect(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
-    expect(reloadedBenchResult.bestSet).toEqual(savedBenchResult.bestSet);
+    expect(reloadedSession.workoutAnalysis).toEqual(storedHistoricalGrade);
     expect(reloaded.sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     await page.locator('[data-action="begin-history-edit"]').click();
     await page.locator("summary").filter({ hasText: "Workout details" }).click();
@@ -1227,7 +1210,14 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
   test("the first Save Edits click after a numeric history field blur is not swallowed by rerender", async ({ page }) => {
     test.setTimeout(120_000);
-    await installFixture(page, buildHistoryLifecycleFixture());
+    const fixture = buildHistoryLifecycleFixture();
+    const storedHistoricalGrade = {
+      version: 1,
+      grade: "B+",
+      rationale: "Stored public synthetic historical grade."
+    };
+    fixture.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis = structuredClone(storedHistoricalGrade);
+    await installFixture(page, fixture);
     await openSubmittedHistorySession(page);
     await page.locator('[data-action="begin-history-edit"]').click();
     const revisionBeforeEdit = await page.evaluate(() => {
@@ -1257,12 +1247,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const saved = await waitForPersisted(page, (stored) => {
       const set = stored.sets.find((item) => item.id === IDS.historyBenchSet1);
       const analysis = stored.sessions.find((item) => item.id === IDS.historySession)?.workoutAnalysis;
-      const result = analysis?.exerciseResults?.find((item) => item.exerciseId === IDS.historyBenchExercise);
-      return set?.reps === 12 && result?.bestSet?.id === IDS.historyBenchSet1 && result.bestSet.reps === 12;
-    }, "the first Save Edits confirmation must persist the numeric edit and its recalculated analysis", 30_000);
-    const savedResult = saved.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
+      return set?.reps === 12 && JSON.stringify(analysis) === JSON.stringify(storedHistoricalGrade);
+    }, "the first Save Edits confirmation must persist the numeric edit without rewriting its stored grade", 30_000);
     expect.soft(saved.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
-    expect.soft(savedResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 12, load: 145 });
+    expect.soft(saved.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis).toEqual(storedHistoricalGrade);
     expect.soft(saved.dataRevision, "one real numeric edit must create exactly one logical revision despite input/change/focusout delivery").toBe(revisionBeforeEdit + 1);
     await expect.poll(() => page.evaluate(() => structuredClone(window.__historyFirstClickWriteProbe)), {
       message: "the explicit Save Edits confirmation must route exactly one durable app-data write",
@@ -1274,14 +1262,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
     await expect(card).toHaveCount(1);
     await card.click();
-    const result = page.locator(".workout-exercise-result").filter({ hasText: NAMES.bench });
-    await result.locator("summary").click();
-    await expect(result).toContainText("12 reps");
-    await expect(result).toContainText("145 lb");
+    const editedSet = page.locator(`#set-${IDS.historyBenchSet1}`);
+    await expect(editedSet).toContainText("12");
+    await expect(editedSet).toContainText("145 lb");
     const reloaded = await persistedData(page);
-    const reloadedResult = reloaded.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
     expect.soft(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
-    expect.soft(reloadedResult.bestSet).toEqual(savedResult.bestSet);
+    expect.soft(reloaded.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis).toEqual(storedHistoricalGrade);
   });
 
   test("browser Back cannot bypass unsaved-history confirmation or persist temporary edits on unload", async ({ page }) => {
@@ -1297,7 +1283,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await page.goBack();
     await expect.soft(page.getByRole("dialog", { name: "Cancel these edits?" }), "browser Back must enter the same guarded confirmation flow as primary navigation").toBeVisible({ timeout: 1_000 });
-    await expect.soft(page, "browser Back must not leave the edit surface before the user resolves the confirmation").toHaveURL(/#today$/, { timeout: 1_000 });
+    await expect.soft(page, "browser Back must not leave the edit surface before the user resolves the confirmation").toHaveURL(/#workout$/, { timeout: 1_000 });
     await expect.soft(page.locator('[data-action="session-title"]'), "the temporary edit must remain available while confirmation is unresolved").toHaveValue(temporaryTitle, { timeout: 1_000 });
 
     await reloadAndWait(page);

@@ -14,6 +14,25 @@ $sensitiveRelativeRoots = @(
   "backups",
   "exports"
 )
+$obsoleteAnalyticalJson = @(
+  "research_database\exports\json\exercise_substitution_map.json",
+  "research_database\exports\json\muscle_group_recommendations.json",
+  "research_database\exports\json\progression_rules.json",
+  "research_database\exports\json\nutrition_strategies.json",
+  "research_database\exports\json\manifest.json"
+)
+$obsoletePublicFiles = @(
+  "guided-mesocycle.js",
+  "programming-family-ledger.js",
+  "resources\achievements\badge-controlled-execution.png",
+  "resources\achievements\badge-e1rm-peak.png",
+  "resources\achievements\badge-personal-record.png",
+  "resources\achievements\badge-plan-complete.png",
+  "resources\achievements\badge-progression.png",
+  "resources\achievements\badge-smart-training.png",
+  "resources\achievements\badge-target-precision.png",
+  "resources\achievements\badge-volume-record.png"
+)
 
 New-Item -ItemType Directory -Force -Path $www | Out-Null
 
@@ -28,6 +47,22 @@ foreach ($publicRoot in $nativePublicRoots) {
       throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
     }
     if (Test-Path -LiteralPath $resolvedCandidate) { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
+  }
+  foreach ($relative in $obsoleteAnalyticalJson) {
+    $candidate = Join-Path $publicRoot $relative
+    $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+    if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
+    }
+    if (Test-Path -LiteralPath $resolvedCandidate -PathType Leaf) { Remove-Item -LiteralPath $resolvedCandidate -Force }
+  }
+  foreach ($relative in $obsoletePublicFiles) {
+    $candidate = Join-Path $publicRoot $relative
+    $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+    if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
+    }
+    if (Test-Path -LiteralPath $resolvedCandidate -PathType Leaf) { Remove-Item -LiteralPath $resolvedCandidate -Force }
   }
 }
 
@@ -44,9 +79,8 @@ $publicFiles = @(
   @{ Source = "privacy.html"; Destination = "privacy.html" },
   @{ Source = "support.html"; Destination = "support.html" },
   @{ Source = "manifest.webmanifest"; Destination = "manifest.webmanifest" },
-  @{ Source = "programming-family-ledger.js"; Destination = "programming-family-ledger.js" },
+  @{ Source = "exception-resolver.js"; Destination = "exception-resolver.js" },
   @{ Source = "prescription-engine.js"; Destination = "prescription-engine.js" },
-  @{ Source = "guided-mesocycle.js"; Destination = "guided-mesocycle.js" },
   @{ Source = "rest-completion-controller.js"; Destination = "rest-completion-controller.js" },
   @{ Source = "backup-contract.js"; Destination = "backup-contract.js" },
   @{ Source = "sw.js"; Destination = "sw.js" },
@@ -57,21 +91,8 @@ $publicFiles = @(
   @{ Source = "resources\icon-maskable-512.png"; Destination = "resources\icon-maskable-512.png" },
   @{ Source = "resources\icon-1024.png"; Destination = "resources\icon-1024.png" },
   @{ Source = "resources\splash-1170x2532.png"; Destination = "resources\splash-1170x2532.png" },
-  @{ Source = "resources\achievements\badge-personal-record.png"; Destination = "resources\achievements\badge-personal-record.png" },
-  @{ Source = "resources\achievements\badge-e1rm-peak.png"; Destination = "resources\achievements\badge-e1rm-peak.png" },
-  @{ Source = "resources\achievements\badge-volume-record.png"; Destination = "resources\achievements\badge-volume-record.png" },
-  @{ Source = "resources\achievements\badge-plan-complete.png"; Destination = "resources\achievements\badge-plan-complete.png" },
-  @{ Source = "resources\achievements\badge-target-precision.png"; Destination = "resources\achievements\badge-target-precision.png" },
-  @{ Source = "resources\achievements\badge-smart-training.png"; Destination = "resources\achievements\badge-smart-training.png" },
-  @{ Source = "resources\achievements\badge-progression.png"; Destination = "resources\achievements\badge-progression.png" },
-  @{ Source = "resources\achievements\badge-controlled-execution.png"; Destination = "resources\achievements\badge-controlled-execution.png" },
   @{ Source = "research_database\exports\json\exercise_database.json"; Destination = "research_database\exports\json\exercise_database.json" },
-  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" },
-  @{ Source = "research_database\exports\json\exercise_substitution_map.json"; Destination = "research_database\exports\json\exercise_substitution_map.json" },
-  @{ Source = "research_database\exports\json\muscle_group_recommendations.json"; Destination = "research_database\exports\json\muscle_group_recommendations.json" },
-  @{ Source = "research_database\exports\json\progression_rules.json"; Destination = "research_database\exports\json\progression_rules.json" },
-  @{ Source = "research_database\exports\json\nutrition_strategies.json"; Destination = "research_database\exports\json\nutrition_strategies.json" },
-  @{ Source = "research_database\exports\json\manifest.json"; Destination = "research_database\exports\json\manifest.json" }
+  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" }
 )
 
 foreach ($file in $publicFiles) {

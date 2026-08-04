@@ -168,27 +168,18 @@ function publicTemplates() {
 
 function baseFixture(theme) {
   return {
-    appDataVersion: 2,
+    appDataVersion: 3,
     domainMigrationVersion: 3,
     sessions: [],
     exercises: [],
     sets: [],
     templates: [],
-    mesocycles: [],
-    activeMesocycleId: "",
-    recommendationHistory: [],
-    manualOverrides: [],
-    personalEvidencePackage: null,
     rawImports: [],
     migrationAudit: [],
     dataRevision: 1,
     settings: {
       theme,
       weightUnit: "lb",
-      goal: "hypertrophy",
-      trainingStatus: "intermediate",
-      trainingDaysPerWeek: 4,
-      availableEquipment: ["barbell", "rack", "dumbbells", "cable"],
       installGuideDismissed: true,
       setupSoundConfirmed: true,
       autoStartRestTimer: false,

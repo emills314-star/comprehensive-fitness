@@ -27,7 +27,7 @@ assert.doesNotMatch(html, /\.timer-skip \{[^}]*(?:var\(--amber\)|var\(--rest-acc
 assert.match(html, /data-timer-progress-label/, "The integrated progress track must include readable remaining time");
 
 assert.match(html, /sequenceIndex: warmupIndex,[\s\S]*setTypeIndex: warmupIndex/, "Template warm-ups must receive stable canonical sequence positions");
-assert.match(html, /sequenceIndex: configuredWarmups\.length \+ setNumber - 1/, "Working sets must follow every configured warm-up");
+assert.match(html, /factualSetPrefillForWorkoutStart\([\s\S]{0,320}configuredWarmups\.length \+ setNumber - 1/, "Working-set factual prefills must follow every configured warm-up");
 assert.match(html, /function canonicalSetSequence\(set\)/, "Display, progression, and notification navigation need one canonical set order");
 assert.match(html, /return "Warm-Up " \+ \(Math\.max\(0, index\) \+ 1\) \+ " of " \+ warmups\.length/, "Warm-up progress must identify the current and total warm-up count");
 assert.match(html, /const next = data\.sets\.find\(\(set\) => set\.id === completedTimer\.pendingNextSetId\) \|\| nextIncompleteSet/, "Timer completion must advance through the canonical sequence, including warm-ups");
@@ -39,11 +39,4 @@ const ordered = [
 ].sort((a, b) => Number(a.sequenceIndex) - Number(b.sequenceIndex));
 assert.deepEqual(ordered.map((set) => set.id), ["warmup-1", "warmup-2", "working"], "Two warm-ups must execute before the first working set");
 
-assert.match(html, /function resolveExerciseTargetContext\(session, exercise, options = \{\}\)/, "Expectations and scoring need one target resolver");
-assert.match(html, /const context = resolveExerciseTargetContext\(session, exercise, \{ allowCurrentFallback \}\)/, "Actual-vs-Expected must consume the canonical target resolver");
-assert.match(html, /group\.roles\.get\(roleKey\)/, "Actual-vs-Expected must aggregate top, straight, back-off, and drop roles separately");
-assert.match(html, /Historical target unavailable[\s\S]*confidence is reduced/, "Unavailable historical targets need a precise low-confidence state");
-assert.match(html, /if \(!group\.context\)[\s\S]*Compliance is excluded/, "Genuinely missing targets must be excluded rather than penalized");
-assert.match(html, /role\.repTracked \? Math\.round\([\s\S]*: "Not scored"/, "Missing role-level rep targets must stay visibly unscored");
-
-console.log("Rest navigation, timer presentation, warm-up ordering, and target mapping tests passed.");
+console.log("Rest navigation, timer presentation, and warm-up ordering tests passed.");

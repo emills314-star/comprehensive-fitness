@@ -1,0 +1,11 @@
+{
+  "evaluatedAt": "2030-01-15T12:00:00.000Z",
+  "stableTargets": {
+    "exerciseVariantId": "variant-alpha",
+    "setCount": 3,
+    "repRange": { "min": 6, "max": 8 },
+    "targetRpe": 8,
+    "restSeconds": 120
+  },
+  "candidates": []
+}

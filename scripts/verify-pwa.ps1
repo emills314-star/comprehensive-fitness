@@ -14,9 +14,8 @@ $publicFiles = @(
   "privacy.html",
   "support.html",
   "manifest.webmanifest",
-  "programming-family-ledger.js",
   "prescription-engine.js",
-  "guided-mesocycle.js",
+  "exception-resolver.js",
   "rest-completion-controller.js",
   "backup-contract.js",
   "sw.js",
@@ -27,21 +26,27 @@ $publicFiles = @(
   "resources\icon-maskable-512.png",
   "resources\icon-1024.png",
   "resources\splash-1170x2532.png",
-  "resources\achievements\badge-personal-record.png",
-  "resources\achievements\badge-e1rm-peak.png",
-  "resources\achievements\badge-volume-record.png",
-  "resources\achievements\badge-plan-complete.png",
-  "resources\achievements\badge-target-precision.png",
-  "resources\achievements\badge-smart-training.png",
-  "resources\achievements\badge-progression.png",
-  "resources\achievements\badge-controlled-execution.png",
   "research_database\exports\json\exercise_database.json",
-  "research_database\exports\json\exercise_muscle_map.json",
+  "research_database\exports\json\exercise_muscle_map.json"
+)
+$obsoleteAnalyticalJson = @(
   "research_database\exports\json\exercise_substitution_map.json",
   "research_database\exports\json\muscle_group_recommendations.json",
   "research_database\exports\json\progression_rules.json",
   "research_database\exports\json\nutrition_strategies.json",
   "research_database\exports\json\manifest.json"
+)
+$obsoletePublicFiles = @(
+  "guided-mesocycle.js",
+  "programming-family-ledger.js",
+  "resources\achievements\badge-controlled-execution.png",
+  "resources\achievements\badge-e1rm-peak.png",
+  "resources\achievements\badge-personal-record.png",
+  "resources\achievements\badge-plan-complete.png",
+  "resources\achievements\badge-progression.png",
+  "resources\achievements\badge-smart-training.png",
+  "resources\achievements\badge-target-precision.png",
+  "resources\achievements\badge-volume-record.png"
 )
 
 foreach ($relative in $publicFiles) {
@@ -53,10 +58,14 @@ foreach ($relative in $publicFiles) {
     throw "Packaged public file differs from its source: $relative"
   }
 }
+foreach ($relative in $obsoleteAnalyticalJson) {
+  $packaged = Join-Path (Join-Path $root "www") $relative
+  if (Test-Path -LiteralPath $packaged) { throw "Obsolete analytical runtime asset remains packaged: www\$relative" }
+}
 
 $index = Get-Content -LiteralPath (Join-Path $root "index.html") -Raw
 $app = Get-Content -LiteralPath (Join-Path $root "app.js") -Raw
-foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "programming-family-ledger.js", "prescription-engine.js", "guided-mesocycle.js", "rest-completion-controller.js", "backup-contract.js", "app-foundation.js", "app-views.js", "app-analysis.js", "app-workout.js", "app-sync.js", "app-history.js", "app-import.js", "app.js")) {
+foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "prescription-engine.js", "exception-resolver.js", "rest-completion-controller.js", "backup-contract.js", "app-foundation.js", "app-views.js", "app-analysis.js", "app-workout.js", "app-sync.js", "app-history.js", "app-import.js", "app.js")) {
   if ($index -notlike "*$needle*") { throw "index.html is missing required PWA marker: $needle" }
 }
 if ($app -notlike "*serviceWorker*") { throw "app.js is missing the service-worker registration boundary." }
@@ -75,6 +84,10 @@ $sensitiveDirectoryNames = @("private-personal-data", "private_personal_data", "
 $sensitiveExtensions = @(".env", ".db", ".sqlite", ".sqlite3", ".bak", ".backup")
 foreach ($publicRoot in $publicRoots) {
   if (-not (Test-Path -LiteralPath $publicRoot -PathType Container)) { continue }
+  foreach ($relative in $obsoletePublicFiles) {
+    $obsolete = Join-Path $publicRoot $relative
+    if (Test-Path -LiteralPath $obsolete) { throw "Deleted product asset remains packaged: $obsolete" }
+  }
   $sensitiveFiles = Get-ChildItem -LiteralPath $publicRoot -Recurse -File | Where-Object {
     $relative = $_.FullName.Substring($publicRoot.Length).TrimStart('\', '/')
     $normalizedRelative = $relative -replace '\\', '/'

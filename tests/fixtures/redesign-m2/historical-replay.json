@@ -1,0 +1,137 @@
+{
+  "fixtureVersion": "comprehensive-fitness-exception-replay/1.0.0",
+  "privacy": "synthetic",
+  "cases": [
+    {
+      "caseId": "ordinary-submitted-history",
+      "evaluatedAt": "2030-01-15T12:00:00.000Z",
+      "candidates": [],
+      "expected": {
+        "actionCount": 0,
+        "sessionOutcome": "no_action"
+      }
+    },
+    {
+      "caseId": "recorded-pain-history",
+      "evaluatedAt": "2030-01-15T12:00:00.000Z",
+      "candidates": [
+        {
+          "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+          "candidateId": "candidate-replay-recorded-pain",
+          "detector": {
+            "id": "explicit-safety-input",
+            "version": "comprehensive-fitness-explicit-safety-input/1.0.0",
+            "ruleVersion": "explicit-recorded-input/1.0.0"
+          },
+          "evaluatedAt": "2030-01-15T12:00:00.000Z",
+          "effectiveAt": "2030-01-15T12:00:00.000Z",
+          "expiresAt": null,
+          "returnCondition": {
+            "type": "user_decision"
+          },
+          "category": "pain_or_illness",
+          "explicitSafetyInput": true,
+          "scope": {
+            "type": "session"
+          },
+          "action": {
+            "code": "stop_or_skip_work",
+            "parameters": {
+              "mode": "stop_or_skip"
+            }
+          },
+          "reasonCodes": [
+            "explicit_pain_or_injury"
+          ],
+          "sourceReferences": [
+            "synthetic-session:recovery.pain"
+          ],
+          "evidence": [
+            {
+              "sourceReference": "synthetic-session:recovery.pain",
+              "provenance": "recorded",
+              "required": true
+            }
+          ],
+          "qualification": {
+            "identityIntegrity": true,
+            "sourceIntegrity": true,
+            "comparability": true,
+            "sufficiency": true,
+            "freshness": true,
+            "materiality": true,
+            "calibration": true,
+            "actionability": true,
+            "nonDuplication": true,
+            "auditability": true
+          }
+        }
+      ],
+      "expected": {
+        "actionCount": 1,
+        "sessionOutcome": "action",
+        "category": "pain_or_illness"
+      }
+    },
+    {
+      "caseId": "ambiguous-variant-plateau-history",
+      "evaluatedAt": "2030-01-15T12:00:00.000Z",
+      "candidates": [
+        {
+          "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+          "candidateId": "candidate-replay-ambiguous-plateau",
+          "detector": {
+            "id": "synthetic-plateau-shadow",
+            "version": "synthetic/1.0.0",
+            "ruleVersion": "not-approved/1.0.0"
+          },
+          "evaluatedAt": "2030-01-15T12:00:00.000Z",
+          "effectiveAt": "2030-01-15T12:00:00.000Z",
+          "expiresAt": "2030-01-22T12:00:00.000Z",
+          "returnCondition": null,
+          "category": "plateau",
+          "scope": {
+            "type": "exercise",
+            "exerciseVariantId": "synthetic-press-heavy"
+          },
+          "action": {
+            "code": "address_plateau",
+            "parameters": {
+              "strategy": "reduce_load"
+            }
+          },
+          "reasonCodes": [
+            "persistent_plateau"
+          ],
+          "sourceReferences": [
+            "synthetic-history:ambiguous-variant"
+          ],
+          "evidence": [
+            {
+              "sourceReference": "synthetic-history:ambiguous-variant",
+              "provenance": "ambiguous",
+              "required": true
+            }
+          ],
+          "qualification": {
+            "identityIntegrity": false,
+            "sourceIntegrity": true,
+            "comparability": false,
+            "sufficiency": true,
+            "freshness": true,
+            "materiality": true,
+            "calibration": false,
+            "actionability": true,
+            "nonDuplication": true,
+            "auditability": true
+          }
+        }
+      ],
+      "expected": {
+        "actionCount": 0,
+        "sessionOutcome": "no_action",
+        "suppressionReason": "qualification_failed"
+      }
+    }
+  ]
+}

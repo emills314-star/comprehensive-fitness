@@ -2,10 +2,8 @@
 
 const { test, expect } = require("@playwright/test");
 const {
-  ANALYTICS_EXPECTATIONS,
   FIXED_NOW,
   STORAGE_KEY,
-  buildAnalyticsEvidenceFixture,
   buildAnalyticsSettingsFixture,
   buildEmptyAnalyticsSettingsFixture
 } = require("./fixtures/analytics-settings.fixture");
@@ -34,26 +32,28 @@ async function installFixture(page, fixture = buildAnalyticsSettingsFixture()) {
   }, { fixedNow: FIXED_NOW, marker: FIXTURE_MARKER, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: "the identity compatibility catalog must be ready before lifecycle checks run",
     timeout: 45_000
-  }).not.toBe("loading");
+  }).toBe(true);
   return fixture;
 }
 
-function primaryTab(page, tabId) {
-  return page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
-}
-
 async function openPrimaryTab(page, tabId) {
-  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
-  const target = primaryTab(page, destination);
+  if (tabId === "settings") {
+    if (await page.locator(".settings-view").isVisible().catch(() => false)) return;
+    const settingsTrigger = page.locator('[data-action="open-settings"]');
+    if (await settingsTrigger.count()) await settingsTrigger.click();
+    else await page.goto("/#settings");
+    await expect(page).toHaveURL(/#settings$/);
+    await expect(page.locator(".settings-view")).toBeVisible();
+    return;
+  }
+  const target = page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
-  if (tabId === "charts" || tabId === "dashboard") {
-    const view = page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`);
-    await view.click();
-    await expect(view).toHaveAttribute("aria-current", "page");
-  }
 }
 
 async function waitForCharts(page) {
@@ -78,20 +78,19 @@ async function persistedAppData(page) {
   return page.evaluate(async () => readIndexedValue("app-data"));
 }
 
-test("Charts empty state explains the qualifying action without rendering invented analytics", async ({ page }) => {
+test("Progress empty state asks for a completed workout without rendering invented history", async ({ page }) => {
   await installFixture(page, buildEmptyAnalyticsSettingsFixture());
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
 
-  const empty = page.locator(".charts-view .empty-state");
-  await expect(empty).toContainText("Log an exercise");
-  await expect(empty).toContainText("progression charts and next-step guidance");
-  await expect(page.locator(".charts-view .chart-control-panel, .charts-view .chart-card, .charts-view .chart-metric-row")).toHaveCount(0);
+  const empty = page.getByText("Complete a workout to add exercise history.", { exact: true });
+  await expect(empty).toContainText("Complete a workout");
+  await expect(page.locator(".charts-view .chart-control-panel, .charts-view .chart-card")).toHaveCount(0);
   expect(await page.evaluate(() => exerciseCatalog().length)).toBe(0);
 });
 
 test("chart search is case-insensitive and retains the selected lift on no result", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await waitForCharts(page);
   let input = page.getByRole("combobox", { name: "Search or select exercise" });
   await expect(input).toHaveValue("Barbell Bench Press");
@@ -128,7 +127,7 @@ test("chart search is case-insensitive and retains the selected lift on no resul
 
 test("partial chart search ranks all matches and promotes the most recently selected lift", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await waitForCharts(page);
 
   let input = page.getByRole("combobox", { name: "Search or select exercise" });
@@ -149,9 +148,9 @@ test("partial chart search ranks all matches and promotes the most recently sele
   await expect(suggestions.first().locator("strong")).toHaveText("Dumbbell Bench Press");
 });
 
-test("Charts changes six-week windows with exact dates and metrics, then opens and closes the selected point", async ({ page }) => {
+test("Progress renders one factual performance chart and exposes recorded point details", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await waitForCharts(page);
 
   const input = page.getByRole("combobox", { name: "Search or select exercise" });
@@ -159,306 +158,92 @@ test("Charts changes six-week windows with exact dates and metrics, then opens a
   await input.press("Enter");
   await waitForCharts(page);
 
-  const summary = page.locator(".chart-viewing-summary");
-  await expect(summary).toContainText(new RegExp(`${ANALYTICS_EXPECTATIONS.latestWindow.start}.*${ANALYTICS_EXPECTATIONS.latestWindow.end}`));
-  await expect(summary).toContainText(`${ANALYTICS_EXPECTATIONS.latestWindow.qualifyingWeeks} qualifying`);
-  const metrics = page.locator(".chart-metric-row > div");
-  await expect(metrics.nth(0).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellLatest.e1rm);
-  await expect(metrics.nth(1).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellLatest.volume);
-  await expect(metrics.nth(2).locator("strong")).toHaveText(String(ANALYTICS_EXPECTATIONS.latestWindow.setCount));
+  await expect(page.locator(".chart-viewing-summary")).toContainText("Dumbbell Bench Press");
+  await expect(page.locator(".primary-analysis-chart")).toContainText("Performance trend");
+  await expect(page.locator('[data-chart-key="e1rm"], [data-chart-key="volume"]')).toHaveCount(0);
 
-  await page.locator(".analysis-period-menu summary").click();
-  const priorPeriod = page.locator('[data-action="select-chart-period"]').nth(1);
-  await expect(priorPeriod).toContainText("Previous qualifying period 1");
-  await priorPeriod.click();
-  await waitForCharts(page);
-
-  await expect(summary).toContainText(new RegExp(`${ANALYTICS_EXPECTATIONS.previousWindow.start}.*${ANALYTICS_EXPECTATIONS.previousWindow.end}`));
-  await expect(metrics.nth(0).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellPrevious.e1rm);
-  await expect(metrics.nth(1).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellPrevious.volume);
-  await expect(metrics.nth(2).locator("strong")).toHaveText(String(ANALYTICS_EXPECTATIONS.previousWindow.setCount));
-
-  const e1rmChart = page.locator('.chart-card[data-chart-key="e1rm"]');
-  const points = e1rmChart.locator('[data-action="show-chart-point"]');
-  await expect(points).toHaveCount(6);
-  await expect(points.last()).toHaveAttribute("aria-label", new RegExp(ANALYTICS_EXPECTATIONS.dumbbellPrevious.pointDate));
+  const chart = page.locator('.chart-card[data-chart-key="performance"]');
+  await expect(chart).toBeVisible();
+  await expect(chart.locator("header strong")).toContainText("Best completed");
+  const points = chart.locator('[data-action="show-chart-point"]');
+  expect(await points.count()).toBeGreaterThan(0);
+  await expect(chart.locator('[data-action="show-chart-point"][tabindex="0"]')).toHaveCount(1);
+  await points.last().focus();
+  if (await points.count() > 1) {
+    await points.last().press("Home");
+    await expect(points.first()).toBeFocused();
+    await points.first().press("End");
+    await expect(points.last()).toBeFocused();
+  }
+  await expect(points.last()).toHaveAttribute("aria-label", /Dumbbell Bench Press|Best completed/i);
   await points.last().click();
-  const detail = e1rmChart.locator(".chart-detail");
-  await expect.soft(detail, "The opened point must use the date represented by the activated historical SVG point").toContainText(ANALYTICS_EXPECTATIONS.dumbbellPrevious.pointDate);
+  const detail = chart.locator(".chart-detail");
   await expect(detail).toContainText("Dumbbell Bench Press");
+  await expect(detail).toContainText("load");
+  await expect(detail).toContainText("reps");
+  await expect(detail).toContainText("RPE");
+  await expect(detail).toContainText("role");
+  await expect(detail.locator(".chart-session-group")).toHaveCount(1);
   await detail.getByRole("button", { name: "Close chart detail" }).click();
-  await expect(e1rmChart.locator(".chart-detail")).toHaveCount(0);
-});
-
-test("chart evidence segments retain thin weeks without changing scoring, omit deloads, and group same-date sessions", async ({ page }) => {
-  await installFixture(page, buildAnalyticsEvidenceFixture());
-  await openPrimaryTab(page, "charts");
-  await waitForCharts(page);
-
-  const input = page.getByRole("combobox", { name: "Search or select exercise" });
-  await input.fill("Dumbbell Bench Press");
-  await input.press("Enter");
-  await waitForCharts(page);
-
-  const contract = await page.evaluate(() => {
-    const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId);
-    const scoringContract = (value) => ({
-      included: value.included.map((week) => ({ weekStart: week.weekStart, completedSets: week.completedSets })),
-      skippedDeloadWeeks: value.skippedDeloadWeeks.map((week) => ({ weekStart: week.weekStart, completedSets: week.completedSets })),
-      incompleteWeeks: value.incompleteWeeks.map((week) => ({ weekStart: week.weekStart, completedSets: week.completedSets })),
-      dataPointCount: value.dataPointCount,
-      confidence: value.confidence
-    });
-    const scoringBeforeSeries = scoringContract(analysis);
-    const includedStarts = analysis.included.map((week) => week.weekStart).sort();
-    const classifications = analysis.allWeeks
-      .filter((week) => week.weekStart >= includedStarts[0] && week.weekStart <= includedStarts.at(-1))
-      .map((week) => ({
-        weekStart: week.weekStart,
-        completedSets: week.completedSets,
-        qualifies: week.qualifies,
-        isDeload: week.isDeload
-      }));
-    const progress = exerciseProgressSeries(selectedExerciseName(), {
-      canonicalExerciseId: selectedExerciseId,
-      throughDate: analysis.windowEnd,
-      retentionAsOfDate: todayIso(),
-      qualifyingWeekIds: analysis.qualifyingWeekIds,
-      weekClassifications: classifications,
-      resistanceType: selectedExerciseRecord()?.resistanceType
-    });
-    return {
-      classifications,
-      points: progress.e1rm.map((point) => ({
-        completedSets: point.completedSets,
-        date: point.date,
-        isDeload: point.isDeload,
-        qualifies: point.qualifies,
-        sessionIds: Array.from(new Set(point.details.map((set) => set.sessionId)))
-      })),
-      scoringAfterSeries: scoringContract(hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId)),
-      scoringBeforeSeries,
-      seriesConstructed: Array.isArray(progress.e1rm) && Array.isArray(progress.volume)
-    };
-  });
-
-  expect(contract.seriesConstructed, "The guard must construct both chart series before comparing scoring outputs").toBe(true);
-  expect(
-    contract.scoringAfterSeries,
-    "included, skippedDeloadWeeks, incompleteWeeks, dataPointCount, and confidence must be identical after constructing a mixed-evidence chart series"
-  ).toEqual(contract.scoringBeforeSeries);
-  const thinWeeks = contract.classifications.filter((week) => !week.qualifies && !week.isDeload);
-  const deloadWeeks = contract.classifications.filter((week) => week.isDeload);
-  expect(thinWeeks.length).toBeGreaterThan(0);
-  expect(deloadWeeks.length).toBeGreaterThan(0);
-  expect(contract.points.some((point) => !point.qualifies && !point.isDeload)).toBe(true);
-  expect(contract.points.some((point) => point.isDeload)).toBe(false);
-  expect(contract.scoringBeforeSeries.included.some((week) => thinWeeks.some((thin) => thin.weekStart === week.weekStart))).toBe(false);
-  expect(contract.scoringBeforeSeries.incompleteWeeks.some((week) => thinWeeks.some((thin) => thin.weekStart === week.weekStart))).toBe(true);
-  expect(contract.scoringBeforeSeries.skippedDeloadWeeks.some((week) => deloadWeeks.some((deload) => deload.weekStart === week.weekStart))).toBe(true);
-  expect(await page.evaluate(() => ({
-    explicit: exerciseDeloadPresentation({ isDeload: true, isLikelyDeload: true }),
-    inferred: exerciseDeloadPresentation({ isDeload: false, isLikelyDeload: true })
-  }))).toEqual({
-    explicit: { confidence: 4, label: "Recorded deload", note: "Explicitly marked and excluded from scoring." },
-    inferred: { confidence: 2, label: "Possible deload", note: "Inferred from the available history; not presented as a recorded fact." }
-  });
-
-  const chart = page.locator('.chart-card[data-chart-key="e1rm"]');
-  expect(await chart.locator('.chart-line[data-evidence="provisional"]').count()).toBeGreaterThan(0);
-  await expect(chart.locator(".chart-key")).toContainText("evidenced");
-  await expect(chart.locator(".chart-key")).toContainText("provisional week");
-  await expect(chart.locator("header .status-pill")).toContainText(/evidenced point/);
-  await expect(chart.locator("header .status-pill")).toContainText(/provisional point/);
-  const pointTargets = chart.locator('[data-action="show-chart-point"]');
-  await expect(pointTargets.first().locator(".hit-area")).toHaveCount(1);
-  await expect(pointTargets.first().locator(".selected-ring")).toHaveCount(1);
-  await expect(pointTargets.first().locator(".visible-point")).toHaveCount(1);
-  await expect(pointTargets.first()).toHaveAttribute("role", "button");
-  await expect(pointTargets.first()).toHaveAttribute("tabindex", "0");
-  await expect(pointTargets.first()).toHaveAttribute("aria-pressed", "false");
-  await pointTargets.first().focus();
-  await pointTargets.first().press("Enter");
+  await expect(chart.locator(".chart-detail")).toHaveCount(0);
+  await points.last().focus();
+  await points.last().press("Enter");
   await expect(chart.locator(".chart-detail")).toBeVisible();
   await chart.getByRole("button", { name: "Close chart detail" }).click();
-  await expect(pointTargets.first()).toBeFocused();
-
-  const sameDatePoint = contract.points.find((point) => point.sessionIds.length > 1);
-  expect(sameDatePoint).toBeTruthy();
-  expect(sameDatePoint.date).toBe(contract.points.at(-1).date);
-  await pointTargets.last().click();
-  const detail = chart.locator(".chart-detail");
-  await expect(detail).toContainText("2 sessions contributed on this date");
-  await expect(detail.locator(".chart-session-group")).toHaveCount(2);
-  await expect(detail).toContainText("Public Synthetic Analytics Session 01");
-  await expect(detail).toContainText("Public Synthetic Second Same-Date Session");
-  await expect(detail).not.toContainText(/that session/i);
+  await expect(points.last()).toBeFocused();
 });
 
-test("guided planning honors equipment, muscle scope, partial search, no results, viability, and template creation", async ({ page }) => {
-  test.setTimeout(120_000);
-  await installFixture(page, buildEmptyAnalyticsSettingsFixture());
-  await openPrimaryTab(page, "plan");
-  await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
-  await page.getByRole("button", { name: "Start planning" }).click();
-
-  await setNumericSetting(page, "mesocycle-training-days", 2);
-  const allEquipment = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="all"]');
-  const dumbbells = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="dumbbell"]');
-  await dumbbells.click();
-  await expect(allEquipment).toHaveAttribute("aria-pressed", "false");
-  await expect(dumbbells).toHaveAttribute("aria-pressed", "true");
-  expect(await page.evaluate(() => data.settings.availableEquipment)).toEqual(["dumbbell"]);
-  await allEquipment.click();
-  await expect(allEquipment).toHaveAttribute("aria-pressed", "true");
-  await expect(dumbbells).toHaveAttribute("aria-pressed", "false");
-
-  const scopeInputs = page.locator('[data-action="mesocycle-muscle-scope"]');
-  const scopeCount = await scopeInputs.count();
-  expect(scopeCount).toBeGreaterThan(1);
-  for (let index = 0; index < scopeCount; index += 1) {
-    const scope = scopeInputs.nth(index);
-    if (await scope.getAttribute("value") !== "chest") await scope.uncheck();
-  }
-  await expect(page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]')).toBeChecked();
-  await page.locator('[data-action="create-guided-draft"]').click();
-  await expect(page.locator(".guided-day")).toHaveCount(2);
-
-  async function addFiveBenchPressSets(dayIndex) {
-    const days = page.locator(".guided-day");
-    const day = days.nth(dayIndex);
-    if (!await day.locator('[data-action="open-guided-exercise-browser"]').isVisible()) {
-      await day.locator('[data-action="toggle-guided-day"]').click();
-    }
-    await day.locator('[data-action="open-guided-exercise-browser"]').click();
-    const search = page.locator('[data-action="guided-exercise-search"]');
-    await search.fill("no such public synthetic exercise");
-    await search.dispatchEvent("change");
-    await expect(page.locator(".exercise-browser-card")).toHaveCount(0);
-    await search.fill("bEnCh");
-    await search.dispatchEvent("change");
-    const cards = page.locator(".exercise-browser-card");
-    expect(await cards.count()).toBeGreaterThan(0);
-    const names = await cards.locator("h3").allTextContents();
-    expect(names.every((name) => /bench/i.test(name))).toBe(true);
-    if (dayIndex === 0) {
-      const evidenceContract = await page.evaluate(() => {
-        const card = document.querySelector(".exercise-browser-card");
-        const exerciseName = card?.querySelector("h3")?.textContent?.trim();
-        const candidate = guidedCandidatePool(guidedExerciseMuscleFilter).find((item) => item.exerciseName === exerciseName);
-        const draft = guidedDraft();
-        return {
-          assignments: draft.guidedDays.reduce((sum, item) => sum + item.assignments.length, 0),
-          categoricalConfidence: candidate.personalDataConfidence,
-          numericEvidenceQuality: candidate.scores.personalDataConfidence,
-          reason: candidate.scores.weightingReason,
-          renderedLevel: Number(card.querySelector(".meter")?.dataset.conf),
-          renderedReason: card.querySelector(".ex-why")?.textContent?.trim(),
-          renderedScore: card.querySelector(".guided-effectiveness-score")?.textContent?.trim(),
-          score: candidate.scores.targetMuscleEffectiveness
-        };
-      });
-      expect(evidenceContract.renderedScore).toBe(`${Math.round(evidenceContract.score)} / 100`);
-      expect(evidenceContract.renderedReason).toBe(evidenceContract.reason);
-      expect(evidenceContract.renderedLevel).toBe(({ research_default: 1, low: 2, moderate: 3, high: 4 })[evidenceContract.categoricalConfidence]);
-      expect(typeof evidenceContract.numericEvidenceQuality).toBe("number");
-      expect(await page.evaluate(() => guidedDraft().guidedDays.reduce((sum, item) => sum + item.assignments.length, 0))).toBe(evidenceContract.assignments);
-      await expect(cards.first().locator(".guided-gap-projection"), "Rendering an exact temporary projection must not require committing the candidate").toBeVisible();
-    }
-    await cards.first().locator('[data-action="select-guided-exercise"]:not([disabled])').click();
-    const pending = page.locator("[data-guided-configuration]");
-    await expect(pending).toBeVisible();
-    const output = pending.locator("output");
-    while (Number((await output.textContent()).match(/\d+/)?.[0] || 0) < 5) {
-      await pending.getByRole("button", { name: "Add one planned working set" }).click();
-    }
-    await pending.locator('[data-action="confirm-guided-exercise"]').click();
-    await expect(page.locator("[data-guided-configuration]")).toHaveCount(0);
-    await page.locator('[data-action="close-guided-exercise-browser"]').click();
-  }
-
-  await addFiveBenchPressSets(0);
-  await addFiveBenchPressSets(1);
-  await page.locator('[data-action="check-guided-viability"]').click();
-  await expect(page.locator(".guided-check-step")).toBeVisible();
-  await expect(page.locator(".finding.blocking")).toHaveCount(0);
-  const reviewCreation = page.locator('[data-action="open-guided-generation-review"]');
-  await expect(reviewCreation).toBeEnabled();
-  await reviewCreation.click();
-  await expect(page.locator(".guided-create-step")).toContainText("2 templates, 6 weeks.");
-  await expect(page.locator(".guided-create-step")).toContainText("No comparable earlier plan is stored.");
-  await expect(page.locator(".guided-create-step")).not.toContainText(/\b(actual|achieved|logged|performed)\b/i);
-  await page.locator('[data-action="create-guided-templates"]').click();
-  await expect(page.getByText("Mesocycle completed", { exact: true })).toBeVisible();
-  await expect(page.locator('[data-action="start-first-mesocycle-template"]')).toBeEnabled();
-  expect(await page.evaluate(() => data.templates.length)).toBe(2);
-});
-
-test("Settings converts real loads and persists profile, timer, readiness, unit, theme, and color-package changes across reload", async ({ page }) => {
+test("Settings changes the load display preference without rewriting stored loads or retaining legacy program defaults", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
 
-  await page.locator('[data-action="theme-mode"][value="dark"]').check();
-  await page.locator('[data-action="color-package"][value="heritage-atlas"]').check();
+  const obsoleteKeys = ["trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "theme", "colorPackage", "workoutCompletionSound", "interactionVibration", "restCompleteLockScreenNotifications", "autoScrollNextSet"];
+  const normalizedState = await page.evaluate((keys) => ({
+    obsoleteSettings: keys.filter((key) => Object.prototype.hasOwnProperty.call(data.settings, key)),
+    obsoleteCollections: ["manualOverrides", "personalEvidencePackage"].filter((key) => Object.prototype.hasOwnProperty.call(data, key))
+  }), obsoleteKeys);
+  expect(normalizedState).toEqual({ obsoleteSettings: [], obsoleteCollections: [] });
+  await expect(page.getByText("Training defaults", { exact: true })).toHaveCount(0);
+  for (const action of ["training-goal", "nutrition-phase", "experience-level", "returning-after-gap"]) {
+    await expect(page.locator(`[data-action="${action}"]`), `${action} must remain absent from the approved Settings surface`).toHaveCount(0);
+  }
+  for (const action of ["theme-mode", "color-package", "workout-completion-sound", "interaction-vibration", "auto-scroll-next"]) {
+    await expect(page.locator(`[data-action="${action}"]`), `${action} must remain absent from minimized Settings`).toHaveCount(0);
+  }
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await expect(page.locator("html")).not.toHaveAttribute("data-color-package");
   await page.locator('[data-action="weight-unit"][value="kg"]').check();
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="training-goal"]').selectOption("strength");
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="nutrition-phase"]').selectOption("surplus");
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="experience-level"]').selectOption("advanced");
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="returning-after-gap"]').selectOption("true");
   await openSettingsGroup(page, "Rest timer and alerts");
   await setNumericSetting(page, "default-rest-seconds", 150);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-sleep-hours", 8);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-sleep-quality", 5);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-hrv", 62);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-resting-hr", 55);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-soreness", 1);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-band", 10);
 
   const inMemory = await page.evaluate(() => ({
     settings: structuredClone(data.settings),
     firstSet: structuredClone(data.sets[0])
   }));
   expect(inMemory.settings).toMatchObject({
-    theme: "dark",
-    colorPackage: "heritage-atlas",
     weightUnit: "kg",
-    trainingGoal: "strength",
-    nutritionPhase: "surplus",
-    experienceLevel: "advanced",
-    returningAfterGap: true,
-    defaultRestSeconds: 150,
-    readinessBaseline: { sleepHours: "8", sleepQuality: "5", hrv: "62", restingHr: "55", soreness: "1", band: "10" }
+    defaultRestSeconds: 150
   });
-  expect(inMemory.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
+  for (const key of obsoleteKeys) expect(inMemory.settings).not.toHaveProperty(key);
+  expect(inMemory.firstSet).toMatchObject({ weight: 220, weightUnit: "lb", targetWeight: 220 });
 
-  await expect.poll(async () => (await persistedAppData(page))?.settings?.readinessBaseline?.band, { timeout: 10_000 }).toBe("10");
+  await expect.poll(async () => (await persistedAppData(page))?.settings?.defaultRestSeconds, { timeout: 10_000 }).toBe(150);
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
 
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator("html")).toHaveAttribute("data-color-package", "heritage-atlas");
-  await expect(page.locator('[data-action="theme-mode"][value="dark"]')).toBeChecked();
-  await expect(page.locator('[data-action="color-package"][value="heritage-atlas"]')).toBeChecked();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await expect(page.locator("html")).not.toHaveAttribute("data-color-package");
   await expect(page.locator('[data-action="weight-unit"][value="kg"]')).toBeChecked();
+  await expect(page.getByText("Training defaults", { exact: true })).toHaveCount(0);
   const restored = await page.evaluate(() => ({ settings: structuredClone(data.settings), firstSet: structuredClone(data.sets[0]) }));
   expect(restored.settings).toMatchObject(inMemory.settings);
-  expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
+  expect(restored.firstSet).toMatchObject({ weight: 220, weightUnit: "lb", targetWeight: 220 });
 });
 
-test("More numeric settings enforce their import-safe domains and survive reload", async ({ page }) => {
+test("contextual Settings default-rest control enforces its import-safe domain and survives reload", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Rest timer and alerts");
 
   const control = page.locator('[data-action="default-rest-seconds"]');
@@ -469,63 +254,32 @@ test("More numeric settings enforce their import-safe domains and survive reload
   expect(await page.evaluate(() => data.settings.defaultRestSeconds)).toBe(900);
   await expect.poll(async () => (await persistedAppData(page))?.settings?.defaultRestSeconds, { timeout: 10_000 }).toBe(900);
 
-  const baselineCases = [
-    ["baseline-sleep-hours", "15", "14", "sleepHours"],
-    ["baseline-sleep-quality", "0", "1", "sleepQuality"],
-    ["baseline-hrv", "-4", "0", "hrv"],
-    ["baseline-resting-hr", "-2", "0", "restingHr"],
-    ["baseline-soreness", "9", "5", "soreness"],
-    ["baseline-band", "99", "20", "band"]
-  ];
-  for (const [action, attempted, expected, field] of baselineCases) {
-    await openSettingsGroup(page, "Readiness baseline");
-    const baselineControl = page.locator(`[data-action="${action}"]`);
-    await baselineControl.fill(attempted);
-    await baselineControl.dispatchEvent("change");
-    await expect(page.locator(`[data-action="${action}"]`)).toHaveValue(expected);
-    expect(await page.evaluate((key) => data.settings.readinessBaseline[key], field)).toBe(expected);
-  }
-  await expect.poll(async () => (await persistedAppData(page))?.settings?.readinessBaseline?.band, { timeout: 10_000 }).toBe("20");
-
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Rest timer and alerts");
   await expect(page.locator('[data-action="default-rest-seconds"]')).toHaveValue("900");
-  await openSettingsGroup(page, "Readiness baseline");
-  await expect(page.locator('[data-action="baseline-sleep-hours"]')).toHaveValue("14");
-  await expect(page.locator('[data-action="baseline-sleep-quality"]')).toHaveValue("1");
-  await expect(page.locator('[data-action="baseline-hrv"]')).toHaveValue("0");
-  await expect(page.locator('[data-action="baseline-resting-hr"]')).toHaveValue("0");
-  await expect(page.locator('[data-action="baseline-soreness"]')).toHaveValue("5");
-  await expect(page.locator('[data-action="baseline-band"]')).toHaveValue("20");
 });
 
-test("all ten color packages are selectable and apply distinct semantic colors", async ({ page }) => {
+test("the fixed light Signal Garden semantic styling is not user-configurable", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
-  await page.locator('[data-action="theme-mode"][value="light"]').check();
-  const selectors = page.locator('[data-action="color-package"]');
-  const packageIds = await selectors.evaluateAll((options) => options.map((option) => option.value));
-  expect(packageIds).toEqual([
-    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
-    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
-  ]);
-  const applied = new Set();
-  for (const packageId of packageIds) {
-    await page.locator(`[data-action="color-package"][value="${packageId}"]`).check();
-    await expect(page.locator("html")).toHaveAttribute("data-color-package", packageId);
-    applied.add(await page.evaluate(() => {
-      const style = getComputedStyle(document.documentElement);
-      return [style.getPropertyValue("--bg"), style.getPropertyValue("--action"), style.getPropertyValue("--success"), style.getPropertyValue("--red")].join("|");
-    }));
-  }
-  expect(applied.size).toBe(10);
+  await openPrimaryTab(page, "settings");
+  await expect(page.getByText("Appearance and units", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-action="theme-mode"], [data-action="color-package"]')).toHaveCount(0);
+  expect(await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      background: style.getPropertyValue("--bg").trim(),
+      action: style.getPropertyValue("--action").trim(),
+      success: style.getPropertyValue("--success").trim(),
+      danger: style.getPropertyValue("--red").trim()
+    };
+  })).toEqual({ background: "#fff", action: "#176fd1", success: "#168a54", danger: "#c83f35" });
 });
 
 test("persistence exhaustion keeps the in-memory setting and immediately surfaces recovery guidance", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
 
   await page.evaluate((storageKey) => {
     const audit = { appDataPutAborts: 0, localQuotaFailures: 0 };
@@ -555,19 +309,20 @@ test("persistence exhaustion keeps the in-memory setting and immediately surface
   }, STORAGE_KEY);
 
   try {
-    await page.locator('[data-action="theme-mode"][value="dark"]').check();
+    await openSettingsGroup(page, "Rest timer and alerts");
+    await setNumericSetting(page, "default-rest-seconds", 105);
     await expect.poll(() => page.evaluate(() => ({
-      ...globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__,
-      theme: data.settings.theme,
+      persistenceFailuresObserved:
+        globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__.appDataPutAborts > 0
+        && globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__.localQuotaFailures > 0,
+      defaultRestSeconds: data.settings.defaultRestSeconds,
       settingsMessage
     })), { timeout: 10_000 }).toEqual({
-      appDataPutAborts: 1,
-      localQuotaFailures: 1,
-      theme: "dark",
+      persistenceFailuresObserved: true,
+      defaultRestSeconds: 105,
       settingsMessage: "Storage is full on this device. Export a backup, clear old data, or import a smaller file."
     });
     await expect.soft(page.getByText("Storage is full on this device. Export a backup, clear old data, or import a smaller file.", { exact: true }), "The recovery message must render immediately when both persistence layers reject the write").toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   } finally {
     await page.evaluate(() => globalThis.__CF_RESTORE_PERSISTENCE_METHODS__?.()).catch(() => undefined);
   }
@@ -575,7 +330,7 @@ test("persistence exhaustion keeps the in-memory setting and immediately surface
 
 test("Clear All Local App Data supports cancel, exact dual confirmation, defaults, and durable reload clearing", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Danger Zone");
   const clearButton = page.getByRole("button", { name: /Clear All Local App Data$/ });
   await clearButton.click();
@@ -622,30 +377,16 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: 0,
     sets: 0,
     templates: 0,
-    mesocycles: 0,
-    theme: "light",
     weightUnit: "lb",
-    trainingGoal: "",
-    nutritionPhase: "",
-    experienceLevel: "",
-    returningAfterGap: null,
-    defaultRestSeconds: 90,
-    readinessBaseline: { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 }
+    defaultRestSeconds: 90
   };
   const cleared = await page.evaluate(() => ({
     sessions: data.sessions.length,
     exercises: data.exercises.length,
     sets: data.sets.length,
     templates: data.templates.length,
-    mesocycles: data.mesocycles.length,
-    theme: data.settings.theme,
     weightUnit: data.settings.weightUnit,
-    trainingGoal: data.settings.trainingGoal,
-    nutritionPhase: data.settings.nutritionPhase,
-    experienceLevel: data.settings.experienceLevel,
-    returningAfterGap: data.settings.returningAfterGap,
-    defaultRestSeconds: data.settings.defaultRestSeconds,
-    readinessBaseline: structuredClone(data.settings.readinessBaseline)
+    defaultRestSeconds: data.settings.defaultRestSeconds
   }));
   expect(cleared).toEqual(expectedDefaults);
 
@@ -656,15 +397,8 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: data.exercises.length,
     sets: data.sets.length,
     templates: data.templates.length,
-    mesocycles: data.mesocycles.length,
-    theme: data.settings.theme,
     weightUnit: data.settings.weightUnit,
-    trainingGoal: data.settings.trainingGoal,
-    nutritionPhase: data.settings.nutritionPhase,
-    experienceLevel: data.settings.experienceLevel,
-    returningAfterGap: data.settings.returningAfterGap,
-    defaultRestSeconds: data.settings.defaultRestSeconds,
-    readinessBaseline: structuredClone(data.settings.readinessBaseline)
+    defaultRestSeconds: data.settings.defaultRestSeconds
   }));
   expect(reloaded).toEqual(expectedDefaults);
 });
@@ -718,7 +452,7 @@ test("the registered service worker serves the public app shell while the isolat
     await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     await expect(page.locator(".offline-banner")).toContainText("Workout logging and local changes continue");
-    await expect(page.locator(".offline-banner")).toContainText("cloud-copy operations wait");
+    await expect(page.locator(".offline-banner")).toContainText("Background notifications wait");
     expect(await page.evaluate(() => ({ online: navigator.onLine, controlled: Boolean(navigator.serviceWorker.controller) }))).toEqual({ online: false, controlled: true });
   } finally {
     if (offlineEnabled) await context.setOffline(false).catch(() => undefined);
@@ -731,15 +465,14 @@ test("Settings states the verified privacy and recoverability boundaries without
     if (navigator.storage) Object.defineProperty(navigator.storage, "persisted", { configurable: true, value: async () => true });
   });
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Data and backup");
 
   const dataGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
-  await expect(dataGroup).toContainText("active, unsubmitted workout");
-  await expect(dataGroup).toContainText("every associated exercise and set object");
-  await expect(dataGroup).toContainText("Cloud copy is not a backup");
+  await expect(dataGroup).toContainText("Workout history, routines, settings, readiness, and imports stay in this browser");
+  await expect(dataGroup).toContainText("Export is the recoverable copy");
+  await expect(dataGroup).not.toContainText(/cloud copy|cloud-copy|workout upload/i);
   await expect(dataGroup).toContainText("no cloud-history or restore endpoint");
-  await expect(dataGroup).toContainText("48 research source records");
   await expect(dataGroup).toContainText("Granted by this browser");
   await expect(dataGroup).not.toContainText(/Jul \d|days ago|sessions since|MB/i);
 

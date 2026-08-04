@@ -2,112 +2,91 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const path = require("node:path");
-const engine = require("../prescription-engine.js");
 
-const root = path.resolve(__dirname, "..");
-const views = fs.readFileSync(path.join(root, "app-views.js"), "utf8");
-const foundation = fs.readFileSync(path.join(root, "app-foundation.js"), "utf8");
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const decisionEngine = fs.readFileSync(path.join(root, "docs", "DECISION_ENGINE.md"), "utf8");
-const uiUx = fs.readFileSync(path.join(root, "docs", "UI_UX.md"), "utf8");
-const uiAudit = fs.readFileSync(path.join(root, "tests", "ui", "ui-audit.spec.js"), "utf8");
-const lifecycleAudit = fs.readFileSync(path.join(root, "tests", "ui", "template-workout-history-lifecycles.spec.js"), "utf8");
-const prescriptionSurface = views.slice(
-  views.indexOf("function renderRolePrescriptionDetails"),
-  views.indexOf("function renderPlateCalculator")
-);
-const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";
-const evidenceFoundation = style.slice(
-  style.indexOf("/* Evidence & Change foundation."),
-  style.indexOf(".plan-meta")
-);
+const views = fs.readFileSync("app-views.js", "utf8");
+const foundation = fs.readFileSync("app-foundation.js", "utf8");
+const analysis = fs.readFileSync("app-analysis.js", "utf8");
+const html = fs.readFileSync("index.html", "utf8");
 
-const completeMetrics = (comparableExposures) => ({
-  comparableExposures,
-  statedConfidence: 1,
-  observationSpanDays: 168,
-  rpeCompleteness: 1,
-  recoveryCompleteness: 1,
-  nutritionCompleteness: 1,
-  variationConsistency: 1,
-  muscleAttributionConfidence: 1,
-  confoundingPenalty: 0,
-  programChangePenalty: 0
-});
-
-assert.deepEqual(
-  [2, 3, 5, 8].map((count) => engine.calculateEvidenceWeight(completeMetrics(count)).confidence),
-  ["research_default", "low", "moderate", "high"],
-  "the UI confidence contract must remain grounded in the engine's four categorical outputs"
-);
-assert.equal(engine.calculateEvidenceWeight(completeMetrics(2)).personalEvidenceWeight, 0, "research_default must retain zero personal evidence weight");
-
-for (const [key, level] of [["research_default", 1], ["low", 2], ["moderate", 3], ["high", 4]]) {
-  assert.match(prescriptionSurface, new RegExp(`${key}: \\{ level: ${level},`), `${key} must map only to UI confidence level ${level}`);
-  assert.match(style, new RegExp(`\\.claim-card\\[data-conf="${level}"\\]`), `claim-card level ${level} treatment must be shipped`);
-  assert.match(style, new RegExp(`\\.meter\\[data-conf="${level}"\\]`), `meter level ${level} treatment must be shipped`);
+function extractFunction(source, name) {
+  const marker = `function ${name}(`;
+  const start = source.indexOf(marker);
+  assert.notEqual(start, -1, `Missing ${name}`);
+  const bodyStart = source.indexOf("{", source.indexOf(")", start));
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  assert.fail(`Unclosed ${name}`);
 }
 
-assert.doesNotMatch(prescriptionSurface, /set\.setPrescription\?\.confidence \|\| set\.prescriptionConfidence \|\| "low"/, "prescription evidence must not fabricate a low confidence fallback");
-assert.match(prescriptionSurface, /<section class="prescription-brief unified-prescription recommendation-card-v2/, "unified prescriptions must render a compact recommendation card");
-assert.match(prescriptionSurface, /<details class="recommendation-section"[\s\S]*<summary><span>Evidence<\/span><span class="cnt">/, "recommendation evidence must be a counted native disclosure");
-assert.match(prescriptionSurface, /class="claim-card prescription-claim/, "the prescription target must render as a confidence-bearing claim");
-assert.match(prescriptionSurface, /class="unified-recommendation-grid"/, "sets, reps, effort, structure, rest, and role must remain available in prescription detail");
-assert.match(prescriptionSurface, /class="claim-projection-rule"[\s\S]*Next action[\s\S]*Deload status/, "progression and deload status must remain in prescription detail");
-assert.match(prescriptionSurface, /class="role-evidence-copy"/, "stored role rationale must remain separately identified as evidence");
-assert.match(prescriptionSurface, /<div class="role-prescription"/, "role prescription groups without headings must use neutral container semantics");
-assert.match(prescriptionSurface, /roleSessionPrescriptionLine\(exercise, fallbackFinalLine\)/, "the exercise claim must state the exact generated row prescription");
-assert.match(prescriptionSurface, /targetWeight[\s\S]*targetReps[\s\S]*group\.count/, "the claim must retain generated load, repetition target, and role composition");
-assert.match(prescriptionSurface, /loadAvailable[\s\S]*details \? ": " \+ details : ""/, "the claim must omit genuinely absent target values instead of fabricating zeros");
-assert.match(prescriptionSurface, /group\.count \+ 'x '/, "role evidence headings must retain their live set counts");
-assert.doesNotMatch(prescriptionSurface, /role-confidence-label|role-prescription-claim|Today\\?'s target/, "role evidence must not restore a separate target claim or repeat exercise-level confidence");
-assert.doesNotMatch(prescriptionSurface, /<article class="role-prescription"/, "role prescription groups must not expose unnamed article landmarks");
-assert.doesNotMatch(prescriptionSurface, /role-progression-facts|prescription-fact-grid/, "forward-looking prescription values must not return to fact-styled grids");
-assert.doesNotMatch(style, /\.role-progression-facts|\.prescription-fact-grid/, "obsolete current-tinted projection grids must not be shipped");
-assert.doesNotMatch(prescriptionSurface, /<details class="prescription-brief|<summary[^>]*toggle-prescription-rationale/, "the card itself must remain visible and must not restore the retired action-driven outer disclosure");
-assert.doesNotMatch(prescriptionSurface, /aria-expanded|data-action=/, "native recommendation disclosures must not add synthetic disclosure state or action-driven keyboard stops");
+const resolverScript = '<script src="./exception-resolver.js"></script>';
+const foundationScript = '<script src="./app-foundation.js"></script>';
+assert.ok(html.indexOf(resolverScript) >= 0, "The canonical exception resolver must be loaded");
+assert.ok(html.indexOf(resolverScript) < html.indexOf(foundationScript), "The exception resolver must load before application adapters");
+
+const resolvedActionSource = extractFunction(views, "renderResolvedAction");
+const resolvedActionForScopeSource = extractFunction(views, "resolvedActionForScope");
+const renderLiftHomeSource = extractFunction(views, "renderLiftHome");
+const renderWorkoutSource = extractFunction(views, "renderWorkout");
+
+assert.match(resolvedActionSource, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "Ordinary no-action decisions must stay silent");
+assert.match(resolvedActionSource, /role="status"/, "A material action must be announced as status content");
+assert.match(resolvedActionSource, /<h2>[\s\S]*<p>/, "The visible intervention must stay concise");
+assert.doesNotMatch(resolvedActionSource, /confidence|evidence|personalEvidenceWeight|training window|qualification|taxonomy/i, "Internal recommendation machinery must not enter the visible action card");
+assert.doesNotMatch(resolvedActionSource, /<details|<meter|data-conf=/, "The normal action card must not restore evidence or confidence disclosures");
+
+const renderResolvedAction = new Function(
+  "escapeHtml",
+  `${resolvedActionSource}; return renderResolvedAction;`
+)((value) => String(value ?? ""));
+
+assert.equal(renderResolvedAction(null), "", "No action must render no recommendation UI");
+assert.equal(renderResolvedAction({ outcome: "no_action" }), "", "A canonical no-action result must render no recommendation UI");
+
+const visibleAction = renderResolvedAction({
+  outcome: "action",
+  category: "pain_or_illness",
+  scope: { type: "session" },
+  action: { code: "stop_or_skip_work", parameters: {} },
+  reasonCodes: ["explicit_pain_or_injury"]
+}, { session: { title: "Long Full-Body Session Name" } });
+assert.match(visibleAction, /Stop or skip this workout/, "The canonical action code must own the visible primary instruction");
+assert.match(visibleAction, /You recorded pain or an injury concern/, "The visible reason must remain concise and factual");
+assert.equal((visibleAction.match(/<article/g) || []).length, 1, "One resolved action must produce one visible action card");
+assert.doesNotMatch(visibleAction, /confidence|evidence|matrix|window|taxonomy/i, "Rendered output must keep internal resolver details hidden");
+
+assert.match(resolvedActionForScopeSource, /return decisions\[0\]\?\.outcome === "action" \? decisions\[0\] : null/, "A session scope may expose at most its first current primary action");
+assert.match(resolvedActionForScopeSource, /return latest\?\.outcome === "action" \? latest : null/, "An exercise scope may expose at most one exact current primary action");
+assert.match(resolvedActionForScopeSource, /currentDecisions\[0\]\?\.outcome === "no_action"\) return null/, "The current no-action boundary must suppress retained historical actions");
+assert.match(resolvedActionForScopeSource, /exerciseVariantId/, "Exercise actions must retain exact variant scope");
+assert.match(renderLiftHomeSource, /renderResolvedAction\(resolvedActionForScope\(running, "session"\)/, "Today may show only the canonical session action");
+assert.match(renderWorkoutSource, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "The active workout may show only the canonical session action");
+assert.match(views, /renderResolvedAction\(resolvedActionForScope\(owningSession, "exercise", exercise\)/, "The active exercise may show only its canonical exercise action");
+assert.doesNotMatch(renderLiftHomeSource, /renderHypertrophyScore|renderRecommendation|recommendationConfidence|renderUnifiedEvidence|todayPlanPreview|weeklyMuscleVolume/, "The ordinary Today surface must not restore score, plan-analysis, or recommendation-evidence presentation");
+
+for (const legacyRenderer of [
+  "renderRecommendationHead",
+  "renderUnifiedEvidence",
+  "renderUnifiedPrescriptionDetails",
+  "renderPrescriptionDetails",
+  "renderRolePrescriptionDetails"
+]) {
+  assert.doesNotMatch(views, new RegExp(`function ${legacyRenderer}\\(`), `${legacyRenderer} must remain deleted from normal workout presentation`);
+}
+assert.doesNotMatch(analysis, /function renderRecommendation\(|coachRecommendationForExercise\(|function hypertrophyAnalysis\(|function weeklyMuscleVolume\(/, "Factual progress charts must not become a second recommendation or hidden analysis surface");
+assert.match(analysis, /renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one factual chart and chronological workout history");
+assert.doesNotMatch(analysis, /research exercises|research version|prescription evidence status/i, "Settings and Progress must not expose research/evidence status");
 
 const focusAllowlist = foundation.match(/const focusActionAllowlist = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
-assert.ok(focusAllowlist, "the focus restoration action allowlist must remain discoverable");
-assert.doesNotMatch(focusAllowlist, /toggle-prescription-rationale/, "the removed disclosure action was never a restorable focus descriptor");
-for (const action of ["set-tab", "start-template", "request-cancel-workout", "return-active-workout", "open-history"]) {
+assert.ok(focusAllowlist, "The focus restoration action allowlist must remain discoverable");
+assert.doesNotMatch(focusAllowlist, /toggle-prescription-rationale/, "The deleted recommendation disclosure cannot remain a restorable focus target");
+for (const action of ["set-tab", "start-template", "request-cancel-workout", "resume-active-workout", "log-template-readiness", "open-history"]) {
   assert.match(focusAllowlist, new RegExp(`"${action}"`), `${action} must remain available to focus restoration`);
 }
 
-for (const selector of [".chip", ".claim-card", ".drow", ".diff", ".tap", ".rollup", ".callout", ".meter[data-conf]"]) {
-  assert.ok(evidenceFoundation.includes(selector), `${selector} must be ported into the production inline stylesheet`);
-}
-assert.doesNotMatch(evidenceFoundation, /--fs-data/, "the evidence system must not consume the set-grid-only data type step");
-const evidenceFontSizes = [...evidenceFoundation.matchAll(/font-size:\s*([^;]+);/g)].map((match) => match[1].trim());
-assert.ok(evidenceFontSizes.every((value) => value.startsWith("var(--fs-")), "the evidence system must use the declared type scale");
-assert.match(style, /color-mix\(in srgb, var\(--muted-2\) 70%, var\(--text\)\)/, "provisional text must retain muted-2 semantics while meeting package contrast");
-assert.doesNotMatch(html, /(?:href|src)=["'][^"']*design-concepts\//, "the non-production prototype must never be loaded at runtime");
+assert.doesNotMatch(html, /(?:href|src)=["'][^"']*design-concepts\//, "The non-production prototype must never be loaded at runtime");
 
-for (const contrastName of [
-  "chip",
-  "cc-title",
-  "cc-value",
-  "cc-why",
-  "claim-projection-label",
-  "claim-projection-value",
-  "claim-projection-rule-label",
-  "claim-projection-rule-value",
-  "prescription-base-label",
-  "prescription-base-value",
-  "role-evidence-copy",
-  "evidence-confidence-label",
-  "evidence-confidence-copy"
-]) {
-  assert.match(uiAudit, new RegExp(`data-contrast-name="${contrastName}"`), `${contrastName} must be covered across every package and theme`);
-}
-assert.match(uiAudit, /effectiveBackground/, "confidence contrast must composite translucent package surfaces");
-assert.match(lifecycleAudit, /page\.keyboard\.press\("Tab"\)/, "the live prescription surface must have a real keyboard traversal regression");
-assert.match(lifecycleAudit, /the compact prescription must expose its three native disclosure controls/, "focus traversal must cover all three native recommendation disclosures");
-assert.match(lifecycleAudit, /Tab must leave the recommendation disclosures for the next real workout control/, "focus traversal must assert the next durable control after those disclosures");
-
-assert.match(decisionEngine, /\| `research_default` \|[^\n]+\| `1` \|/, "Decision Engine documentation must record the research_default UI mapping");
-assert.match(decisionEngine, /\| `moderate` \|[^\n]+\| `3` \|/, "Decision Engine documentation must record the moderate UI mapping");
-assert.match(uiUx, /persisted generated (?:set )?rows remain authoritative for executable load and repetition targets[\s\S]*exercise-level claim remains their textual owner/, "UI/UX documentation must distinguish executable authority from human-readable claim ownership");
-
-console.log("Prescription claim-and-evidence contract passed.");
+console.log("Quiet exception-action presentation contract passed.");

@@ -2,49 +2,62 @@
 
 ## Metadata
 
-- **Purpose:** Reconciliation record for Markdown that existed before the living-documentation structure
-- **Last verified:** 2026-07-13
-- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
-- **Verification status:** COMPLETE inventory; private generated content is identified but not reproduced
-- **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md)
+- **Purpose:** Authority and retention map for repository documentation
+- **Last verified:** 2026-08-01
+- **Status:** **RECONCILED FOR LOCALLY VERIFIED M8; INDEPENDENT/EXTERNAL ACCEPTANCE OPEN**
 
-## Living-document rule
+## Authority order
 
-Update this inventory whenever a Markdown document is created, renamed, merged, archived, superseded, generated, or changes authority. Documentation reorganization is incomplete until this table explains where unique knowledge moved and which document is now authoritative.
+1. `AGENTS.md` — repository working agreement.
+2. `docs/redesign/final/` — final redesign product, feature, recommendation, migration, and acceptance authority.
+3. `docs/redesign/DECISION_LOG.md` — implementation-era successor decisions and factual clarifications.
+4. Current living documents in `docs/` — verified implemented state.
+5. Code/tests — evidence of current behavior, not authority to change settled product scope.
+6. Phase 1, adversarial audits, design concepts, migration proposals, work logs, and historical benchmarks — evidence only.
 
-No existing Markdown was deleted during the reconciliation. The core documents are authoritative for cross-cutting product/current-state questions; focused documents remain authoritative within their narrower scope.
+When these disagree, do not silently revive the older behavior. Record a concrete contradiction or data/security risk in the decision log.
 
-Focused authority never makes a dated audit, work log, benchmark, remediation specification, or superseded plan a standing agent policy. Those records govern only their named revision and scope. When a focused document conflicts with current `AGENTS.md` policy or a current core document, follow the current policy/core document and record the mismatch as `NEEDS REVIEW`; do not silently revive the historical instruction.
+## Living documents
 
-| Existing document | Decision | Rationale / moved knowledge |
-| --- | --- | --- |
-| `README.md` | **RETAIN, entry point** | Links the core documents and avoids duplicating their detail. |
-| `docs/training-prescription-data.md` | **RETAIN, specialized** | Unique version/count/crosswalk/schema/runtime map. Core principles are summarized in Architecture/Decision Engine; detailed inventories stay here. Public counts are reconciled to the current validator and must be refreshed after later rebuilds. |
-| `docs/push-backend.md` | **RETAIN, authoritative backend operations; external status NEEDS REVIEW** | Unique API/service/Redis lifecycle, retention, deletion continuation, race boundary, environment, and physical-test operations. Historical deployment observations are dated and cannot prove current external state. |
-| `docs/WORK_LOG_TEMPLATE.md` and `docs/work-logs/` | **RETAIN, operational** | Required evidence format for user-facing changes. Local, review-ready, publication-approved, published, and hosted-verified states remain distinct; deployment fields apply only when deployment is explicitly in scope. |
-| `docs/performance.md` | **RETAIN as benchmark record** | Unique benchmark method/results. Architecture captures only current performance decisions; rerun benchmark before treating old numbers as current. |
-| `docs/design/UI_COLOR_PACKAGES.md` | **RETAIN as non-production design exploration** | Ten semantic palette packages support visual selection. The two five-screen Strong reference restyle sets remain local under the privacy-ignored `docs/design/strong-ui-mockups/` path because their source screenshots contain personal workout details. None are implemented app themes. |
-| `docs/iphone-pwa-personal-coach-setup.md` | **RETAIN, operational; NEEDS REVIEW** | Unique installation/private-import/device acceptance steps. External “complete” claims need human verification. |
-| `personal_fitness_data/README.md` | **RETAIN, specialized/private boundary** | Canonical pipeline layout, calculations, extension process, and privacy guidance. Cross-cutting flow summarized without personal values. |
-| `personal_fitness_data/reports/PERSONAL_HYPERTROPHY_AND_RECOVERY_REPORT.md` | **RETAIN as generated private artifact; do not merge** | Unique personal analysis, generated from excluded health data. Never copy raw/personal findings into public living docs. Regeneration owns this file. |
-| `research_database/README.md` | **RETAIN, specialized** | Canonical research package scope/layout/import and deterministic artifact guidance. |
-| `research_database/METHODOLOGY.md` | **RETAIN, authoritative methodology** | Unique evidence selection, grading, conflict, and translation rules; Decision Engine links rather than duplicates it. |
-| `research_database/EXECUTIVE_SUMMARY.md` | **RETAIN, research summary** | Research findings are evidence, not automatically current app behavior. Decision Engine distinguishes implemented operational rules. |
-| `research_database/BIBLIOGRAPHY.md` | **RETAIN, authoritative citations** | Unique source index; no duplication into product docs. |
-| `research_database/SCHEMA_VALIDATION.md` | **RETAIN, specialized** | Unique validation/import semantics plus separately attributed archive/workbook reproducibility commands; Architecture summarizes the release gates. |
-| `research_database/EXERCISE_MUSCLE_TAXONOMY.md` | **RETAIN, authoritative taxonomy contract** | Canonical relationship meanings, 23-to-20 guided-family projection, fail-closed source/mapping ID provenance, historical-integration boundary, and review queue. |
-| `store/app-store-notes.md` | **RETAIN as release checklist** | Unique store metadata/prerequisites; current release remains blocked. |
-| `docs/design/COMPLETE_REDESIGN_CONCEPTS.md` | **RETAIN, authoritative blank-slate concept decision** | Defines the UI-neutral capability contract, 15 structural systems, capability feasibility evidence, ranked finalists, Dual Track winner, and partial Figma-source status. |
-| `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md` | **RETAIN as historical production-migration proposal and non-production architecture evidence** | Its React/Dual Track cutover and phase order were superseded by the Evidence & Change production migration. UI-neutral capability, safety, privacy, data-integrity, accessibility, consent, submission, and recovery invariants remain useful evidence. Current UI intent and migration status live in UI/UX and Roadmap. |
+| Document | Current role |
+| --- | --- |
+| `docs/PROJECT.md` | Current product scope and product/data boundaries. |
+| `docs/ARCHITECTURE.md` | Current runtime, persistence, packaging, API, privacy, and compatibility architecture. |
+| `docs/DECISION_ENGINE.md` | Current stable-target, exception, grade, and historical-decision boundary. |
+| `docs/UI_UX.md` | Current two-destination screen and interaction contract. |
+| `docs/ROADMAP.md` | Current milestone status, next gates, risks, and exclusions. |
+| `docs/redesign/STATUS.md` | Redesign-specific implementation and acceptance status. |
+| `docs/redesign/implementation/IMPLEMENTATION_EXECPLAN.md` | Sequential milestone execution plan and temporary-structure ledger. |
+| `docs/redesign/implementation/MILESTONE_LOG.md` | Detailed milestone evidence and recoverable checkpoints. |
 
-## Naming decisions
+## Focused operational documents
 
-`PROJECT.md`, `ARCHITECTURE.md`, `DECISION_ENGINE.md`, `UI_UX.md`, and `ROADMAP.md` use the requested stable names. Existing narrowly named documents were not renamed because their operational/research purpose is distinct and links are already established. `DOCUMENTATION_INVENTORY.md` was added so future maintainers can see why overlapping files remain without bloating `AGENTS.md`.
+| Document | Current role |
+| --- | --- |
+| `docs/push-backend.md` | Notification backend, bounded deletion, legacy remote cleanup, and external verification. It does not authorize workout upload. |
+| `docs/iphone-pwa-personal-coach-setup.md` | PWA install, local backup, notification, and device acceptance runbook. |
+| `docs/DAILY_BROWSER_QA.md` | Local browser verification procedure; hosted checks apply only when separately authorized/in scope. |
+| `docs/performance.md` | Historical benchmark record plus current unmeasured final-flow gap. |
+| `docs/training-prescription-data.md` | Offline research/personal-pipeline and immutable compatibility boundary; not a current live prescription map. |
+| `docs/WORK_LOG_TEMPLATE.md`, `docs/work-logs/` | Operational evidence format. Dated records do not override current authority. |
+| `store/app-store-notes.md` | Release/store checklist; no current publication authorization. |
+
+## Research and private-data documents
+
+- `research_database/README.md`, `METHODOLOGY.md`, `EXECUTIVE_SUMMARY.md`, `BIBLIOGRAPHY.md`, `SCHEMA_VALIDATION.md`, and `EXERCISE_MUSCLE_TAXONOMY.md` remain offline research/provenance authority. They are not proof of current app behavior.
+- `personal_fitness_data/README.md` governs the private offline pipeline.
+- Generated reports under `personal_fitness_data/` remain private artifacts and must not be copied into public documentation, tests, screenshots, Git, or deployment.
+
+## Historical redesign evidence
+
+- `docs/redesign/phase-1/`, `docs/redesign/audits/`, and retained prompts/governance records remain proposal, review, and adjudication evidence.
+- `docs/design/COMPLETE_REDESIGN_CONCEPTS.md` and `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md` are historical. The concept-only React/Vite application was removed in M8; these files do not authorize a second runtime or deleted product surface.
+- Historical raster, palette, Dashboard, Plan, More, analytical Progress, planner, evidence, confidence, and theme-package descriptions are not current UI intent.
 
 ## Reconciliation rules
 
-- Core docs describe verified cross-cutting current state and link to specialized detail.
-- Research summaries describe evidence, not proof that a UI rule exists.
-- Generated personal reports describe one private analysis run, not general product behavior.
-- Operational deployment statements require external verification and a date.
-- When specialized and core documents disagree, record current code behavior plus the intended statement and add a `NEEDS REVIEW` roadmap entry.
+- Update this inventory when documentation is created, renamed, removed, archived, or changes authority.
+- Current-intent documents must not describe cloud workout copy, themes/color packages, planner/mesocycle, analytics, research/evidence, confidence, or numeric exception detectors as live product behavior.
+- Historical records may retain old facts only when clearly labelled as historical and not used as current instructions.
+- Operational external-service claims require a date and fresh verification.
+- Documentation-only cleanup does not prove application, package, device, hosted, or publication acceptance.

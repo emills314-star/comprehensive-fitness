@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v90";
+const CACHE_NAME = "comprehensive-fitness-pwa-v103";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -14,31 +14,17 @@ const APP_SHELL = Object.freeze([
   "/privacy.html",
   "/support.html",
   "/manifest.webmanifest",
-  "/programming-family-ledger.js",
   "/prescription-engine.js",
-  "/guided-mesocycle.js",
+  "/exception-resolver.js",
   "/rest-completion-controller.js",
   "/backup-contract.js",
   "/research_database/exports/json/exercise_database.json",
   "/research_database/exports/json/exercise_muscle_map.json",
-  "/research_database/exports/json/exercise_substitution_map.json",
-  "/research_database/exports/json/muscle_group_recommendations.json",
-  "/research_database/exports/json/progression_rules.json",
-  "/research_database/exports/json/nutrition_strategies.json",
-  "/research_database/exports/json/manifest.json",
   "/resources/secondary-page.css",
   "/resources/icon-180.png",
   "/resources/icon-192.png",
   "/resources/icon-512.png",
-  "/resources/icon-maskable-512.png",
-  "/resources/achievements/badge-personal-record.png",
-  "/resources/achievements/badge-e1rm-peak.png",
-  "/resources/achievements/badge-volume-record.png",
-  "/resources/achievements/badge-plan-complete.png",
-  "/resources/achievements/badge-target-precision.png",
-  "/resources/achievements/badge-smart-training.png",
-  "/resources/achievements/badge-progression.png",
-  "/resources/achievements/badge-controlled-execution.png"
+  "/resources/icon-maskable-512.png"
 ]);
 const PUBLIC_CACHE_PATHS = new Set(APP_SHELL);
 const PUBLIC_NAVIGATION_PATHS = new Set(["/", "/index.html", "/privacy.html", "/support.html"]);

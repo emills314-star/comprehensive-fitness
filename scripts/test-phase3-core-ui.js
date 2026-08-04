@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const views = fs.readFileSync(path.join(root, "app-views.js"), "utf8");
 const analysis = fs.readFileSync(path.join(root, "app-analysis.js"), "utf8");
 const history = fs.readFileSync(path.join(root, "app-history.js"), "utf8");
+const interactions = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
 function section(source, start, end) {
@@ -16,37 +17,43 @@ function section(source, start, end) {
 }
 
 const today = section(views, "function renderLiftHome()", "function workoutProgress()");
-const quickStarts = section(views, "function renderQuickStartTemplates()", "function openTemplateStart(");
-const progress = section(views, "function renderProgressOverview()", "function dashboardWeekEnd(");
+const quickStarts = section(views, "function renderQuickStartTemplates(", "function openOptionalReadiness(");
+const progress = section(analysis, "function renderLiftProgress()", "function restAlertState()");
+const completedHistory = section(analysis, "function renderHistory()", "// EXERCISE_TARGET_ENGINE_START");
 const templates = section(analysis, "function renderTemplates()", "function templateNumericDraftKey(");
-const templateCard = section(analysis, "function renderTemplateCard(", "function renderHistory(");
-const exerciseResult = section(history, "function renderWorkoutExerciseResult(", "const workoutAchievementAssets");
+const templateCard = section(analysis, "function renderTemplateCard(", "function renderHistory()");
 const summary = section(history, "function renderCompletedWorkoutSummary(", "\n      }");
 
-assert.match(today, /What the plan asks today|Build the plan before chasing the outcome/, "Today must lead with one current decision");
-assert.match(today, /data-action="start-next-template"/, "Today must expose one primary next-template action");
-assert.match(today, /data-action="open-progress"/, "Today must retain the weekly-review action");
-assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Today quick starts must use the Phase 3 presentation");
-assert.match(quickStarts, /"return-active-workout" : "start-template"/, "Today must retain quick-template start actions");
+assert.match(today, /<h1>Today<\/h1>[\s\S]*Expected workout[\s\S]*data-action="start-next-template"/, "Today must identify and start the expected workout");
+assert.match(today, /previewNames[\s\S]*nextTemplate\?\.exercises/, "Today may show only a concise factual exercise-name preview");
+assert.doesNotMatch(today, /todayPlanPreview|renderTodayPlanPreview|Stable target|Last time|weeklyMuscleVolume|hypertrophy|open-progress/i, "Today must not retain plan comparisons or analytical review links");
+assert.strictEqual((views.match(/data-action="start-next-template"/g) || []).length, 1, "Today must render exactly one primary expected-workout action");
+assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Alternate routines must remain secondary to the expected workout");
+assert.match(quickStarts, /"resume-active-workout" : "start-template"/, "Alternate routines must retain start and resume actions");
 
-assert.match(progress, /bucket\.targetLow[\s\S]*bucket\.targetHigh[\s\S]*bucket\.sets/, "Progress must use the real weekly planned range and actual weighted sets");
-assert.match(progress, /class="volume-table diff"[\s\S]*class="volume-table-head"[\s\S]*Muscle \/ planned range[\s\S]*Logged[\s\S]*Delta/, "Progress must render one shared header for its continuous comparison table");
-assert.match(progress, /class="volume-card-toggle volume-table-row"[\s\S]*class="plan volume-muscle-cell"[\s\S]*class="act"[\s\S]*class="dlt"[\s\S]*class="d /, "Each muscle must render as one plan, actual, and delta row");
-assert.doesNotMatch(progress, /volume-detail-hero|Weekly target[\s\S]*Status/, "Progress drilldown must not repeat the row's muscle, target, and status facts");
-assert.match(progress, /bucket\.status === "over" \? "out"/, "Exceeding a volume ceiling must render as an out-of-tolerance delta");
-assert.doesNotMatch(progress, /style="--meter:/, "Progress must not retain the prototype-style inline meter");
+assert.match(progress, /exercisePerformanceSeries\([\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual exercise chart with chronological workout history");
+assert.match(progress, /Exercise or variant[\s\S]*Named variants and resistance types remain separate/, "Progress must retain exact exercise-variant and resistance-type selection");
+assert.match(progress, /Tap a point for its date, load, reps, RPE, role, and workout/, "The factual chart must disclose its recorded point details");
+assert.doesNotMatch(progress, /hypertrophy|weekly volume|fractional|reps at weight|confidence|evidence|dashboard/i, "Progress must not restore deleted analytical products");
+assert.match(completedHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Completed workouts will appear here/, "Progress history must be chronological, submitted, and empty-state safe");
+assert.match(completedHistory, /storedWorkoutGradeProjection\(session\)\?\.grade[\s\S]*Stored workout grade/, "Stored historical and current grades must remain factual history");
 
-assert.match(templates, /Choose the repeatable workout that fits today/, "Plan must use product-facing planning guidance");
-assert.doesNotMatch(templates, /canonical historical completion contract|completion rate is intentionally absent/i, "Plan must not expose implementation rationale");
-assert.match(templateCard, /plan-template-card ex-block/, "Template cards must use the Phase 3 plan structure");
-assert.doesNotMatch(templateCard, /completion rate|completionRate/i, "Plan must not invent a template completion metric");
-assert.match(templates, /const volumeFlags = \[\]/, "Phase 3 must not silently revive the dead Plan volume path");
-assert.match(templateCard, /const advice = null/, "Phase 3 must not silently revive template advice");
+assert.match(templates, /<h1>Routines<\/h1>[\s\S]*Edit the workouts you return to[\s\S]*Starting one never replaces an existing draft/, "Contextual routine management must use product-facing guidance and state the draft-safety boundary");
+assert.doesNotMatch(templates, /canonical historical completion contract|completion rate is intentionally absent/i, "Routine management must not expose implementation rationale");
+assert.match(templateCard, /plan-template-card ex-block/, "Routine cards must retain the compact editor structure");
+assert.doesNotMatch(templateCard, /completion rate|completionRate|confidence|evidence|hypertrophy|weekly volume/i, "Routine cards must not invent analytics or internal recommendation claims");
+assert.match(templateCard, /const advice = null/, "Routine cards must not silently revive recommendation advice");
+const directStartHandler = interactions.match(/if \(action === "start-template" \|\| action === "start-next-template"\)[^\r\n]*/)?.[0] || "";
+assert.match(directStartHandler, /startTemplate\([^;]*defaultRecovery\(\), "usual"\)/, "Expected and alternate workout Start actions must open the logger directly");
+assert.doesNotMatch(directStartHandler, /openTemplateStart|templateStartFlow/, "Direct Start must not open an intermediate confirmation or readiness sheet");
 
-assert.match(exerciseResult, /summary-diff-result[\s\S]*class="diff"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "Completed exercise results must expose plan, actual, and judgment slots");
-assert.match(summary, /<h2>Workout analysis<\/h2>[\s\S]*workout-grade-mark[\s\S]*workout-confidence/, "Completed summary must retain one grade owner and explicit confidence evidence");
-for (const className of ["today-coach", "volume-table", "plan-template-card", "summary-diff-result"]) {
+assert.match(summary, /workout-grade-hero[\s\S]*workout-grade-mark[\s\S]*Why this grade[\s\S]*reasons\.slice\(0, 3\)/, "Completed summary must retain one grade with at most three plain reasons");
+assert.match(summary, /currentHighlights\.slice\(0, 3\)[\s\S]*Progress highlights/, "Completed summary must limit factual progress or PR highlights to three");
+assert.match(summary, /close-completed-summary[\s\S]*open-completion-progress/, "Immediate completion must expose Done and contextual Progress actions");
+assert.doesNotMatch(summary, /summary-diff-result|class="plan"|class="act"|class="dlt"|workout-confidence|confidence meter|evidence matrix|categoryScores|internalScore|achievement/i, "Completed summary must not retain plan-adherence diff, grade internals, or achievement UI");
+
+for (const className of ["today-coach", "plan-template-card", "concise-completion", "chart-detail", "history-session-row"]) {
   assert.match(html, new RegExp(`\\.${className.replaceAll("-", "\\-")}`), `${className} styles must ship in the production stylesheet`);
 }
 
-console.log("Phase 3 core-screen presentation contract passed.");
+console.log("Simplified core-screen presentation contract passed.");

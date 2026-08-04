@@ -8,8 +8,8 @@ assert.ok(domainMatch, "Domain integrity engine markers were not found");
 
 const domainFactory = new Function(`
   const ACTIVE_HISTORY_MONTHS = 6;
-  const SET_CLASSIFIER_VERSION = 2;
-  const DOMAIN_MIGRATION_VERSION = 2;
+  const SET_CLASSIFIER_VERSION = 3;
+  const DOMAIN_MIGRATION_VERSION = 4;
   const localDateIso = (date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
   const todayIso = () => "2026-07-10";
   const isoNow = () => "2026-07-10T12:00:00Z";
@@ -61,6 +61,17 @@ const bodyweight = engine.classifyImportedExerciseSets([{ id: "bw", reps: 10 }],
 assert.equal(bodyweight.reviewRequired, true, "Bodyweight imports without explicit metadata must avoid barbell inference");
 assert.equal(engine.isWorkingSet({ setType: "warmup" }, "pr"), false);
 assert.equal(engine.isWorkingSet({ setType: "top" }, "pr"), true);
+assert.equal(engine.normalizeCanonicalSetType(), "unknown", "A missing legacy role must remain unknown");
+assert.equal(engine.normalizeCanonicalSetType("unmapped legacy role"), "unknown", "An unrecognized legacy role must remain unknown");
+assert.equal(engine.normalizeCanonicalSetType("working"), "straight", "A known legacy working role must remain mapped");
+assert.equal(engine.normalizeCanonicalSetType("warm-up"), "warmup", "A known legacy warm-up role must remain mapped");
+assert.equal(engine.normalizeCanonicalSetType("back-off"), "backoff", "A known legacy back-off role must remain mapped");
+assert.equal(engine.normalizeCanonicalSetType("drop set"), "drop", "A known legacy drop role must remain mapped");
+assert.equal(engine.isWorkingSet({}, "progression"), false, "A missing role must not enter progression");
+assert.equal(engine.isWorkingSet({ setType: "top", countsTowardScore: false, countsTowardVolume: false }), true, "Legacy score and volume flags must not suppress actual recorded work");
+assert.equal(engine.isWorkingSet({ setType: "warmup", countsTowardScore: true, countsTowardVolume: true }), false, "Legacy score and volume flags must not promote a warm-up to actual work");
+assert.equal(engine.isWorkingSet({ setType: "unknown", countsTowardScore: true, countsTowardVolume: true }), false, "Legacy score and volume flags must not promote an unknown classification to actual work");
+assert.equal(engine.isWorkingSet({ setType: "top", countsTowardProgression: false }, "progression"), false, "The approved progression classification may exclude actual work from progression and PR calculations");
 
 const migrationModel = {
   sessions: [{ id: "s1", source: "strong", title: "Push", date: "2026-04-07", submitted: true }],
@@ -75,38 +86,52 @@ assert.equal(migrationModel.sets[0].originalImportedValue.setOrder, "W", "Origin
 engine.migrateDomainData(migrationModel);
 assert.equal(migrationModel.migrationAudit.length, auditCount, "Migration must be idempotent");
 
-const coachMatch = html.match(/\/\/ COACH_RECOMMENDATION_ENGINE_START([\s\S]*?)\/\/ COACH_RECOMMENDATION_ENGINE_END/);
-assert.ok(coachMatch, "Coach recommendation engine markers were not found");
-const coachFactory = new Function("weeks", "base", `
-  const summarizeExerciseByWeek = () => weeks;
-  const recommendForExerciseWeek = () => base;
-  const canonicalExerciseId = (name) => name.toLowerCase();
-  const getExerciseSets = (name) => ({ exercises: [{ name, resistanceType: "external" }] });
-  const resistanceTypeFor = (exercise) => exercise.resistanceType;
-  const progressionProfileForExercise = () => ({ lowerRep: 6, upperRep: 12, increment: 5 });
-  const roundToIncrement = (value, increment) => Math.round(value / increment) * increment;
-  const nextLoadForExercise = (name, load) => load + 5;
-  const todayIso = () => "2026-07-10";
-  ${coachMatch[1]}
-  return coachRecommendationForExercise;
-`);
-const deload = coachFactory([{ weekStart: "2026-07-06", failedSets: 2, averageRpe: 9.5, bestEstimatedOneRepMax: 90 }], { decision: "deload", label: "Deload", reason: "Repeated misses", action: "Reduce", evidence: [], confidence: "high" })("Bench Press");
-assert.equal(deload.interventionType, "deload");
-assert.equal(deload.loadAdjustment, -0.1);
-assert.equal(deload.removeIntensificationTechniques, true);
-const light = coachFactory([{ weekStart: "2026-07-06", failedSets: 1, averageRpe: 9.1, bestEstimatedOneRepMax: 100 }], { decision: "hold", label: "Hold", reason: "One miss", action: "Repeat", evidence: [], confidence: "medium" })("Bench Press");
-assert.equal(light.interventionType, "light");
-assert.equal(light.rpeTarget, 7);
-const normal = coachFactory([{ weekStart: "2026-07-06", failedSets: 0, averageRpe: 8, bestEstimatedOneRepMax: 100 }], { decision: "hold", label: "Hold", reason: "Stable", action: "Repeat", evidence: [], confidence: "high" })("Bench Press");
-assert.equal(normal.interventionType, "normal");
-const modify = coachFactory([{ weekStart: "2026-07-06", failedSets: 0, averageRpe: 8, bestEstimatedOneRepMax: 100 }], { decision: "change", label: "Change variation", reason: "Stalled", action: "Substitute", evidence: [], confidence: "medium" })("Bench Press");
-assert.equal(modify.interventionType, "stop_modify");
+const conservativeRoleMigration = {
+  domainMigrationVersion: 3,
+  dataRevision: 9,
+  sessions: [{ id: "legacy-session", date: "2026-06-01", submitted: true }],
+  exercises: [{ id: "legacy-exercise", sessionId: "legacy-session", source: "app", name: "Legacy Press", resistanceType: "external" }],
+  sets: [
+    { id: "missing-role", exerciseId: "legacy-exercise", setType: "straight", completed: true, reps: 8, weight: 100, classificationSource: "app-explicit", originalImportedValue: { setType: "", isWarmup: false } },
+    { id: "unmapped-role", exerciseId: "legacy-exercise", setType: "straight", completed: true, reps: 8, weight: 100, classificationSource: "app-explicit", originalImportedValue: { setType: "mystery-role", isWarmup: false } },
+    { id: "working-role", exerciseId: "legacy-exercise", setType: "straight", completed: true, reps: 8, weight: 100, originalImportedValue: { setType: "working", isWarmup: false } },
+    { id: "warmup-role", exerciseId: "legacy-exercise", setType: "warmup", completed: true, reps: 8, weight: 50, originalImportedValue: { setType: "warm-up", isWarmup: false } },
+    { id: "backoff-role", exerciseId: "legacy-exercise", setType: "backoff", completed: true, reps: 10, weight: 90, originalImportedValue: { setType: "back-off", isWarmup: false } },
+    { id: "drop-role", exerciseId: "legacy-exercise", setType: "drop", completed: true, reps: 12, weight: 80, originalImportedValue: { setType: "drop set", isWarmup: false } }
+  ],
+  templates: [],
+  migrationAudit: []
+};
+engine.migrateDomainData(conservativeRoleMigration);
+assert.equal(conservativeRoleMigration.domainMigrationVersion, 4);
+assert.equal(conservativeRoleMigration.dataRevision, 10);
+assert.deepEqual(
+  conservativeRoleMigration.sets.map((item) => item.setType),
+  ["unknown", "unknown", "straight", "warmup", "backoff", "drop"],
+  "Migration must keep only explicitly recognized legacy roles executable"
+);
+assert.deepEqual(
+  conservativeRoleMigration.sets.map((item) => item.reviewRequired),
+  [true, true, false, false, false, false],
+  "Missing and unmapped roles must require review"
+);
+assert.equal(conservativeRoleMigration.sets[1].originalImportedValue.setType, "mystery-role", "Raw legacy role provenance must remain recoverable");
+assert.equal(conservativeRoleMigration.sets[0].countsTowardProgression, false, "Unknown work must be excluded from progression");
+assert.equal(engine.isWorkingSet(conservativeRoleMigration.sets[1], "progression"), false);
+const conservativeAuditCount = conservativeRoleMigration.migrationAudit.length;
+const conservativeBytes = JSON.stringify(conservativeRoleMigration);
+engine.migrateDomainData(conservativeRoleMigration);
+assert.equal(conservativeRoleMigration.migrationAudit.length, conservativeAuditCount, "The conservative role migration must be idempotent");
+assert.equal(JSON.stringify(conservativeRoleMigration), conservativeBytes, "A completed conservative migration must not rewrite historical bytes");
 
-assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "Charts and scoring must use the indexed canonical active history");
-assert.match(html, /qualifyingWeekIds: analysis\.qualifyingWeekIds/, "Chart points must use the selected qualifying weeks");
-assert.match(html, /coachRecommendationForExercise\(templateExercise\.name/, "Template prescriptions must use the shared recommendation source");
-assert.match(html, /coachRecommendationForExercise\(selectedName/, "Charts must use the shared recommendation source");
-assert.match(html, /Historical snapshot through/, "Historical recommendations must be visibly separated from current guidance");
+assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "The canonical active-history index must retain completed source records without deleting the archive");
+assert.doesNotMatch(html, /\/\/ COACH_RECOMMENDATION_ENGINE_START|function coachRecommendationForExercise\(/, "The removed coach recommendation source must not remain live");
+assert.doesNotMatch(html, /coachRecommendationForExercise\(templateExercise\.name|coachRecommendationForExercise\(selectedName/, "Routine targets and factual charts must not consume the deleted coach recommendation source");
+assert.match(html, /function exercisePerformanceSeries\([\s\S]*data\.sessions\.filter\(\(session\) => isSessionSubmitted\(session\)\)[\s\S]*isWorkingSet\(set, "progression"\)[\s\S]*bestSet: best\.set/, "The factual performance chart must use submitted same-variant working-set history rather than hypertrophy-qualified weeks");
+const progressRenderer = html.match(/function renderLiftProgress\(\)[\s\S]*?(?=\n\s*function restAlertState\()/)?.[0] || "";
+assert.ok(progressRenderer, "The unified Progress renderer must remain available");
+assert.match(progressRenderer, /exercisePerformanceSeries\(selectedName,[\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one factual performance chart together with chronological workout history");
+assert.doesNotMatch(progressRenderer, /qualifyingWeekIds|hypertrophy|fractional|weekly volume/i, "The normal Progress renderer must not restore analytical qualification or volume surfaces");
 assert.match(html, /data-action="set-type-override"/, "History editing must expose manual set-type correction");
 assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, options = \{\}\)/, "All prior workout consumers must use one canonical resolver");
 assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");
@@ -115,7 +140,8 @@ assert.match(html, /function getMostRecentWorkoutPerformance[\s\S]*submittedPerf
 assert.match(html, /function createTemplatesFromStrongSessions[\s\S]*exerciseIdentityFields\(exercise\)/, "Strong-derived templates must preserve imported exercise identity fields");
 assert.match(html, /function auditImportedTemplateHistory\(templates\)/, "Strong imports must audit history coverage across every generated template exercise");
 assert.match(html, /source: "strong"/, "Strong-derived templates must retain import provenance");
-assert.match(html, /function strongHistoryFallbackForTemplateExercise[\s\S]*performance\.session\?\.source !== "strong"[\s\S]*history_fallback/, "Unmapped Strong identities must use exact submitted history without weakening the research identity boundary");
-assert.match(html, /fallbackReasons = new Set\(\["unknown_exercise_identity", "invalid_muscle_identity", "no_dynamic_direct_target"\]\)/, "Safe Strong-history fallback must cover every audited non-safety identity/target gap");
+assert.match(html, /function auditImportedTemplateHistory\(templates\)[\s\S]*getMostRecentWorkoutPerformance\(exercise\.name,[\s\S]*canonicalExerciseId:[\s\S]*resistanceType:/, "Strong template audits must verify exact identity-preserving submitted history");
+assert.match(html, /function auditImportedTemplateHistory\(templates\)[\s\S]*stableTargetForTemplateExercise\(exercise,[\s\S]*Number\(target\?\.sets \|\| 0\) >= 1/, "Strong template audits must verify startability from stable saved routine targets");
+assert.doesNotMatch(html, /function strongHistoryFallbackForTemplateExercise|fallbackReasons = new Set\(\["unknown_exercise_identity"/, "Deleted recommendation fallback branches must not remain as a second target source");
 
-console.log("Domain integrity tests passed (retention, classification, migration, snapshots, and coaching source).");
+console.log("Domain integrity tests passed (retention, classification, migration, history resolution, and factual charts).");
