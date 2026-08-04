@@ -59,7 +59,7 @@ installFunctions(context, foundation, [
 
 (async () => {
   assert.equal(await context.initializeExerciseIdentityCompatibility(), true);
-  assert.deepEqual(requests, ["./research_database/exports/json/exercise_database.json"], "Cold boot must fetch only the exercise identity catalog");
+  assert.deepEqual(requests, ["./resources/exercise_database.json"], "Cold boot must fetch only the public exercise identity catalog");
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.prescriptionEngine.resolveExerciseIdentity("Bench Press (Barbell)"))),
     { status: "resolved", exerciseId: "ex_barbell_bench_press", source: "research_alias" },
@@ -71,8 +71,8 @@ installFunctions(context, foundation, [
   assert.equal(importResearch.exerciseDatabase.length, exerciseDatabase.length);
   assert.equal(importResearch.exerciseMuscleMap.length, exerciseMuscleMap.length);
   assert.deepEqual(requests, [
-    "./research_database/exports/json/exercise_database.json",
-    "./research_database/exports/json/exercise_muscle_map.json"
+    "./resources/exercise_database.json",
+    "./resources/exercise_muscle_map.json"
   ], "Import validation must reuse the boot catalog and fetch only the relationship map");
 
   const researchHelper = functionSource(imports, "researchOnlyBundleForImport");
@@ -88,33 +88,41 @@ installFunctions(context, foundation, [
   assert.doesNotMatch(imports, /personalEvidenceBundleForImport|importPersonalEvidenceFile/, "The removed personal-evidence import path must not survive as dormant runtime code");
   assert.doesNotMatch(imports, /prescriptionEngine\s*=\s*prepared\.engine/, "Import-only analytical evidence must not become a second runtime source of truth");
 
-  const researchShellAssets = APP_SHELL.filter((asset) => asset.startsWith("/research_database/exports/json/"));
+  const researchShellAssets = APP_SHELL.filter((asset) => (
+    asset === "/resources/exercise_database.json" ||
+    asset === "/resources/exercise_muscle_map.json"
+  ));
   assert.deepEqual(researchShellAssets, [
-    "/research_database/exports/json/exercise_database.json",
-    "/research_database/exports/json/exercise_muscle_map.json"
+    "/resources/exercise_database.json",
+    "/resources/exercise_muscle_map.json"
   ], "The offline shell must contain only identity and legacy-snapshot validation JSON");
 
-  const copiedResearchAssets = [...syncWeb.matchAll(/Source = "research_database\\exports\\json\\([^"]+)"/g)].map((match) => match[1]);
-  assert.deepEqual(copiedResearchAssets, ["exercise_database.json", "exercise_muscle_map.json"], "Web sync must package only the two compatibility assets");
-  const verifiedPublicList = verifyPwa.slice(verifyPwa.indexOf("$publicFiles = @("), verifyPwa.indexOf("$obsoleteAnalyticalJson = @("));
-  const verifiedResearchAssets = [...verifiedPublicList.matchAll(/"research_database\\exports\\json\\([^"]+)"/g)].map((match) => match[1]);
+  const copiedResearchAssets = [...syncWeb.matchAll(/Source = "research_database\\exports\\json\\([^"]+)"; Destination = "resources\\([^"]+)"/g)]
+    .map((match) => ({ source: match[1], destination: match[2] }));
+  assert.deepEqual(copiedResearchAssets, [
+    { source: "exercise_database.json", destination: "exercise_database.json" },
+    { source: "exercise_muscle_map.json", destination: "exercise_muscle_map.json" }
+  ], "Web sync must materialize only the two compatibility assets under the public resources boundary");
+  const verifiedPublicList = verifyPwa.slice(verifyPwa.indexOf("$publicFiles = @("), verifyPwa.indexOf("$compatibilityAssets = @("));
+  const verifiedResearchAssets = [...verifiedPublicList.matchAll(/"resources\\(exercise_[^"]+\.json)"/g)].map((match) => match[1]);
   assert.deepEqual(verifiedResearchAssets, ["exercise_database.json", "exercise_muscle_map.json"], "PWA verification must require only the two compatibility assets");
+  assert.match(verifyPwa, /Public compatibility asset differs from its canonical source/, "PWA verification must enforce canonical-to-public byte parity");
   assert.match(verifyPwa, /Obsolete analytical runtime asset remains packaged/, "PWA verification must reject stale analytical JSON left by an older package");
+  assert.deepEqual(
+    fs.readFileSync(path.join(root, "resources", "exercise_database.json")),
+    fs.readFileSync(path.join(root, "research_database", "exports", "json", "exercise_database.json")),
+    "The public exercise database must be byte-identical to its canonical source"
+  );
+  assert.deepEqual(
+    fs.readFileSync(path.join(root, "resources", "exercise_muscle_map.json")),
+    fs.readFileSync(path.join(root, "research_database", "exports", "json", "exercise_muscle_map.json")),
+    "The public muscle map must be byte-identical to its canonical source"
+  );
   const vercelIgnoreLines = vercelIgnore.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const deployedResearchRules = vercelIgnoreLines.filter((line) => (
     line === "**/exports/**" || line.includes("research_database/exports")
   ));
-  assert.deepEqual(
-    deployedResearchRules,
-    [
-      "**/exports/**",
-      "!research_database/exports/",
-      "!research_database/exports/json/",
-      "!research_database/exports/json/exercise_database.json",
-      "!research_database/exports/json/exercise_muscle_map.json"
-    ],
-    "Vercel packaging must use one exact default exclusion plus the contiguous parent-first exception chain for only the two public compatibility assets"
-  );
+  assert.deepEqual(deployedResearchRules, ["**/exports/**"], "Vercel packaging must exclude every export tree without runtime exceptions");
 
   console.log("M4 identity-only boot and import compatibility tests passed.");
 })().catch((error) => {

@@ -26,8 +26,12 @@ $publicFiles = @(
   "resources\icon-maskable-512.png",
   "resources\icon-1024.png",
   "resources\splash-1170x2532.png",
-  "research_database\exports\json\exercise_database.json",
-  "research_database\exports\json\exercise_muscle_map.json"
+  "resources\exercise_database.json",
+  "resources\exercise_muscle_map.json"
+)
+$compatibilityAssets = @(
+  @{ Source = "research_database\exports\json\exercise_database.json"; Public = "resources\exercise_database.json" },
+  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Public = "resources\exercise_muscle_map.json" }
 )
 $obsoleteAnalyticalJson = @(
   "research_database\exports\json\exercise_substitution_map.json",
@@ -39,6 +43,8 @@ $obsoleteAnalyticalJson = @(
 $obsoletePublicFiles = @(
   "guided-mesocycle.js",
   "programming-family-ledger.js",
+  "research_database\exports\json\exercise_database.json",
+  "research_database\exports\json\exercise_muscle_map.json",
   "resources\achievements\badge-controlled-execution.png",
   "resources\achievements\badge-e1rm-peak.png",
   "resources\achievements\badge-personal-record.png",
@@ -48,6 +54,16 @@ $obsoletePublicFiles = @(
   "resources\achievements\badge-target-precision.png",
   "resources\achievements\badge-volume-record.png"
 )
+
+foreach ($asset in $compatibilityAssets) {
+  $source = Join-Path $root $asset.Source
+  $public = Join-Path $root $asset.Public
+  if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing compatibility source asset: $($asset.Source)" }
+  if (-not (Test-Path -LiteralPath $public -PathType Leaf)) { throw "Missing public compatibility asset: $($asset.Public)" }
+  if ((Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $public).Hash) {
+    throw "Public compatibility asset differs from its canonical source: $($asset.Public)"
+  }
+}
 
 foreach ($relative in $publicFiles) {
   $source = Join-Path $root $relative
@@ -94,7 +110,7 @@ foreach ($publicRoot in $publicRoots) {
     $segments = $normalizedRelative -split '/'
     (($segments | Where-Object { $sensitiveDirectoryNames -contains $_ }).Count -gt 0) -or
       ($sensitiveExtensions -contains $_.Extension.ToLowerInvariant()) -or
-      (($segments -contains "exports") -and -not ($normalizedRelative -like "research_database/exports/json/*"))
+      ($segments -contains "exports")
   }
   if ($sensitiveFiles) { throw "Sensitive files found in public/native payload $publicRoot`: $($sensitiveFiles.FullName -join ', ')" }
 }

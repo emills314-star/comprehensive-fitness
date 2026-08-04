@@ -16,10 +16,6 @@ docs/design/strong-ui-mockups/**
 # Local exports, backups, and databases are not public application assets.
 **/backups/**
 **/exports/**
-!research_database/exports/
-!research_database/exports/json/
-!research_database/exports/json/exercise_database.json
-!research_database/exports/json/exercise_muscle_map.json
 **/*.db
 **/*.sqlite
 **/*.sqlite3

@@ -3,9 +3,9 @@
 ## Metadata
 
 - **Purpose:** Current implementation status, remaining gates, risks, and explicitly excluded work
-- **Last verified:** 2026-08-03
+- **Last verified:** 2026-08-04
 - **Branch:** `codex/zero-based-redesign`
-- **Status:** **PRODUCTION PACKAGING REMEDIATION VERIFIED UNDER PINNED RUNTIME; NEEDS INDEPENDENT REVIEW AND OWNER-AUTHORIZED PUBLICATION**
+- **Status:** **SECOND PRODUCTION PACKAGING REMEDIATION VERIFIED AND INDEPENDENTLY APPROVED; NEEDS OWNER-AUTHORIZED IMMUTABLE COMMIT AND PUBLICATION**
 - **Authority:** [`redesign/final/`](redesign/final/), [`redesign/implementation/IMPLEMENTATION_EXECPLAN.md`](redesign/implementation/IMPLEMENTATION_EXECPLAN.md)
 
 ## Completed local milestones
@@ -39,12 +39,12 @@ Current candidate work includes:
 
 The 2026-08-02 corrective candidate fixes the audited readiness-copy and current-focus refresh defects, retains the existing readiness label, adds advancement/reload regression coverage, and advances the public cache to v103. This remains a mutable working-tree candidate, not a final acceptance claim.
 
-Production verification of merge `b0de5cd` found that the broad Vercel export exclusion also removed the two public research compatibility JSON files, so normal identity-only boot could not initialize and the hosted critical workout lifecycle stopped before mutation. The local remediation retains the default export exclusion and narrowly re-includes only `exercise_database.json` and `exercise_muscle_map.json`, with a regression assertion covering the deployment boundary. No protected-data migration is involved.
+Production verification of merge `b0de5cd` found that the broad Vercel export exclusion also removed the two public research compatibility JSON files, so normal identity-only boot could not initialize and the hosted critical workout lifecycle stopped before mutation. PR #9 (`95f4feb`) proved that Vercel source upload recognized narrow export exceptions, but the final static output still omitted both nested export paths. The second local remediation removes those exceptions entirely: canonical files remain under the excluded research export tree, while `sync:web` materializes byte-identical public copies at `resources/exercise_database.json` and `resources/exercise_muscle_map.json`. Runtime, offline shell, packaged `www/`, and deployment regressions now use that production-native boundary; cache v104 creates a distinct installed-client upgrade boundary. No protected-data migration is involved.
 
 ## Exact next actions
 
-1. Obtain a fresh independent review of the minimal remediation.
-2. After explicit owner authorization, commit and push only the reviewed remediation files, allow PR checks to pass, then redeploy and repeat hosted verification.
+1. Obtain explicit owner authorization for an immutable candidate commit and its exact-commit rerun.
+2. After separately authorized publication, push only the reviewed remediation, allow PR checks to pass, then redeploy and repeat hosted verification against the two `resources/` URLs.
 3. Keep protected-data migration, physical-device, baseline, and field-testing gates blocked.
 
 Do not begin new product work after M8. Do not merge, push, deploy, mutate production data, or publish.
@@ -75,11 +75,14 @@ Do not begin new product work after M8. Do not merge, push, deploy, mutate produ
 
 ## Production-packaging remediation verification
 
-- Focused identity-only boot/deployment allowlist regression: passed.
-- PWA/native package parity: 26/26 assets passed; service-worker cache remains v103 because no cached runtime byte changed.
-- Complete public suite under Node 22.23.1/npm 10.9.8: lint 192 JavaScript/3,112 JSON, workflows, tracked privacy 581/581, both dependency gates, public contracts 51/51, research validation, and PWA verification passed.
-- Pinned-runtime full Playwright: 288 passed, 33 configured skips, and one known pre-existing race failure at `private-data-lifecycle-regressions.spec.js:423`; its only failure added the two documented boot-time legacy-cleanup fields before an exact-equality assertion. Both mobile and desktop critical workout lifecycles passed.
-- **NEEDS REVIEW:** hosted asset and lifecycle verification remain blocked until the remediation is independently approved, committed, pushed, and deployed.
+- PR #9 exact-commit local evidence remained green, but hosted verification failed because Vercel's final static output returned 404 for both re-included export paths; upload-time ignore exceptions were therefore insufficient.
+- Second-remediation focused identity-only boot and package verification pass locally under Node 22.23.1/npm 10.9.8. The public compatibility files are byte-identical to their canonical sources, all export trees are excluded without exceptions, superseded packaged paths are pruned, and service-worker cache v104 contains the two `resources/` URLs.
+- Complete public suite under Node 22.23.1/npm 10.9.8: lint 192 JavaScript/3,110 JSON, workflows, tracked privacy 583/583, full dependency policy with zero high/critical findings, production dependencies with zero findings, public contracts 51/51, research validation, and PWA verification 26/26 all passed.
+- Pinned-runtime full Playwright: 289 passed, 33 configured skips, 0 failed. Both mobile and desktop passed the public-catalog/offline-shell boundary and the critical Today → workout → completion → Progress lifecycle; none of the previously observed contention-sensitive cases failed.
+- A subsequent exact-tree rerun reproduced the pre-existing `private-data-lifecycle-regressions.spec.js:423` test-design race: successful boot cleanup added its two documented identity fields before an exact-equality assertion. The corrected regression now awaits runtime and IndexedDB cleanup completion, permits exactly those two fields while preserving every selected-identity assertion, and passes 6/6 focused mobile/desktop repetitions.
+- Final exact-tree Playwright after that correction: 289 passed, 33 configured skips, 0 failed in 15.4 minutes. Both mobile and desktop passed the strengthened asset audit, corrected cleanup race, and critical lifecycle.
+- Fresh independent review initially identified the too-narrow browser fetch predicates; after they were broadened, the reviewer approved the complete final remediation and the cleanup-race correction with no blocking defect.
+- **NEEDS REVIEW:** hosted asset, PWA upgrade, and lifecycle verification remain blocked until this second remediation is independently approved, explicitly authorized for publication, committed, pushed, merged, and deployed.
 
 ## External and human gates
 
