@@ -443,13 +443,38 @@ test("ordinary active identity deterministically wins a weaker stale fallback", 
   await page.reload();
   await page.waitForLoadState("load");
 
+  await expect.poll(() => page.evaluate(async () => {
+    const persisted = await readIndexedValue("push-identity");
+    return {
+      runtimePending: pushIdentity?.legacyWorkoutCleanupPending,
+      runtimeCompleted: Boolean(pushIdentity?.legacyWorkoutCleanupCompletedAt),
+      persistedPending: persisted?.legacyWorkoutCleanupPending,
+      persistedCompleted: Boolean(persisted?.legacyWorkoutCleanupCompletedAt)
+    };
+  }), {
+    message: "Boot-time legacy workout cleanup must finish before identity selection is compared"
+  }).toEqual({
+    runtimePending: false,
+    runtimeCompleted: true,
+    persistedPending: false,
+    persistedCompleted: true
+  });
   const selected = await page.evaluate(async (identityKey) => ({
     runtime: structuredClone(pushIdentity),
     indexed: await readIndexedValue("push-identity"),
     fallback: localStorage.getItem(identityKey)
   }), "comprehensive-fitness-installation-v1");
-  expect(selected.runtime).toEqual(indexed);
-  expect(selected.indexed).toEqual(indexed);
+  expect(selected.runtime).toMatchObject({
+    ...indexed,
+    legacyWorkoutCleanupPending: false
+  });
+  expect(Object.keys(selected.runtime).sort()).toEqual([
+    ...Object.keys(indexed),
+    "legacyWorkoutCleanupCompletedAt",
+    "legacyWorkoutCleanupPending"
+  ].sort());
+  expect(Number.isNaN(Date.parse(selected.runtime.legacyWorkoutCleanupCompletedAt))).toBe(false);
+  expect(selected.indexed).toEqual(selected.runtime);
   expect(selected.fallback).toBeNull();
 });
 

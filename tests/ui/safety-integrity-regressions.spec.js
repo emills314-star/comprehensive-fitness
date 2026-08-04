@@ -319,7 +319,7 @@ test("normal startup loads only the identity catalog and exposes no analytical e
   const result = await page.evaluate(() => {
     const researchJsonRequests = performance.getEntriesByType("resource")
       .map((entry) => new URL(entry.name, location.href).pathname)
-      .filter((pathname) => pathname.includes("/research_database/exports/json/"));
+      .filter((pathname) => /^(?:\/resources\/[^/]+|\/research_database\/exports\/json\/[^/]+)\.json$/.test(pathname));
     const personal = prescriptionEngine?.evidence?.personal;
     return {
       knownIdentity: prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press"),

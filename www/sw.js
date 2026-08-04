@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v103";
+const CACHE_NAME = "comprehensive-fitness-pwa-v104";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -18,8 +18,8 @@ const APP_SHELL = Object.freeze([
   "/exception-resolver.js",
   "/rest-completion-controller.js",
   "/backup-contract.js",
-  "/research_database/exports/json/exercise_database.json",
-  "/research_database/exports/json/exercise_muscle_map.json",
+  "/resources/exercise_database.json",
+  "/resources/exercise_muscle_map.json",
   "/resources/secondary-page.css",
   "/resources/icon-180.png",
   "/resources/icon-192.png",

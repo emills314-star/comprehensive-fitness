@@ -3,9 +3,9 @@
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
-- **Last verified:** 2026-08-02
+- **Last verified:** 2026-08-04
 - **Repository:** zero-based redesign M8 candidate
-- **Verification status:** VERIFIED locally through M8 at source checkpoint `10d3bb2`; independent acceptance, hosted, pinned-runtime, protected-data replay, and physical-device gates remain open
+- **Verification status:** Second production-packaging remediation passes the complete public and Playwright gates under the pinned runtime and is independently approved; immutable commit, hosted, protected-data replay, and physical-device gates remain open
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
 
 ## Living-document rule
@@ -30,9 +30,9 @@ Loaded app-data versions 1 and 2 receive an idempotent version-4 migration-audit
 
 RPE entry uses a bounded replacement buffer so a focused prefilled `7` accepts `7.5` without retaining the original numeric selection. If blur persistence rerenders the set row during a completion touch, delegated pointer handling resumes the action against the freshly rendered set control so the saved decimal and completion transition remain one continuous interaction.
 
-Root runtime assets remain source and `www/` remains generated. The 2026-08-02 corrective candidate advances the installed-service-worker cache to `comprehensive-fitness-pwa-v103`; `sync:web` and PWA verification passed for all 26 public assets.
+Root runtime assets remain source and `www/` remains generated. The production-packaging remediation advances the installed-service-worker cache to `comprehensive-fitness-pwa-v104`; `sync:web` materializes and synchronizes all 26 public assets.
 
-The Vercel source-deployment boundary excludes every export directory by default, then explicitly re-includes only `research_database/exports/json/exercise_database.json` and `exercise_muscle_map.json`. These two public compatibility assets are required by normal identity-only boot and bounded backup validation; all other exports remain excluded.
+The Vercel source-deployment boundary excludes every export directory without exceptions. Canonical compatibility data remains under `research_database/exports/json/`, while `sync:web` copies only `exercise_database.json` and `exercise_muscle_map.json` into the explicit public `resources/` boundary and then into `www/resources/`. Normal identity-only boot and bounded backup validation fetch those public copies. PWA verification enforces canonical-to-root-to-`www` byte parity, rejects any export tree in web/native payloads, and rejects the superseded public export paths.
 
 ### Planner/mesocycle removal boundary — IMPLEMENTED LOCALLY (M3)
 
@@ -239,7 +239,7 @@ Required server environment names are documented without values in `.env.example
 
 ## Error handling and privacy boundaries
 
-The document shell and executable application runtime have separate ownership: `index.html` contains markup/styles and ordered owned script references, while eight bounded application segments own the local-first runtime behavior. Current domain modules are `prescription-engine.js` (identity and immutable-snapshot compatibility only), `exception-resolver.js` (sole live exception-action authority), `rest-completion-controller.js`, and `backup-contract.js`. The former programming-family ledger and guided-mesocycle modules are deleted. `scripts/test-runtime-boundary.js` verifies the ordered application segments and deployment contract; root/`www` parity, service-worker cache v103, and the CSP verify every current segment as a first-class public asset.
+The document shell and executable application runtime have separate ownership: `index.html` contains markup/styles and ordered owned script references, while eight bounded application segments own the local-first runtime behavior. Current domain modules are `prescription-engine.js` (identity and immutable-snapshot compatibility only), `exception-resolver.js` (sole live exception-action authority), `rest-completion-controller.js`, and `backup-contract.js`. The former programming-family ledger and guided-mesocycle modules are deleted. `scripts/test-runtime-boundary.js` verifies the ordered application segments and deployment contract; root/`www` parity, service-worker cache v104, and the CSP verify every current segment as a first-class public asset.
 
 Startup always inspects both IndexedDB and the localStorage fallback. IndexedDB reads retain each record's persistence `updatedAt` metadata without changing value-only callers. New local fallbacks use the versioned `comprehensive-fitness-local-fallback` envelope with source, timestamp, conflict marker, and app data; legacy plain app-data remains readable. Each candidate must be a compatible object with a finite non-negative integer `dataRevision`. Corrupt candidates are quarantined. A higher revision wins; equal-revision candidates are deep-canonicalized only when both are valid, identical content deduplicates, and otherwise a strictly newer reliable persistence timestamp wins. If divergent equal-revision copies have missing or equal timestamps, ordering is unknowable: IndexedDB remains the runtime copy, the local alternate is wrapped and marked conflict-preserved, a visible recovery status asks for export, and neither startup promotion nor later ordinary/stable saves may delete or replace that alternate. The marker survives later revision changes and reloads; only explicitly confirmed **Clear All Local App Data** removes both stores and releases it. The conflict-clear browser regression seeds divergent IndexedDB/fallback templates, confirms deletion, checks the accessible completion announcement and fresh zero-template state, and reloads to prove neither alternate nor conflict returns. Outside conflict recovery, a selected local fallback remains until its normalized data is successfully promoted to IndexedDB, after which cleanup is safe.
 
@@ -293,7 +293,7 @@ Repository publication follows `AGENTS.md`: verified source, tests, schemas, pub
 - **IMPLEMENTED (M2):** `exception-resolver.js` is the sole current exception-action authority and loads before the application modules. New decisions are stored on their owning workout as versioned `resolvedActions`; active-draft restore and strict import validate them through the runtime semantic validator.
 - **IMPLEMENTED:** Stable routine targets are computed independently of advice. Canonical actions may apply a temporary prospective adjustment but cannot mutate routine defaults. Mutation authorization protects exact active/history targets and does not turn pain/illness advice into a logging block.
 - **IMPLEMENTED compatibility:** Historical recommendation snapshots, prescription fields, and stored grades remain readable and immutable. No new current writer populates legacy `recommendationHistory` or `workoutPrescription`.
-- **PACKAGE:** Root and `www/` include the resolver through `scripts/sync-web.ps1`; corrective-candidate service-worker cache v103 excludes removed concept and programming assets.
+- **PACKAGE:** Root and `www/` include the resolver and the two bounded public compatibility assets through `scripts/sync-web.ps1`; remediation-candidate service-worker cache v104 excludes removed concept, programming, and export-tree assets.
 - **IMPLEMENTED LOCALLY (M3):** Planner/mesocycle runtime and active-domain coupling is removed; only the isolated legacy decoder preserves workout/routine-template facts.
 - **IMPLEMENTED LOCALLY (M4):** Dashboard, scorecard, hypertrophy, weekly/fractional volume, fatigue, research-status, evidence/confidence, program-score, normal plan-preview, and duplicate recommendation producers/surfaces are removed. Factual exact-variant Progress and chronological history remain.
 - **IMPLEMENTED LOCALLY (M7):** The temporary live legacy grade is replaced with one prospective actual-work v2 writer and immutable compatibility projection. Concise completion and factual role/variant/resistance-aware Progress pass focused/public/build/package/privacy, mobile/desktop running-app, visual, and independent-review gates.

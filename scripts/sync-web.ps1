@@ -24,6 +24,8 @@ $obsoleteAnalyticalJson = @(
 $obsoletePublicFiles = @(
   "guided-mesocycle.js",
   "programming-family-ledger.js",
+  "research_database\exports\json\exercise_database.json",
+  "research_database\exports\json\exercise_muscle_map.json",
   "resources\achievements\badge-controlled-execution.png",
   "resources\achievements\badge-e1rm-peak.png",
   "resources\achievements\badge-personal-record.png",
@@ -32,6 +34,10 @@ $obsoletePublicFiles = @(
   "resources\achievements\badge-smart-training.png",
   "resources\achievements\badge-target-precision.png",
   "resources\achievements\badge-volume-record.png"
+)
+$compatibilityAssets = @(
+  @{ Source = "research_database\exports\json\exercise_database.json"; Destination = "resources\exercise_database.json" },
+  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "resources\exercise_muscle_map.json" }
 )
 
 New-Item -ItemType Directory -Force -Path $www | Out-Null
@@ -66,6 +72,17 @@ foreach ($publicRoot in $nativePublicRoots) {
   }
 }
 
+# Materialize the two explicitly public compatibility assets outside the
+# repository's export tree. Vercel excludes exports from source deployments,
+# while resources/ is the stable public runtime boundary for every package.
+foreach ($asset in $compatibilityAssets) {
+  $source = Join-Path $root $asset.Source
+  if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing compatibility source asset: $($asset.Source)" }
+  $destination = Join-Path $root $asset.Destination
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+  Copy-Item -LiteralPath $source -Destination $destination -Force
+}
+
 $publicFiles = @(
   @{ Source = "index.html"; Destination = "index.html" },
   @{ Source = "app-foundation.js"; Destination = "app-foundation.js" },
@@ -91,8 +108,8 @@ $publicFiles = @(
   @{ Source = "resources\icon-maskable-512.png"; Destination = "resources\icon-maskable-512.png" },
   @{ Source = "resources\icon-1024.png"; Destination = "resources\icon-1024.png" },
   @{ Source = "resources\splash-1170x2532.png"; Destination = "resources\splash-1170x2532.png" },
-  @{ Source = "research_database\exports\json\exercise_database.json"; Destination = "research_database\exports\json\exercise_database.json" },
-  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" }
+  @{ Source = "resources\exercise_database.json"; Destination = "resources\exercise_database.json" },
+  @{ Source = "resources\exercise_muscle_map.json"; Destination = "resources\exercise_muscle_map.json" }
 )
 
 foreach ($file in $publicFiles) {

@@ -12,8 +12,9 @@ const {
 } = require("../fixtures/synthetic-app-backups");
 
 const PRIVATE_EVIDENCE_PATH = /^\/(?:private-personal-data|personal_fitness_data)\//;
-const IDENTITY_CATALOG_PATH = "/research_database/exports/json/exercise_database.json";
-const IMPORT_VALIDATION_MAP_PATH = "/research_database/exports/json/exercise_muscle_map.json";
+const RESEARCH_JSON_PATH = /^(?:\/resources\/[^/]+|\/research_database\/exports\/json\/[^/]+)\.json$/;
+const IDENTITY_CATALOG_PATH = "/resources/exercise_database.json";
+const IMPORT_VALIDATION_MAP_PATH = "/resources/exercise_muscle_map.json";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -101,7 +102,7 @@ test("cold boot loads only the public identity catalog and never probes private 
   for (const hostedOrigin of hostedOrigins) await proxyHostedOriginToSource(page, hostedOrigin, sourceOrigin);
 
   const privateFetches = (audit) => audit.fetches.filter((entry) => PRIVATE_EVIDENCE_PATH.test(entry.pathname));
-  const researchFetches = (audit) => audit.fetches.filter((entry) => entry.pathname.startsWith("/research_database/exports/json/"));
+  const researchFetches = (audit) => audit.fetches.filter((entry) => RESEARCH_JSON_PATH.test(entry.pathname));
   const expectIdentityOnlyBoot = (audit, label) => {
     expect.soft(audit.identityReady, `${label} must initialize public identity resolution`).toBe(true);
     expect.soft(privateFetches(audit), `${label} must not probe optional private paths`).toEqual([]);

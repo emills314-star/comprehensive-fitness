@@ -1548,7 +1548,7 @@
       function loadExerciseIdentityCatalog() {
         if (!exerciseIdentityCatalogPromise) {
           exerciseIdentityCatalogPromise = fetchIdentityCompatibilityRecords(
-            "./research_database/exports/json/exercise_database.json",
+            "./resources/exercise_database.json",
             "the exercise identity catalog"
           ).catch((error) => {
             exerciseIdentityCatalogPromise = null;
@@ -1563,7 +1563,7 @@
           importValidationResearchPromise = Promise.all([
             loadExerciseIdentityCatalog(),
             fetchIdentityCompatibilityRecords(
-              "./research_database/exports/json/exercise_muscle_map.json",
+              "./resources/exercise_muscle_map.json",
               "the legacy snapshot validation map"
             )
           ]).then(([exerciseDatabase, exerciseMuscleMap]) => ({ exerciseDatabase, exerciseMuscleMap }))
