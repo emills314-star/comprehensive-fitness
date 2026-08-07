@@ -280,12 +280,12 @@ targetContext.apply(stableTarget, resolvedPoor.actions[0]);
 assert.equal(JSON.stringify(stableTarget), stableBytes, "A readiness action must not mutate stable target bytes");
 
 assert.match(foundation, /expectedTemplateId:\s*""/);
-assert.match(foundation, /model\.settings\.expectedTemplateId\s*=\s*model\.templates\[0\]\?\.id\s*\|\|\s*""/, "Migration must persist one fallback pointer when the stored pointer is invalid");
+assert.match(foundation, /model\.settings\.expectedTemplateId\s*=\s*""/, "Migration must clear an invalid legacy pointer instead of selecting an unrelated routine");
 assert.match(views, /const nextTemplate = expectedWorkoutTemplate\(\)/);
 assert.doesNotMatch(functionSource(views, "renderLiftHome"), /data\.templates\[0\]/, "Today must not relabel array position zero as expected");
 assert.match(functionSource(views, "renderLiftHome"), /if \(running\)[\s\S]*renderResolvedAction\(resolvedActionForScope\(running, "session"\)/, "Today must present an active session exception before Resume");
-assert.match(analysis, /data-action="set-expected-template"/);
-assert.match(interactions, /action === "set-expected-template"[\s\S]*setExpectedTemplate/);
+assert.match(analysis, /data-action="template-scheduled-weekday"/);
+assert.match(interactions, /action === "template-scheduled-weekday"[\s\S]*scheduledWeekdays/);
 
 assert.match(foundation, /readinessDeviation/);
 assert.doesNotMatch(foundation, /function explicitReadinessCandidate/, "No readiness detector may feed the live resolver before calibration and independent approval");

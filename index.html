@@ -1440,7 +1440,7 @@
         gap: var(--sp-2);
         grid-template-columns: minmax(0, 1fr) minmax(96px, 1.2fr) 48px;
         left: 0;
-        padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+        padding: 5px max(8px, env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
         position: fixed;
         right: 0;
         z-index: 14;
@@ -1459,6 +1459,20 @@
       .session-dock-overflow { min-width: 48px; width: 48px; }
       .session-dock-overflow > summary { height: 48px; min-height: 48px; min-width: 48px; width: 48px; }
       .session-dock-overflow .session-overflow-menu { bottom: calc(100% + 4px); top: auto; }
+      .session-dock-overflow .session-overflow-menu { max-height: min(60vh, 360px); overflow-y: auto; z-index: 24; }
+      .exercise-history-link { color: var(--current); display: inline; overflow-wrap: anywhere; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+      .template-weekdays { border: 0; margin: 8px 0; padding: 0; }
+      .template-weekdays legend { color: var(--muted); font-size: var(--fs-micro); font-weight: 850; }
+      .weekday-options { display: flex; flex-wrap: wrap; gap: 5px; }
+      .weekday-options label { min-height: 44px; position: relative; }
+      .weekday-options input { inset: 0; opacity: 0; position: absolute; }
+      .weekday-options span { align-items: center; border: 1px solid var(--line); border-radius: var(--r-pill); display: flex; font-size: var(--fs-micro); font-weight: 850; justify-content: center; min-height: 44px; min-width: 44px; text-transform: capitalize; }
+      .weekday-options input:checked + span { background: var(--action); border-color: var(--action); color: var(--on-action); }
+      .weekday-options input:focus-visible + span { outline: 3px solid var(--current); outline-offset: 2px; }
+      .set-rest-editor { display: grid; gap: 4px; min-width: 120px; }
+      .set-rest-editor input { min-height: 44px; }
+      @media (prefers-reduced-motion: no-preference) { .set-block.completed .check-button.checked { animation: set-complete-pop 180ms ease-out; } }
+      @keyframes set-complete-pop { 50% { transform: scale(1.12); } }
 
       .nav-button {
         background: transparent;
@@ -2265,6 +2279,9 @@
       }
 
       .workout-timer-slot:empty { display: none; }
+      .active-rest-dock { left: 0; padding: 4px max(12px, env(safe-area-inset-right)) 4px max(12px, env(safe-area-inset-left)); position: sticky; right: 0; top: calc(58px + env(safe-area-inset-top)); z-index: 11; }
+      .active-rest-dock .timer-bar { background: var(--surface); box-shadow: var(--shadow); margin: 0 auto; max-width: 680px; }
+      .active-rest-dock .timer-summary { min-height: 48px; }
       .workout-rest-starter {
         align-items: center;
         display: grid;

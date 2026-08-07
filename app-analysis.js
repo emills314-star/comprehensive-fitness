@@ -145,6 +145,7 @@
             </div>
             ${emptyTemplate ? '<p class="template-coach" id="' + escapeHtml(emptyTemplateDescriptionId) + '"><strong>Template needs an exercise.</strong> Add at least one exercise before starting this template.</p>' : ''}
             ${advice ? '<p class="template-coach"><strong>' + escapeHtml(advice.label) + '</strong> ' + escapeHtml(coachLine) + '</p>' : ''}
+            <fieldset class="template-weekdays"><legend>Scheduled days</legend><div class="weekday-options">${weekdayKeys.map((day) => '<label><input type="checkbox" data-action="template-scheduled-weekday" data-template-id="' + template.id + '" value="' + day + '" ' + (normalizeScheduledWeekdays(template.scheduledWeekdays).includes(day) ? 'checked' : '') + ' /><span>' + day.slice(0, 3) + '</span></label>').join('')}</div></fieldset>
             <details class="compact-disclosure template-editor" ${editorExpanded ? 'open' : ''}>
               <summary data-action="toggle-template-editor" data-template-id="${template.id}">Edit template <span>${template.exercises.length} lifts</span></summary>
               ${editorExpanded ? `<div class="disclosure-body">
@@ -636,7 +637,7 @@
         const comparisonRoleLabel = progress.comparisonRole ? setTypeLabels[progress.comparisonRole] || "Comparable working set" : "Comparable working set";
         return `
           <section class="view charts-view">
-            <div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div></div>
+            <div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div>${exerciseHistoryReturnState ? '<button class="secondary-action" type="button" data-action="return-to-active-exercise">Back to workout</button>' : ''}</div>
             <div class="chart-control-panel" aria-label="Selected lift controls">
               <div class="chart-viewing-summary"><div><span>Exercise or variant</span><strong>${escapeHtml(selectedName)}</strong><span>${escapeHtml(latestFact)}</span></div><span class="status-pill inside">${visiblePoints.length} ${progressDateWindow === "all" ? "" : "recent "}session${visiblePoints.length === 1 ? "" : "s"}</span></div>
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>

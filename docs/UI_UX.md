@@ -1,5 +1,13 @@
 # UI and UX
 
+## Active-session targeted improvements — IMPLEMENTED LOCALLY 2026-08-07
+
+- Rest appears once in a compact pinned, safe-area-aware bar using shared timer state.
+- Incomplete sets expose per-set rest editing; completion uses an icon and accessible label.
+- Stable-identity exercise links open Progress and return with workout, current-set, timer, entered-data, and scroll context intact.
+- The compact bottom dock keeps its overflow above the dock and within the viewport.
+- Readiness wraps on mobile and preserves “Not entered” versus soreness “Not recorded.”
+
 ## Metadata
 
 - **Purpose:** Current navigation, screen, copy, interaction, and accessibility contract

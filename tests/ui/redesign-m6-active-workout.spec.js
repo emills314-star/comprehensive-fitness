@@ -194,6 +194,31 @@ async function activeState(page) {
   });
 }
 
+test("M6 replaces an active rest timer when consecutive sets are completed", async ({ page }) => {
+  const fixture = m6Fixture({ autoStartRestTimer: true });
+  fixture.sets.find((set) => set.id === IDS.activeBenchSet1).targetRestSeconds = 60;
+  fixture.sets.find((set) => set.id === IDS.activeBenchSet2).targetRestSeconds = 90;
+  await installFixture(page, fixture);
+
+  await page.locator(`#set-${IDS.activeBenchSet1} [data-action="toggle-set"]`).click();
+  const first = await page.evaluate(() => ({ id: timer.id, duration: timer.durationSeconds }));
+  expect(first.duration).toBe(60);
+
+  await page.evaluate((setId) => toggleSetCompletion(setId), IDS.activeBenchSet2);
+  const second = await page.evaluate(() => ({ id: timer.id, duration: timer.durationSeconds, intervals: Number(Boolean(timerInterval)) }));
+  expect(second.id).not.toBe(first.id);
+  expect(second.duration).toBe(90);
+  expect(second.intervals).toBe(1);
+  await expect(page.locator(".active-rest-dock .timer-bar")).toHaveCount(1);
+  await expect(page.locator(".active-rest-dock .timer-bar")).toHaveAttribute("data-timer-id", second.id);
+
+  const before = await page.locator(".active-rest-dock [data-timer-progress-label]").textContent();
+  await page.evaluate(() => globalThis.__advanceM6Clock(2_000));
+  await page.waitForTimeout(1_100);
+  const after = await page.locator(".active-rest-dock [data-timer-progress-label]").textContent();
+  expect(after).not.toBe(before);
+});
+
 test("committed M0 v2 draft restores the workout, elapsed time, timer, sets, and action handling", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1696,7 +1721,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
     .getByRole("button", { name: "Mark set complete", exact: true })
     .click();
 
-  const timerBar = page.locator(".workout-timer-slot .timer-bar");
+  const timerBar = page.locator(".active-rest-dock .timer-bar");
   await expect(timerBar).toHaveCount(1);
   await expect(timerBar).toHaveAttribute("data-phase", /resting|final/);
   const timerBeforeNavigation = await page.evaluate(() => structuredClone(timer));
@@ -1707,7 +1732,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
   await page.evaluate(() => globalThis.__advanceM6Clock(4_000));
   await page.locator('[data-action="resume-active-workout"]').click();
   await expect(page).toHaveURL(/#workout$/);
-  await expect(page.locator(".workout-timer-slot .timer-bar")).toHaveCount(1);
+  await expect(page.locator(".active-rest-dock .timer-bar")).toHaveCount(1);
   expect((await page.evaluate(() => timer.id))).toBe(timerBeforeNavigation.id);
 
   await page.evaluate(() => {
@@ -1717,7 +1742,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  const overtime = page.locator('.workout-timer-slot .timer-bar[data-phase="overtime"]');
+  const overtime = page.locator('.active-rest-dock .timer-bar[data-phase="overtime"]');
   await expect(overtime).toHaveCount(1);
   await expect(overtime.locator("[data-timer-progress-label]")).toHaveText("+00:03");
 
@@ -1781,7 +1806,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
     setId: IDS.activeBenchSet1,
     durationSeconds: 15
   });
-  await expect(page.locator('.workout-timer-slot .timer-bar[data-phase="overtime"]')).toHaveCount(1);
+  await expect(page.locator('.active-rest-dock .timer-bar[data-phase="overtime"]')).toHaveCount(1);
   await expect(page.locator("[data-timer-progress-label]")).toHaveText("+00:03");
   await captureAuditScreenshot(page, "overtime-reload-recovery");
 });

@@ -1,5 +1,13 @@
 # Roadmap
 
+## 2026-08-07 active-session correctness — IMPLEMENTED LOCALLY
+
+- Fixed stale timer replacement with one absolute-deadline, versioned timer and idempotent completion path.
+- Added per-set rest fallback/editing without rewriting submitted history.
+- Added weekday assignment, deterministic Today selection, readiness ordering, and stable-identity history return.
+- Added only targeted pinned-timer, completion, dock, overflow, and wrapping presentation changes.
+- Source/`www` packaging advances to service-worker cache v105; external device, hosted, publication, and incomplete verification gates remain open.
+
 ## Metadata
 
 - **Purpose:** Current implementation status, remaining gates, risks, and explicitly excluded work
@@ -85,6 +93,14 @@ Do not begin new product work after M8. Do not merge, push, deploy, mutate produ
 - **NEEDS REVIEW:** hosted asset, PWA upgrade, and lifecycle verification remain blocked until this second remediation is independently approved, explicitly authorized for publication, committed, pushed, merged, and deployed.
 
 ## External and human gates
+
+### 2026-08-07 expedited active-session release
+
+- **IMPLEMENTED:** active-session timer replacement, per-set rest targets, weekday routine scheduling, readiness ordering/copy, exact-identity exercise-history navigation, compact pinned timer/dock behavior, compatibility schema changes, root/`www` synchronization, and service-worker cache v105.
+- Pinned Node 22.23.0/npm 10.9.8 public release suite passed: lint, workflows, tracked privacy, dependency policy, 52/52 public scripts, research validation, and 26/26 PWA/native packaging assets.
+- Focused mobile and desktop Playwright coverage passed for the critical workout lifecycle, timer persistence/overtime, and consecutive timer replacement regression.
+- **ASSUMPTION (owner-authorized release waiver):** for this production deployment only, the owner explicitly waived fresh Claude independent review, the complete 324-case Playwright matrix, and the five-workout acceptance gate. The attempted full matrix exceeded its 15-minute command ceiling without a reported assertion failure and is recorded as waived, not passed.
+- Physical-device push, vibration, sound, lock-screen timing, and installed-PWA suspension behavior remain unverified external gates and are not represented as passed.
 
 These cannot be claimed from the current local environment:
 

@@ -40,6 +40,7 @@
             <header class="brand-bar ${shellWorkoutDockVisible ? "active-session-bar" : ""}" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${shellContext}
             </header>
+            ${shellWorkoutVisible && timer ? '<div class="active-rest-dock" aria-live="polite">' + renderTimer(timer.setId) + '</div>' : ''}
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
@@ -343,7 +344,7 @@
                 : '<div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div>'}
             </section>
             ${renderResolvedAction(resolvedActionForScope(session, "session"), { session })}
-            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? renderTimer(timer.setId) : renderSharedRestStarter(session)}</div>
+            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? "" : renderSharedRestStarter(session)}</div>
             ${renderNotificationPrompt()}
             <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
@@ -492,6 +493,7 @@
 
       function renderLiftHome() {
         const nextTemplate = expectedWorkoutTemplate();
+        const scheduledToday = scheduledTemplatesForToday();
         const running = activeWorkoutSession();
         if (running) {
           const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === running.id).map((exercise) => exercise.id));
@@ -519,11 +521,11 @@
             <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}${nextTemplate ? " · " + escapeHtml(nextTemplate.name) : ""}</div><h1>Today</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
             <section class="coach-lead today-coach">
               <div class="section-kicker">${nextTemplate ? "Expected workout" : "Next action"}</div>
-              <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : "Create your first reusable workout"}</h2>
-              <p>${nextTemplate ? escapeHtml(previewText) : "Once a template exists, Today will identify the expected workout."}</p>
+              <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : data.templates.length ? scheduledToday.length > 1 ? "Choose today’s workout" : "Choose a workout" : "Create your first reusable workout"}</h2>
+              <p>${nextTemplate ? escapeHtml(previewText) : data.templates.length ? scheduledToday.length > 1 ? "More than one routine is scheduled today. Select the one you intend to train." : "No routine is assigned to today. Select one before starting." : "Once a routine exists, assign its scheduled days."}</p>
               <div class="module-action-row">${nextTemplate
                 ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start</button><button class="secondary-action" type="button" data-action="log-template-readiness" data-template-id="' + escapeHtml(nextTemplate.id) + '">Log readiness</button>'
-                : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}</div>
+                : data.templates.length ? '' : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}</div>
             </section>
             ${renderQuickStartTemplates(nextTemplate?.id || "")}
           </section>`;
@@ -597,10 +599,10 @@
               ${templates.map((template) => {
                 const isActiveTemplate = running?.templateId === template.id;
                 return `
-                  <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : ""}" type="button" data-action="${isActiveTemplate ? "resume-active-workout" : "start-template"}" data-template-id="${template.id}">
+                  <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : ""}" type="button" data-action="${isActiveTemplate ? "resume-active-workout" : "select-today-template"}" data-template-id="${template.id}">
                     <strong>${escapeHtml(template.name)}</strong>
                     <small>${template.exercises.length} lifts · ${templateExerciseCount(template)} working sets</small>
-                    <span>${isActiveTemplate ? "Resume workout" : "Start workout"}</span>
+                    <span>${isActiveTemplate ? "Resume workout" : "Select workout"}</span>
                   </button>
                 `;
               }).join("")}
@@ -690,7 +692,7 @@
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
                 <div><div class="section-kicker">Optional readiness</div><h2 id="daily-readiness-title">What is different today?</h2><p>Choose only what you know. Skipping this stays silent and never limits workout logging.</p></div>
                 <div class="readiness-draft">
-                  ${readinessSegmentedField({ field: "deviation", label: "Readiness today", action: "template-readiness-deviation", value: recovery.readinessDeviation, options: [["", "Not entered"], ["usual", "Usual"], ["unusually_good", "Unusually good"], ["meaningfully_poor", "Meaningfully poor"]] })}
+                  ${readinessSegmentedField({ field: "deviation", label: "Readiness today", action: "template-readiness-deviation", value: recovery.readinessDeviation, options: [["", "Not entered"], ["meaningfully_poor", "Worse than usual"], ["usual", "About usual"], ["unusually_good", "Better than usual"]] })}
                   ${readinessSegmentedField({ field: "soreness", label: "Soreness today", action: "template-readiness-soreness", value: recovery.soreness, options: [["", "Not recorded"], ["1", "Usual"], ["3", "Unusual"], ["5", "Very unusual"]] })}
                   <fieldset class="field readiness-field"><legend class="f-name">Illness or pain</legend><div class="readiness-toggle-grid"><label class="toggle-line"><span>Current illness</span><span class="toggle ${recovery.illness ? "on" : ""}"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} /><i></i></span></label><label class="toggle-line"><span>Pain or injury</span><span class="toggle ${recovery.pain ? "on" : ""}"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} /><i></i></span></label></div></fieldset>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-area">Affected area</label><select id="template-readiness-area" data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></div>
@@ -1098,7 +1100,7 @@
           <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""} ${workoutFocusExerciseId === exercise.id ? "context-exercise" : ""}" tabindex="-1" aria-label="Exercise: ${escapeHtml(exercise.name)}">
             <div class="exercise-header">
               <span class="exercise-grip" aria-hidden="true">${icon.grip}</span>
-              <h2 class="exercise-name exercise-name-full" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</h2>
+              <h2 class="exercise-name exercise-name-full" title="${escapeHtml(exercise.name)}"><a href="#progress" class="exercise-history-link" data-action="open-exercise-history" data-exercise-id="${escapeHtml(exercise.id)}" data-performance-exercise-id="${escapeHtml(exercise.performanceExerciseId || canonicalExerciseId(exercise))}">${escapeHtml(exercise.name)}</a></h2>
               ${targetChip}
               <details class="exercise-overflow"><summary class="icon-button" aria-label="Exercise menu">${icon.more}</summary><div class="exercise-overflow-menu">
                 <button type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} up">${icon.up}<span>Move up</span></button>
@@ -1234,6 +1236,7 @@
               <div class="set-tools-panel">
                 <div class="set-actions">
                   <label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="${set.id}">${['warmup','straight','top','backoff','drop','failure','amrap','technique','deload','unknown'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('')}</select></label>
+                  <label class="set-rest-editor"><span>Rest seconds</span><input type="number" min="15" max="3600" step="15" value="${restSeconds}" data-action="set-rest-seconds" data-set-id="${set.id}" aria-label="Rest seconds after ${escapeHtml(setLabel)}" ${set.completed ? "disabled" : ""} /></label>
                   ${set.manualOverride && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
                   <button class="mini-button" type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Insert warm-up above ${escapeHtml(exercise.name)} set ${set.setNumber}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>Insert warm-up above</button>
                   <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>

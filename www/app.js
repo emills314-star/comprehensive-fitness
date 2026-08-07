@@ -152,6 +152,30 @@
         if (action === "open-settings") setActiveTab("settings");
         if (action === "close-secondary-context" || action === "close-workout-context") setActiveTab("today");
         if (action === "open-progress") setActiveTab("progress");
+        if (action === "open-exercise-history") {
+          event.preventDefault();
+          event.stopPropagation();
+          const sourceExercise = exerciseById(target.dataset.exerciseId);
+          const catalogExercise = exerciseCatalog().find((item) => item.canonicalId === target.dataset.performanceExerciseId && item.resistanceType === resistanceTypeFor(sourceExercise))
+            || exerciseCatalog().find((item) => item.canonicalId === target.dataset.performanceExerciseId);
+          exerciseHistoryReturnState = { workoutId: activeWorkoutId, exerciseId: sourceExercise?.id || "", activeSetId, scrollY: window.scrollY, tab: activeTab };
+          if (catalogExercise) {
+            selectedExerciseId = catalogExercise.id;
+            chartExerciseDraft = catalogExercise.name;
+          }
+          setActiveTab("progress");
+        }
+        if (action === "return-to-active-exercise") {
+          const returnState = exerciseHistoryReturnState;
+          exerciseHistoryReturnState = null;
+          if (returnState?.workoutId === activeWorkoutId && hasActiveWorkout()) {
+            activeSessionId = activeWorkoutId;
+            activeSetId = returnState.activeSetId || activeSetId;
+            setActiveTab("workout", { renderNow: false });
+            render();
+            window.setTimeout(() => window.scrollTo({ top: Number(returnState.scrollY || 0), behavior: "auto" }), 0);
+          } else setActiveTab("today");
+        }
         if (action === "retry-view-render") { viewRenderError = null; render(); }
         if (action === "focus-workout-exercise") {
           workoutFocusExerciseId = target.dataset.exerciseId || "";
@@ -159,6 +183,12 @@
           focusWorkoutExercise(workoutFocusExerciseId);
         }
         if (action === "open-history") setActiveTab("progress");
+        if (action === "select-today-template") {
+          if (data.templates.some((template) => template.id === target.dataset.templateId)) {
+            todaySelectedTemplateId = target.dataset.templateId;
+            render();
+          }
+        }
         if (action === "toggle-unit") commit(setAppWeightUnitPreference(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
         if (action === "toggle-rest-notifications") {
@@ -488,6 +518,14 @@
           render();
         }
         if (action === "session-date") patchSession({ date: target.value });
+        if (action === "template-scheduled-weekday") {
+          const template = data.templates.find((item) => item.id === target.dataset.templateId);
+          if (template) {
+            const days = new Set(normalizeScheduledWeekdays(template.scheduledWeekdays));
+            if (target.checked) days.add(target.value); else days.delete(target.value);
+            patchTemplate(template.id, { scheduledWeekdays: weekdayKeys.filter((day) => days.has(day)) });
+          }
+        }
         if (action === "session-travel") patchSession({ isTravel: target.checked });
         if (action === "add-exercise-primary") addExercisePrimaryMuscle = target.value;
         if (action === "add-exercise-secondary") addExerciseSecondaryMuscle = target.value;
@@ -798,6 +836,14 @@
         if (action === "set-rpe") writeSetInput("rpe");
         if (action === "set-duration") writeSetInput("durationSeconds");
         if (action === "set-distance") writeSetInput("distance");
+        if (action === "set-rest-seconds") {
+          const set = setById(target.dataset.setId);
+          const numeric = Number(target.value);
+          if (!set || set.completed || !Number.isInteger(numeric) || numeric < 15 || numeric > 3600) {
+            target.value = String(set?.targetRestSeconds || exerciseById(set?.exerciseId)?.restSeconds || data.settings.defaultRestSeconds || 90);
+            showAppToast("Rest must be a whole number from 15 to 3600 seconds.");
+          } else patchSet(target.dataset.setId, { targetRestSeconds: numeric }, false);
+        }
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "default-working-set-count") {
           const form = target.closest("[data-standard-workload-form]");

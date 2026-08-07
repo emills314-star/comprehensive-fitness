@@ -16,8 +16,8 @@
     "appDataVersion": { "const": 3 },
     "sessions": { "type": "array", "items": { "type": "object" } },
     "exercises": { "type": "array", "items": { "type": "object" } },
-    "sets": { "type": "array", "items": { "type": "object" } },
-    "templates": { "type": "array", "items": { "type": "object" } },
+    "sets": { "type": "array", "items": { "type": "object", "properties": { "targetRestSeconds": { "type": "integer", "minimum": 15, "maximum": 3600 } }, "additionalProperties": true } },
+    "templates": { "type": "array", "items": { "type": "object", "properties": { "scheduledWeekdays": { "type": "array", "uniqueItems": true, "items": { "enum": ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] } } }, "additionalProperties": true } },
     "dataRevision": { "type": "integer", "minimum": 0 },
     "settings": { "type": "object" }
   },

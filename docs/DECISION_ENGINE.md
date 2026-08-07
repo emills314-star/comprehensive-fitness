@@ -1,5 +1,9 @@
 # Decision engine
 
+## Readiness display ordering — IMPLEMENTED LOCALLY 2026-08-07
+
+Readiness displays low-to-high as **Worse than usual → About usual → Better than usual** while retaining `meaningfully_poor`, `usual`, and `unusually_good`. Display order does not change thresholds or quiet-spotter behavior.
+
 ## Metadata
 
 - **Purpose:** Current decision boundary and historical-compatibility rules

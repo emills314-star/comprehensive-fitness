@@ -29,7 +29,7 @@ assert.match(today, /previewNames[\s\S]*nextTemplate\?\.exercises/, "Today may s
 assert.doesNotMatch(today, /todayPlanPreview|renderTodayPlanPreview|Stable target|Last time|weeklyMuscleVolume|hypertrophy|open-progress/i, "Today must not retain plan comparisons or analytical review links");
 assert.strictEqual((views.match(/data-action="start-next-template"/g) || []).length, 1, "Today must render exactly one primary expected-workout action");
 assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Alternate routines must remain secondary to the expected workout");
-assert.match(quickStarts, /"resume-active-workout" : "start-template"/, "Alternate routines must retain start and resume actions");
+assert.match(quickStarts, /"resume-active-workout" : "select-today-template"/, "Alternate routines must require selection without replacing Resume");
 
 assert.match(progress, /exercisePerformanceSeries\([\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual exercise chart with chronological workout history");
 assert.match(progress, /Exercise or variant[\s\S]*Named variants and resistance types remain separate/, "Progress must retain exact exercise-variant and resistance-type selection");

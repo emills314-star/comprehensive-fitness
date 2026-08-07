@@ -43,8 +43,8 @@ assert.match(inputHandler, /action === "set-rpe"\) writeSetInput\("rpe"\)/, "Vis
 assert.match(inputHandler, /accepted === false[\s\S]*target\.value = String\(setById/, "Rejected set input must restore the persisted visible value without a full render");
 assert.match(inputHandler, /inserted\.length === 1 && replacement === previousValue \+ inserted/, "Numeric replacement must only strip a proven single-character append");
 assert.doesNotMatch(inputHandler, /replacement\.startsWith\(previousValue\)/, "Multi-character values such as 8.5 must not be mistaken for appended input");
-assert.match(setCompletion, /patchSet\(set\.id, \{ completed: true, skipped: false \}, false\)[\s\S]*startTimer/, "Completing a set must update locally before timer work");
-assert.doesNotMatch(setCompletion, /data\.sets\.map/, "Completing one set must not clone the full set history");
+assert.match(setCompletion, /commit\(\{[\s\S]*completed: true[\s\S]*startTimer/, "Completing a set must commit locally before timer work");
+assert.match(setCompletion, /completingSetIds\.has\(setId\)/, "Duplicate completion must be rejected before mutation or timer work");
 
 assert.match(html, /function invalidateCompletedAnalysis\(\)[\s\S]*previousPerformanceCache\.clear\(\)[\s\S]*submittedPerformanceIndexCache\.clear\(\)[\s\S]*exerciseProgressCache\.clear\(\)/, "Factual history and performance caches need one invalidation boundary");
 assert.doesNotMatch(html, /hypertrophyScoreCache|weeklyVolumeCache|exerciseWeekCache/, "Deleted analytical caches must not remain in the application");

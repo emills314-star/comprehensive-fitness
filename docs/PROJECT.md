@@ -1,5 +1,9 @@
 # Project
 
+## Active-session correctness update — IMPLEMENTED LOCALLY 2026-08-07
+
+Today resolves multi-day routine assignments against the local weekday: one match is recommended, while zero or multiple matches require selection. Active workouts own one pinned absolute-deadline rest timer; completing another set replaces prior rest and uses that set's optional rest target. Stable-identity history links return without recreating the active draft. These are targeted functional changes, not a broad redesign.
+
 ## Metadata
 
 - **Purpose:** Current product scope and verified implementation boundary

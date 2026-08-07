@@ -967,6 +967,7 @@
       }
 
       function toggleSetCompletion(setId) {
+        if (completingSetIds.has(setId)) return;
         const interactionStartedAt = performanceNow();
         const authorization = guardWorkoutMutation("toggle-set", { setId });
         if (!authorization.allowed) return;
@@ -985,21 +986,33 @@
           return;
         }
 
-        const next = nextIncompleteSet(set.id);
-        const exercise = exerciseById(set.exerciseId);
-        const pendingReconcile = completedSetReconcileState(set, exercise);
-        patchSet(set.id, { completed: true, skipped: false }, false);
-        if (pendingReconcile) patchExercise(exercise.id, { pendingReconcile }, false);
-        applyCompletedSetVisual(set.id);
-        if (pendingReconcile) syncReconcilePromptDom(exercise.id);
-        if (next && data.settings.autoStartRestTimer !== false) {
-          startTimer(exercise?.id || set.exerciseId, set.id, { pendingNextSetId: next.id, deferRender: true });
-          recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: true });
-          return;
+        completingSetIds.add(setId);
+        try {
+          const next = nextIncompleteSet(set.id);
+          const exercise = exerciseById(set.exerciseId);
+          const pendingReconcile = completedSetReconcileState(set, exercise);
+          const completedAt = isoNow();
+          commit({
+            ...data,
+            sets: data.sets.map((item) => item.id === set.id ? { ...item, completed: true, skipped: false, completedAt } : item),
+            exercises: pendingReconcile ? data.exercises.map((item) => item.id === exercise.id ? { ...item, pendingReconcile } : item) : data.exercises
+          }, false, { invalidateAnalysis: false, deferPersistence: true });
+          applyCompletedSetVisual(set.id);
+          if (pendingReconcile) syncReconcilePromptDom(exercise.id);
+          if (next && data.settings.autoStartRestTimer !== false) {
+            startTimer(exercise?.id || set.exerciseId, set.id, { pendingNextSetId: next.id, deferRender: true });
+            persistActiveWorkoutDraft();
+            renderAfterInteractionFrame();
+            recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: true });
+            return;
+          }
+          setActiveSet(next?.id || "", next ? "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is current" : "Workout sets complete", false);
+          persistActiveWorkoutDraft();
+          renderAfterInteractionFrame();
+          recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: false });
+        } finally {
+          window.setTimeout(() => completingSetIds.delete(setId), 300);
         }
-        setActiveSet(next?.id || "", next ? "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is current" : "Workout sets complete", false);
-        renderAfterInteractionFrame();
-        recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: false });
       }
 
       function toggleSetSkipped(setId) {
