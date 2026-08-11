@@ -1,5 +1,23 @@
 # UI and UX
 
+## 2026-08-09 corrective K3 Logbook production contract — IMPLEMENTED LOCALLY
+
+Active workout now follows the approved Direction A ledger composition instead of the superseded card-oriented production shell. The active session owns one three-part header: Back to Today, the full wrapping exercise context, and Finish. Session progress, elapsed time, workout pause, and the workout menu are not duplicated in that header.
+
+Completed and pending sets are 44px ruled factual rows. Only the current set expands inline, with a restrained cool blue-gray **Last comparable** fact and the exact `No comparable history.` unavailable state. Ambiguous `on` and numeric-delta chips are retired. All per-set actual-work controls are owned by the exercise overflow; set rows do not render separate option disclosures.
+
+Active rest owns one structural 3px progress rail and one compact control row. Pause/Resume, -15s, +15s, and Skip/Finish are visible together. Rest completion is a polite in-flow status line rather than a modal or toast over set inputs. Mobile uses the useful viewport width with approximately 18px gutters; desktop workout remains a centered 760px ledger and has no persistent destination rail.
+
+## Kimi P0 Today hierarchy and navigation — IMPLEMENTED LOCALLY 2026-08-08
+
+- An active draft has one visible status surface: the draft hero says **Workout in progress** and the page heading no longer repeats **In progress**.
+- A scheduled expected workout likewise relies on the **Expected workout** hero rather than repeating a page-level **Ready** chip; the exceptional no-selection state still retains **Plan needed**.
+- Today remains a single focused column with a 720px maximum width on wide screens.
+- Expected-workout and active-draft heroes use a flat hairline surface, a 3px current-state rail, and compact 44px Start/Resume actions without glow.
+- Closed **Choose another workout** is a quiet secondary action; Routines and Settings use quiet header controls.
+- The persistent Today/Progress navigation spans the viewport, centers its two destinations within 400px, uses a top hairline and current-location indicator, and no longer depends on a rounded elevated dock that can clip at desktop height.
+- Product behavior is unchanged: the primary label remains **Resume**, persistent navigation still contains exactly Today and Progress, and active workouts still hide it.
+
 ## Active-session targeted improvements — IMPLEMENTED LOCALLY 2026-08-07
 
 - Rest appears once in a compact pinned, safe-area-aware bar using shared timer state.
@@ -11,8 +29,8 @@
 ## Metadata
 
 - **Purpose:** Current navigation, screen, copy, interaction, and accessibility contract
-- **Last verified:** 2026-08-02
-- **Status:** **CORRECTED CANDIDATE VERIFIED LOCALLY; INDEPENDENT ACCEPTANCE BLOCKED**
+- **Last verified:** 2026-08-09
+- **Status:** **K3 CORRECTIVE CANDIDATE VERIFIED LOCALLY; OWNER BASELINE ACCEPTANCE NOT RUN**
 - **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md)
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
@@ -93,6 +111,8 @@ Changes apply to the current workout by default. Saving a suitable substituted e
 
 Previous facts match exact performance identity, resistance type, and comparable set role. Warm-up and unknown-role work do not qualify as progression evidence. Ambiguous or absent prior data is shown as unavailable rather than inferred.
 
+The approved Logbook presentation labels this row **Last comparable** and uses a cool blue-gray fact surface. Saturated blue remains reserved for the current set and primary actions, so the prior value is easier to scan without implying that it is a new target or recommendation.
+
 ### Rest
 
 One shared rest control appears after completed, non-skipped work. It:
@@ -100,11 +120,20 @@ One shared rest control appears after completed, non-skipped work. It:
 - uses the exercise/role rest default;
 - shows remaining time and overtime;
 - supports adjustment and Skip/Finish;
+- keeps an explicit, always-visible Pause/Resume control while the timer is active;
 - survives supported navigation, reload, and active-draft recovery;
 - can schedule a Web Push notification where supported and permitted;
 - remains functional in-app when notifications are unavailable or denied.
 
 Physical-device suspension, lock-screen delivery, sound, vibration, and software-keyboard behavior remain device acceptance gates.
+
+The active rest control borrows Direction C's structural progress idea as a thin progress rail attached to the compact Logbook timer. It uses the fixed navy/blue Logbook palette, and paused state is also identified by label and dashed structure rather than color alone.
+
+### Logbook shell and page structure
+
+The approved production direction uses Direction A's structure, not only its colors. On desktop, Today and Progress use a fixed 200px navigation rail; secondary destinations remain explicit text actions. On mobile, the two-destination navigation remains a compact bottom bar. Today, Progress, Routines, Settings, workout, and completion use frameless ruled sections on one paper-like surface instead of stacked rounded cards.
+
+An active workout replaces the ordinary masthead and bottom dock with one compact sticky session bar containing only Back to Today, current context, and Finish. Exercises render as a dense ledger: completed and pending sets remain compact rows, the current set opens inline, and **Last comparable** is visually distinct without becoming a recommendation. Actual-work controls live in the exercise overflow. While rest is active, exactly one structural rail appears below the session bar with Pause/Resume, −15 seconds, +15 seconds, and Skip/Finish. Completion uses the same ruled language with a stamped outcome treatment. These are presentation and navigation-shell changes; workout, history, timer, and recommendation semantics remain governed by their existing contracts.
 
 ### Recovery
 
@@ -183,9 +212,11 @@ Settings contains no workout cloud-copy control and no deleted-feature graveyard
 
 The dated M8 browser/a11y result was mobile 144 passed/15 configured skips and desktop 141 passed/18 configured skips. The corrective mobile project reproduced cleanly at 146 passed/15 configured skips/0 failures. Corrective desktop is **NEEDS REVIEW**: independent full-project reruns produced one and then two contention-sensitive failures across three tests that pass in isolation. Owner visual-baseline acceptance, hosted verification, and physical-device acceptance have not been claimed.
 
+The 2026-08-09 K3 corrective candidate adds a deterministic direct-Playwright gate at 390 × 844 and 1440 × 900. Both viewports pass the complete workout-to-rest-to-completion lifecycle, one-header/one-open-row/one-rest-surface assertions, horizontal-overflow and full-name checks, 44px required rest controls, and zero serious or critical axe violations. The eleven required local production screenshots and the side-by-side Direction A comparison board were regenerated from the synchronized candidate. Physical-device, hosted, and owner baseline-acceptance gates remain unverified.
+
 ## Design system and review process
 
-The **Design system** uses the fixed-light semantic roles and shared controls in `index.html`; it does not expose themes or color packages as product settings. The repository's **weekly UI/UX audit** remains an engineering process for navigation, touch targets, focus, responsive layout, and accessibility. **Visual regression** coverage protects current Today, Progress, Routines, Settings, active-workout, and completion states, but generated screenshots are evidence only; no owner baseline acceptance is claimed by M8 documentation.
+The **Design system** uses the fixed-light semantic roles and shared controls in `index.html`; it does not expose themes or color packages as product settings. The first Kimi P0 slice establishes flat Today hierarchy, a 720px Today measure, quiet contextual actions, and a full-width two-destination navigation bar while preserving 44px controls. The repository's **weekly UI/UX audit** remains an engineering process for navigation, touch targets, focus, responsive layout, and accessibility. **Visual regression** coverage protects current Today, Progress, Routines, Settings, active-workout, and completion states, but generated screenshots are evidence only; no owner baseline acceptance is claimed.
 
 ## Historical design records
 

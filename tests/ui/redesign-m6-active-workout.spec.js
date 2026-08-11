@@ -1080,6 +1080,8 @@ test("M6 ordinary substitution splits actual identity, audits the override, and 
 
   const replacementCard = page.locator(`.exercise-card[aria-label="Exercise: ${SUBSTITUTE_NAME}"]`);
   await expect(replacementCard).toHaveCount(1);
+  await expect(replacementCard.getByText("Last comparable", { exact: true })).toBeVisible();
+  await expect(replacementCard.locator(".prior-session-fact")).toHaveCount(1);
   await expect(replacementCard.getByText(/No previous workout found|No history/i)).toBeVisible();
   const replacementDetails = replacementCard.locator(".exercise-details");
   await openDetails(replacementDetails);
@@ -1724,6 +1726,12 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
   const timerBar = page.locator(".active-rest-dock .timer-bar");
   await expect(timerBar).toHaveCount(1);
   await expect(timerBar).toHaveAttribute("data-phase", /resting|final/);
+  await expect(timerBar.locator('[role="progressbar"]')).toBeVisible();
+  await expect(timerBar.getByRole("button", { name: "Pause timer" })).toBeVisible();
+  await timerBar.getByRole("button", { name: "Pause timer" }).click();
+  await expect(timerBar).toHaveAttribute("data-paused", "true");
+  await expect(timerBar.getByRole("button", { name: "Resume timer" })).toBeVisible();
+  await timerBar.getByRole("button", { name: "Resume timer" }).click();
   const timerBeforeNavigation = await page.evaluate(() => structuredClone(timer));
 
   await page.locator('[data-action="close-workout-context"]').click();

@@ -4,8 +4,9 @@
         return `
           <section class="view templates-view">
             <div class="screen-heading plan-heading">
-              <div><div class="section-kicker">Reusable workouts</div><h1>Routines</h1><p>Edit the workouts you return to. Starting one never replaces an existing draft.</p></div>
-              <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
+              <button class="routines-back" type="button" data-action="close-secondary-context">← Today</button>
+              <div><div class="section-kicker">Planning</div><h1>Your routines</h1><p>Stable targets used when a workout starts.</p></div>
+              <button class="primary-action new-routine-action" type="button" data-action="new-template">New routine</button>
             </div>
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Your draft is saved. Starting another routine will ask whether to resume, finish, or discard it.</span></div><div><button class="primary-action" type="button" data-action="resume-active-workout">Resume</button></div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map((template) => renderTemplateCard(template, running)).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
@@ -131,25 +132,28 @@
         const prescribedSets = advice?.totalSets ?? templateExerciseCount(template);
         const duration = Math.max(15, Math.round(prescribedSets * 2.5));
         const coachLine = advice ? advice.detail.split(". ").slice(0, 2).join(". ") : "";
+        const scheduledDays = normalizeScheduledWeekdays(template.scheduledWeekdays);
+        const scheduledLabel = scheduledDays.length ? scheduledDays.map((day) => day.charAt(0).toUpperCase() + day.slice(1)).join(", ") : "Not scheduled";
         return `
           <article class="template-card compact-template plan-template-card ex-block ${isActiveTemplate ? "active-template" : ""}">
             <div class="template-topline">
-              <div class="template-title">${usesLargeTextReflow()
+              <div class="template-title"><small>${escapeHtml(scheduledLabel)}</small>${usesLargeTextReflow()
                 ? '<textarea class="exercise-name autosize-title-field" rows="1" maxlength="256" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
                 : '<input class="exercise-name" value="' + escapeHtml(template.name) + '" maxlength="256" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name" />'}<small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
-              <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="resume-active-workout">Resume</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start</button>'}<button class="secondary-action" type="button" data-action="set-expected-template" data-template-id="${template.id}" aria-pressed="${isExpectedTemplate ? "true" : "false"}" ${isExpectedTemplate ? "disabled" : ""}>${isExpectedTemplate ? "Expected workout" : "Set as expected"}</button><button class="icon-button" type="button" data-action="duplicate-template" data-template-id="${template.id}" title="Duplicate routine" aria-label="Duplicate ${escapeHtml(template.name)} routine">${icon.duplicate}</button>${isActiveTemplate
+              <details class="template-overflow"><summary aria-label="Actions for ${escapeHtml(template.name)}">•••</summary><div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="resume-active-workout">Resume</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start workout</button>'}<button class="secondary-action" type="button" data-action="set-expected-template" data-template-id="${template.id}" aria-pressed="${isExpectedTemplate ? "true" : "false"}" ${isExpectedTemplate ? "disabled" : ""}>${isExpectedTemplate ? "Expected workout" : "Set as expected"}</button><button class="icon-button" type="button" data-action="duplicate-template" data-template-id="${template.id}">Duplicate</button>${isActiveTemplate
                 ? '<button class="template-delete-button danger" type="button" disabled title="Finish or cancel the active workout before deleting this template" aria-label="Delete unavailable during active workout">' + icon.delete + '</button>'
                 : confirmingDelete
                 ? '<span class="template-delete-confirm"><button class="danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete</button><button type="button" data-action="cancel-delete-template">Cancel</button></span>'
-                : '<button class="template-delete-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template" aria-label="Delete ' + escapeHtml(template.name) + ' template">' + icon.delete + '</button>'}</div>
+                : '<button class="template-delete-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template" aria-label="Delete ' + escapeHtml(template.name) + ' template">Delete</button>'}</div></details>
             </div>
             ${emptyTemplate ? '<p class="template-coach" id="' + escapeHtml(emptyTemplateDescriptionId) + '"><strong>Template needs an exercise.</strong> Add at least one exercise before starting this template.</p>' : ''}
             ${advice ? '<p class="template-coach"><strong>' + escapeHtml(advice.label) + '</strong> ' + escapeHtml(coachLine) + '</p>' : ''}
-            <fieldset class="template-weekdays"><legend>Scheduled days</legend><div class="weekday-options">${weekdayKeys.map((day) => '<label><input type="checkbox" data-action="template-scheduled-weekday" data-template-id="' + template.id + '" value="' + day + '" ' + (normalizeScheduledWeekdays(template.scheduledWeekdays).includes(day) ? 'checked' : '') + ' /><span>' + day.slice(0, 3) + '</span></label>').join('')}</div></fieldset>
+            <ol class="routine-exercise-preview">${template.exercises.map((exercise, exerciseIndex) => '<li><span class="routine-drag" aria-hidden="true">⠿</span><span class="routine-index">' + (exerciseIndex + 1) + '</span><span class="routine-exercise-copy"><strong>' + escapeHtml(exercise.name) + '</strong><small>' + escapeHtml(String(exercise.sets || 0) + " × " + (exercise.repMin && exercise.repMax && exercise.repMin !== exercise.repMax ? exercise.repMin + "–" + exercise.repMax : exercise.reps || exercise.repMax || exercise.repMin || "—")) + '</small><small>RPE ' + escapeHtml(exercise.targetRpe || "—") + '</small></span></li>').join("")}</ol>
             <details class="compact-disclosure template-editor" ${editorExpanded ? 'open' : ''}>
               <summary data-action="toggle-template-editor" data-template-id="${template.id}">Edit template <span>${template.exercises.length} lifts</span></summary>
               ${editorExpanded ? `<div class="disclosure-body">
                 ${renderTemplateNumericAlert(template.id)}
+                <fieldset class="template-weekdays"><legend>Scheduled days</legend><div class="weekday-options">${weekdayKeys.map((day) => '<label><input type="checkbox" data-action="template-scheduled-weekday" data-template-id="' + template.id + '" value="' + day + '" ' + (scheduledDays.includes(day) ? 'checked' : '') + ' /><span>' + day.slice(0, 3) + '</span></label>').join('')}</div></fieldset>
                 <ul class="template-list">
                   ${template.exercises.map((exercise, exerciseIndex) => `
                     <li data-template-exercise-id="${exercise.id}">
@@ -174,7 +178,8 @@
         `;
       }
 
-      function renderHistory() {
+      function renderHistory(options = {}) {
+        const selectedExercise = options.exercise || null;
         const sessions = data.sessions
           .filter((session) => isSessionSubmitted(session))
           .sort((left, right) => sessionCompletionDate(right).localeCompare(sessionCompletionDate(left))
@@ -182,17 +187,27 @@
         const rows = sessions.map((session) => {
           const facts = sessionWorkoutFacts(session);
           const storedGrade = storedWorkoutGradeProjection(session)?.grade || "";
+          const matchingExercise = selectedExercise ? data.exercises.find((exercise) =>
+            exercise.sessionId === session.id
+            && (canonicalExerciseId(exercise) === canonicalExerciseId(selectedExercise) || String(exercise.name || "").toLowerCase() === String(selectedExercise.name || "").toLowerCase())
+            && resistanceTypeFor(exercise) === resistanceTypeFor(selectedExercise)
+          ) : null;
+          const matchingSet = matchingExercise ? setsForExercise(matchingExercise.id)
+            .filter((set) => set.completed && !set.skipped && setIsActualWorkingObservation(set))
+            .sort((left, right) => Number(right.weight || 0) - Number(left.weight || 0) || Number(right.reps || 0) - Number(left.reps || 0))[0] : null;
           const details = [
             formatDate(sessionCompletionDate(session)),
             facts.exercises.length + " exercise" + (facts.exercises.length === 1 ? "" : "s"),
             facts.completed.length + " completed set" + (facts.completed.length === 1 ? "" : "s"),
             facts.durationMinutes ? facts.durationMinutes + " min" : "duration not recorded"
           ];
-          return '<button class="row-item history-session-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><span class="ri-copy"><b>' + escapeHtml(session.title || "Workout") + '</b><span>' + escapeHtml(details.join(" · ")) + '</span></span>' + (storedGrade ? '<span class="ri-val" aria-label="Stored workout grade ' + escapeHtml(storedGrade) + '">' + escapeHtml(storedGrade) + '</span>' : '') + '</button>';
+          return selectedExercise
+            ? '<button class="row-item history-session-row exercise-history-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><time>' + escapeHtml(formatDate(sessionCompletionDate(session))) + '</time><span class="ri-copy"><b>' + (matchingSet ? escapeHtml(formatSetPerformance(matchingSet, matchingExercise)) : 'No qualifying set') + '</b><span>' + escapeHtml(session.title || "Workout") + '</span></span>' + (storedGrade ? '<span class="ri-val" aria-label="Stored workout grade ' + escapeHtml(storedGrade) + '">' + escapeHtml(storedGrade) + '</span>' : '') + '</button>'
+            : '<button class="row-item history-session-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><span class="ri-copy"><b>' + escapeHtml(session.title || "Workout") + '</b><span>' + escapeHtml(details.join(" · ")) + '</span></span>' + (storedGrade ? '<span class="ri-val" aria-label="Stored workout grade ' + escapeHtml(storedGrade) + '">' + escapeHtml(storedGrade) + '</span>' : '') + '</button>';
         }).join("");
         return `
           <section class="screen-section history-view" aria-labelledby="completed-workouts-heading">
-            <div class="section-heading"><div><h2 id="completed-workouts-heading">Completed workouts</h2><p>Every submitted workout remains available in chronological order.</p></div><span>${sessions.length}</span></div>
+            <div class="section-heading"><div><h2 id="completed-workouts-heading">${selectedExercise ? "Workout history" : "Completed workouts"}</h2>${selectedExercise ? "" : "<p>Every submitted workout remains available in chronological order.</p>"}</div><span>${sessions.length}</span></div>
             <div class="history-session-list">${rows || '<div class="empty-state">Completed workouts will appear here.</div>'}</div>
           </section>
         `;
@@ -637,18 +652,14 @@
         const comparisonRoleLabel = progress.comparisonRole ? setTypeLabels[progress.comparisonRole] || "Comparable working set" : "Comparable working set";
         return `
           <section class="view charts-view">
-            <div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div>${exerciseHistoryReturnState ? '<button class="secondary-action" type="button" data-action="return-to-active-exercise">Back to workout</button>' : ''}</div>
-            <div class="chart-control-panel" aria-label="Selected lift controls">
-              <div class="chart-viewing-summary"><div><span>Exercise or variant</span><strong>${escapeHtml(selectedName)}</strong><span>${escapeHtml(latestFact)}</span></div><span class="status-pill inside">${visiblePoints.length} ${progressDateWindow === "all" ? "" : "recent "}session${visiblePoints.length === 1 ? "" : "s"}</span></div>
-              <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
-              <div class="segmented chart-date-window" role="radiogroup" aria-label="Performance chart date range"><label><input type="radio" name="progress-date-window" value="recent" data-action="set-progress-date-window" data-window="recent" ${progressDateWindow === "recent" ? "checked" : ""} /><span>Recent six months</span></label><label><input type="radio" name="progress-date-window" value="all" data-action="set-progress-date-window" data-window="all" ${progressDateWindow === "all" ? "checked" : ""} /><span>All history</span></label></div>
-              <p class="chart-control-context">The chart uses ${escapeHtml(comparisonRoleLabel.toLowerCase())} observations from submitted workouts. Named variants and resistance types remain separate.</p>
-            </div>
+            <div class="screen-heading progress-heading"><div><div class="section-kicker">Performance</div><h1>${escapeHtml(selectedName)}</h1></div>${exerciseHistoryReturnState ? '<button class="secondary-action" type="button" data-action="return-to-active-exercise">Back to workout</button>' : ''}</div>
+            <details class="progress-exercise-selector"><summary>Change exercise</summary><div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Exercise or variant</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small><small class="progress-identity-note">Named variants and resistance types remain separate.</small></div></details>
+            <div class="segmented chart-date-window" role="radiogroup" aria-label="Performance chart date range"><label><input type="radio" name="progress-date-window" value="recent" data-action="set-progress-date-window" data-window="recent" ${progressDateWindow === "recent" ? "checked" : ""} /><span>6 months</span></label><label><input type="radio" name="progress-date-window" value="all" data-action="set-progress-date-window" data-window="all" ${progressDateWindow === "all" ? "checked" : ""} /><span>All history</span></label></div>
+            <div class="progress-latest-fact"><span>Latest qualifying set</span><strong>${escapeHtml(latestFact)}</strong><small>${visiblePoints.length} comparable session${visiblePoints.length === 1 ? "" : "s"} · ${escapeHtml(comparisonRoleLabel)}</small></div>
             <section class="screen-section primary-analysis-chart">
-              <div class="section-heading"><div><h2>Performance trend</h2><p>Tap a point for its date, load, reps, RPE, role, and workout.</p></div></div>
               ${renderChart("performance", progress.title, visiblePoints, "No comparable completed sets in this date range.", chartPointScope)}
             </section>
-            ${renderHistory()}
+            ${renderHistory({ exercise })}
           </section>
         `;
       }

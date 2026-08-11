@@ -12,9 +12,11 @@ const exercise = views.slice(views.indexOf("function renderExercise(exercise)"),
 const setRenderer = views.slice(views.indexOf("function renderSet(set, exercise"), views.indexOf("function renderPrescriptionBrief(exercise)"));
 
 assert.doesNotMatch(workout, /Workout board|renderWorkoutSessionBoard|sessionBoardHtml/, "Today must not render the removed Workout Board");
-assert.doesNotMatch(views.slice(0, views.indexOf("function resizeExerciseNameFields")), /brand-mark|brand-title|brand-action|theme-toggle/, "The replacement shell must not retain the CF tile, wordmark, or header toggles");
+assert.match(views.slice(0, views.indexOf("function resizeExerciseNameFields")), /brand-mark[\s\S]*Logbook/, "Non-workout destinations must use the approved Logbook masthead");
+assert.match(views.slice(0, views.indexOf("function resizeExerciseNameFields")), /shellWorkoutDockVisible \? "" : `<header class="brand-bar"/, "Active workout mode must remove the general Logbook masthead");
 assert.match(views, /shellWorkoutDockVisible \? renderSessionDock\(session,[\s\S]*: `<nav class="bottom-nav"/, "Active workout mode must replace tab navigation with the persistent session dock");
-assert.match(views, /class="session-dock"[\s\S]*data-action="request-submit-workout">Finish<\/button>[\s\S]*data-action="session-menu"[\s\S]*data-action="request-cancel-workout"/, "The session dock must expose Finish and an overflow containing Cancel workout");
+assert.match(views, /class="session-dock"[\s\S]*data-action="close-workout-context"[\s\S]*session-dock-current[\s\S]*data-action="request-submit-workout">Finish<\/button>/, "The session dock must contain only Back to Today, current context, and Finish");
+assert.match(exercise, /isFirstSessionExercise[\s\S]*data-action="request-cancel-workout"/, "Actual-work cancellation must remain reachable from the exercise overflow");
 assert.doesNotMatch(views, /class="workout-footer-actions"/, "The workout footer must not retain a duplicate Submit action");
 assert.doesNotMatch(views.slice(0, views.indexOf("function resizeExerciseNameFields")), /shellMetric|shell-metric/, "The sticky session header must not duplicate the dock's set count or elapsed time");
 assert.doesNotMatch(workout, /progress\.completed\}\/\$\{progress\.total\} sets|<span>\$\{progress\.elapsed\}<\/span>/, "The in-content session context must not duplicate the dock's set count or elapsed time");
@@ -40,11 +42,13 @@ assert.doesNotMatch(exercise, /class="exercise-meta-row"|class="exercise-set-act
 assert.match(exercise, /class="exercise-details"[\s\S]*resistance-type-control[\s\S]*deload-toggle[\s\S]*exercise-management-actions/, "Secondary exercise settings and set management must remain reachable in one disclosure");
 assert.match(setRenderer, /class="set-field set-previous set-previous-link"[\s\S]*data-action="open-session"/, "Comparable history must link to its exact submitted session");
 assert.doesNotMatch(setRenderer, /set-field-history|historyMarkup/, "Previous performance must not repeat below every editable field");
-assert.match(setRenderer, /class="set-tools-disclosure"/, "Secondary set controls must collapse behind one compact disclosure");
-assert.match(setRenderer, /data-set-mode="logged"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "A logged set must render one compact V3 plan, actual, and delta row");
+assert.doesNotMatch(setRenderer, /class="set-tools-disclosure"/, "Set rows must not retain a separate options surface");
+assert.match(exercise, /class="exercise-set-options"/, "Secondary set controls must collapse inside the exercise overflow");
+assert.match(exercise, /data-action="set-type-override"/, "Exercise-owned set options must retain role editing");
+assert.match(exercise, /data-action="set-rest-seconds"/, "Exercise-owned set options must retain rest editing");
+assert.match(setRenderer, /data-set-mode="logged"[\s\S]*logged-set-label[\s\S]*logged-set-role[\s\S]*logged-set-actual[\s\S]*logged-set-time/, "A logged set must render one compact factual ledger row");
 assert.match(setRenderer, /isLoggedMode \? "" : `<div class="set-heading"/, "Logged rows must not retain a separate badge heading");
-assert.match(setRenderer, /isLoggedMode \? "" : `<details class="set-tools-disclosure"/, "Logged rows must not retain a separate options row");
-assert.match(setRenderer, /const isOnTarget[\s\S]*\? "on"[\s\S]*class="d ' \+ rpeDeltaClass/, "An on-target logged set must collapse its redundant numeric delta to compact on text");
+assert.doesNotMatch(setRenderer, /rpeDeltaText|\? "on"/, "Logged rows must not show ambiguous delta chips");
 assert.match(setRenderer, /data-set-mode="current"[\s\S]*current-set-inputs/, "The current set must render the focused V3 entry editor");
 assert.match(setRenderer, /data-set-mode="pending"[\s\S]*targetSummary/, "A pending set must render only its quiet target line");
 assert.match(views, /function replaceSetBlockDom\(setId[\s\S]*currentBlock\.replaceWith\(replacement\)/, "Completing or advancing a set must replace its structural subtree");
@@ -56,8 +60,6 @@ assert.doesNotMatch(setRenderer, /class="set-progress-disclosure"|Progress when/
 assert.doesNotMatch(setRenderer, /set-prescription-context/, "The removed block-level prescription grid must not return");
 assert.match(html, /\.compact-workout-layout \{[^}]*grid-template-columns: minmax\(0, 1fr\) !important;/, "The compact logger must not reserve an empty Workout Board column");
 assert.match(html, /\.exercise-management-actions \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "Set management must remain compact and responsive inside Exercise details");
-assert.match(html, /\.set-tools-disclosure > summary \{[^}]*height: 44px;[^}]*min-height: 44px;/, "The retained set-tools disclosure must keep a 44 px touch target");
-assert.match(html, /\.set-tools-disclosure:not\(\[open\]\) \{[^}]*height: 0;/, "A collapsed set must not reserve vertical space for secondary controls");
 assert.match(html, /\.workout-view \.set-actions \.mini-button \{[^}]*min-height: 44px;/, "Compact set actions must retain a 44 px touch target");
 assert.match(html, /\.current-set-inputs input \{[^}]*font-size: max\(16px, 1rem\)/, "Mobile set-entry fields must retain the 16 px Safari anti-zoom floor");
 assert.match(html, /\.workout-view \.set-block\.completed \{[^}]*animation: none;[^}]*background: transparent;[^}]*background-image: none;[^}]*border-left-color: transparent;[^}]*border-right-color: transparent;[^}]*box-shadow: none;/, "Logged V3 facts must remain neutral so the current editor owns visual emphasis");

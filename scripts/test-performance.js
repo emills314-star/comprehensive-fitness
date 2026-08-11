@@ -15,7 +15,7 @@ const section = (start, end) => {
 
 const inputHandler = section('root.addEventListener("input"', "async function applyWorkoutDeepLink");
 const templateRenderer = section("function renderTemplates()", "function renderHistory(");
-const historyRenderer = section("function renderHistory()", "function normalizeSetTypeCode(");
+const historyRenderer = section("function renderHistory(", "function normalizeSetTypeCode(");
 const setCompletion = section("function toggleSetCompletion(setId)", "function toggleSetSkipped(setId)");
 
 assert.match(html, /performanceDebugEnabled = \["127\.0\.0\.1", "localhost"\][\s\S]*has\("perf"\)/, "Performance diagnostics must remain development-only");

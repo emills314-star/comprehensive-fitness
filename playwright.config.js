@@ -1,6 +1,9 @@
 const { defineConfig, devices } = require("@playwright/test");
 
 const hostedBaseUrl = process.env.PLAYWRIGHT_BASE_URL?.trim();
+const requestedViewport = /^\d+x\d+$/.test(process.env.CF_VIEWPORT || "")
+  ? Object.fromEntries(["width", "height"].map((key, index) => [key, Number(process.env.CF_VIEWPORT.split("x")[index])]))
+  : null;
 
 module.exports = defineConfig({
   testDir: "./tests/ui",
@@ -29,7 +32,7 @@ module.exports = defineConfig({
     timeout: 30_000
   },
   projects: [
-    { name: "mobile", use: { ...devices["iPhone 13 Mini"], browserName: "chromium" } },
-    { name: "desktop", use: { browserName: "chromium", viewport: { width: 1280, height: 900 } } }
+    { name: "mobile", use: { ...devices["iPhone 13 Mini"], browserName: "chromium", ...(requestedViewport ? { viewport: requestedViewport } : {}) } },
+    { name: "desktop", use: { browserName: "chromium", viewport: requestedViewport || { width: 1280, height: 900 } } }
   ]
 });

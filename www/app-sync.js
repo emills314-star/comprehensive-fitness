@@ -772,7 +772,8 @@
           ? "Rest target passed by " + formatOvertime(overtimeSeconds) + ". Open timer controls."
           : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining. Open timer controls.");
         bar.dataset.phase = timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting";
-        bar.toggleAttribute("data-paused", timer.isPaused);
+        if (timer.isPaused) bar.setAttribute("data-paused", "true");
+        else bar.removeAttribute("data-paused");
         if (progress) {
           progress.setAttribute("aria-valuenow", String(percent));
           progress.style.setProperty("--timer-progress", percent + "%");

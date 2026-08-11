@@ -1002,12 +1002,14 @@
           if (next && data.settings.autoStartRestTimer !== false) {
             startTimer(exercise?.id || set.exerciseId, set.id, { pendingNextSetId: next.id, deferRender: true });
             persistActiveWorkoutDraft();
+            queuePostRenderFocus(focusDescriptorForElement(document.activeElement));
             renderAfterInteractionFrame();
             recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: true });
             return;
           }
           setActiveSet(next?.id || "", next ? "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is current" : "Workout sets complete", false);
           persistActiveWorkoutDraft();
+          queuePostRenderFocus(focusDescriptorForElement(document.activeElement));
           renderAfterInteractionFrame();
           recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: false });
         } finally {

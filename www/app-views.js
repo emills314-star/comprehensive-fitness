@@ -23,29 +23,31 @@
         const viewHtml = measurePerformance("renderView:" + activeTab, renderViewSafely, { tab: activeTab, sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
         const shellWorkoutVisible = activeTab === "workout" && hasActiveWorkout() && activeWorkoutId === session.id && !viewingHistorySessionId && !completedSummarySessionId;
         const shellWorkoutDockVisible = shellWorkoutVisible;
-        const shellTitle = ({ today: "Today", progress: "Progress", routines: "Routines", settings: "Settings", workout: "Workout" })[activeTab] || "Today";
+        const completedShellSession = completedSummarySessionId ? data.sessions.find((item) => item.id === completedSummarySessionId) : null;
+        const shellTitle = completedShellSession
+          ? "Workout complete"
+          : ({ today: "Today", progress: "Progress", routines: "Routines", settings: "Settings", workout: "Workout" })[activeTab] || "Today";
+        const todayLabel = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(todayIso() + "T12:00:00"));
+        const shellSubtitle = completedShellSession?.title
+          || ({ today: todayLabel, progress: "Exact exercise history", routines: "Contextual planning", settings: "Preferences and data", workout: session.title || "Workout" })[activeTab]
+          || "Training log";
         const shellCurrentContext = shellWorkoutDockVisible ? workoutProgress().current : "";
-        const shellActions = activeTab === "routines" || activeTab === "settings"
-          ? '<button class="shell-context-action" type="button" data-action="close-secondary-context">Back to Today</button>'
-          : activeTab === "workout"
-            ? '<button class="shell-context-action" type="button" data-action="close-workout-context">Back to Today</button>'
-            : '<div class="shell-context-actions"><button type="button" data-action="open-routines">Routines</button><button type="button" data-action="open-settings">Settings</button></div>';
+        const shellActions = '<details class="shell-overflow"><summary aria-label="Open navigation menu">•••</summary><div class="shell-overflow-menu"><button type="button" data-action="return-to-today">Today</button><button type="button" data-action="open-progress">Progress</button><button type="button" data-action="open-routines">Routines</button><button type="button" data-action="open-settings">Settings</button></div></details>';
         const shellContext = shellWorkoutDockVisible
-          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">In progress</span><small>' + escapeHtml(shellCurrentContext) + '</small></div>' + shellActions
-          : '<div class="shell-context"><strong>' + escapeHtml(shellTitle) + '</strong></div>' + shellActions;
+          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">In progress</span><small>' + escapeHtml(shellCurrentContext) + '</small></div>'
+          : '<span class="brand-mark" aria-hidden="true">CF</span><div class="shell-context"><small>Logbook</small><strong>' + escapeHtml(shellTitle) + '</strong><span>' + escapeHtml(shellSubtitle) + '</span></div>' + shellActions;
         const domStartedAt = performanceNow();
         root.innerHTML = `
-          <div class="app-shell">
+          <div class="app-shell logbook-shell">
             <a class="skip-link" href="#main-content" data-action="skip-content" ${modalOpen ? 'tabindex="-1" aria-hidden="true"' : ""}>Skip to main content</a>
-            <header class="brand-bar ${shellWorkoutDockVisible ? "active-session-bar" : ""}" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
-              ${shellContext}
-            </header>
+            ${shellWorkoutDockVisible ? "" : `<header class="brand-bar" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${shellContext}</header>`}
+            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { inert: modalOpen }) : ""}
             ${shellWorkoutVisible && timer ? '<div class="active-rest-dock" aria-live="polite">' + renderTimer(timer.setId) + '</div>' : ''}
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
-            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { inert: modalOpen }) : activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
+            ${shellWorkoutDockVisible || activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("today", "Today", "workout")}
               ${navButton("progress", "Progress", "review")}
             </nav>`}
@@ -196,7 +198,7 @@
 
       function syncTimerDom() {
         if (!timer) return;
-        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".workout-timer-slot > .timer-bar");
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".active-rest-dock > .timer-bar, .workout-timer-slot > .timer-bar");
         if (!bar) return;
         bar.dataset.timerId = timer.id;
         const stateLabel = bar.querySelector(".timer-rest-copy > span");
@@ -205,10 +207,11 @@
         const pause = bar.querySelector('[data-action="toggle-timer"]');
         if (stateLabel) stateLabel.textContent = timer.isPaused ? "Paused" : "Rest";
         if (nextLabel) nextLabel.textContent = timerNextContextLabel(timer);
-        bar.toggleAttribute("data-paused", timer.isPaused);
+        if (timer.isPaused) bar.setAttribute("data-paused", "true");
+        else bar.removeAttribute("data-paused");
         if (context) context.textContent = timerNextContextLabel(timer) + " · " + timerNotificationStatusLabel(timer);
         if (pause) {
-          pause.innerHTML = timer.isPaused ? icon.play : icon.pause;
+          pause.innerHTML = (timer.isPaused ? icon.play : icon.pause) + "<span>" + (timer.isPaused ? "Resume" : "Pause") + "</span>";
           pause.setAttribute("title", timer.isPaused ? "Resume timer" : "Pause timer");
           pause.setAttribute("aria-label", timer.isPaused ? "Resume timer" : "Pause timer");
         }
@@ -217,7 +220,7 @@
 
       function removeTimerDom(timerSnapshot) {
         const block = document.getElementById("set-" + (timerSnapshot?.setId || ""));
-        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timerSnapshot?.id || "") + '"]') || root.querySelector(".workout-timer-slot > .timer-bar");
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timerSnapshot?.id || "") + '"]') || root.querySelector(".active-rest-dock > .timer-bar, .workout-timer-slot > .timer-bar");
         bar?.remove();
         block?.classList.remove("resting-set");
       }
@@ -280,16 +283,10 @@
       }
 
       function renderSessionDock(session, progress, { inert = false } = {}) {
-        const durationPaused = Boolean(session.workoutPausedAt);
         return `<aside class="session-dock" aria-label="Workout session controls" ${inert ? 'inert aria-hidden="true"' : ""}>
-          <span class="session-dock-progress"><strong data-session-dock-progress>${progress.completed} of ${progress.total} sets</strong><span class="track" data-session-dock-track aria-label="${progress.completed} of ${progress.total} sets completed">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < Math.round((progress.completed / Math.max(1, progress.total)) * 10) ? 'filled' : '') + '"></i>').join("")}</span><small data-session-dock-elapsed>${escapeHtml(progress.elapsed)}</small><i class="session-dock-elapsed-rule" aria-hidden="true"></i></span>
-          <button class="secondary-action session-dock-pause" type="button" data-action="toggle-workout-pause" aria-pressed="${durationPaused ? "true" : "false"}">${durationPaused ? "Resume time" : "Pause time"}</button>
+          <button class="session-dock-back" type="button" data-action="close-workout-context">&larr; <span class="back-long">Back to </span>Today</button>
+          <span class="session-dock-current"><small>${escapeHtml(session.title || "Workout")}</small><h1>${escapeHtml(String(progress.current || "Workout").replace(/^Rest - /, "").replace(/ · Set \d+$/, ""))}</h1></span>
           <button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>
-          <details class="session-overflow session-dock-overflow"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">${icon.more}</summary><div class="session-overflow-menu">
-            <button type="button" data-action="log-workout-readiness">${icon.info}<span>Log readiness</span></button>
-            <button type="button" data-action="save-template">${icon.templates}<span>Save as template</span></button>
-            ${sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : ''}
-          </div></details>
         </aside>`;
       }
 
@@ -344,7 +341,7 @@
                 : '<div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div>'}
             </section>
             ${renderResolvedAction(resolvedActionForScope(session, "session"), { session })}
-            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? "" : renderSharedRestStarter(session)}</div>
+            <div class="workout-timer-slot" aria-live="polite"></div>
             ${renderNotificationPrompt()}
             <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
@@ -501,30 +498,32 @@
           const completed = workSets.filter((set) => set.completed && !set.skipped).length;
           return `
             <section class="view lift-home-view">
-              <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}</div><h1>Today</h1></div><span class="status-pill inside">In progress</span></div>
               ${renderResolvedAction(resolvedActionForScope(running, "session"), { session: running })}
-              <section class="coach-lead today-coach">
+              <section class="coach-lead today-coach today-primary-hero today-draft-hero">
                 <div class="section-kicker">Workout in progress</div>
                 <h2>${escapeHtml(running.title || "Current workout")}</h2>
                 <p>${completed} of ${workSets.length} working sets logged. Your draft is saved on this device.</p>
-                <div class="module-action-row"><button class="primary-action today-primary-action" type="button" data-action="resume-active-workout">Resume</button></div>
+                <div class="module-action-row"><button class="primary-action today-primary-action" type="button" data-action="resume-active-workout">Resume</button><button class="secondary-action" type="button" data-action="log-workout-readiness" data-session-id="${escapeHtml(running.id)}">Log readiness</button></div>
               </section>
               ${renderQuickStartTemplates(running.templateId || "")}
             </section>`;
         }
-        const previewNames = nextTemplate?.exercises?.map((exercise) => String(exercise.name || "").trim()).filter(Boolean) || [];
-        const previewText = previewNames.length
-          ? previewNames.slice(0, 4).join(" · ") + (previewNames.length > 4 ? " · +" + (previewNames.length - 4) + " more" : "")
-          : "No exercises have been added yet.";
+        const prescribedSets = nextTemplate ? templateExerciseCount(nextTemplate) : 0;
+        const estimatedMinutes = Math.max(15, Math.round(prescribedSets * 2.5));
+        const previewRows = nextTemplate?.exercises?.map((exercise, index) => {
+          const repMin = Number(exercise.repMin || exercise.reps || 0);
+          const repMax = Number(exercise.repMax || exercise.reps || repMin);
+          const reps = repMin && repMax && repMin !== repMax ? repMin + "–" + repMax : repMax || repMin || "—";
+          return '<div class="today-exercise-row"><span class="today-exercise-index">' + (index + 1) + '</span><span class="today-exercise-name"><strong>' + escapeHtml(exercise.name || "Exercise") + '</strong><small>' + escapeHtml(String(exercise.sets || 0) + " × " + reps) + '</small></span><span class="today-exercise-rpe">RPE ' + escapeHtml(exercise.targetRpe || "—") + '</span></div>';
+        }).join("") || "";
         return `
           <section class="view lift-home-view">
-            <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}${nextTemplate ? " · " + escapeHtml(nextTemplate.name) : ""}</div><h1>Today</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
-            <section class="coach-lead today-coach">
+            <section class="coach-lead today-coach today-primary-hero today-expected-hero">
               <div class="section-kicker">${nextTemplate ? "Expected workout" : "Next action"}</div>
               <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : data.templates.length ? scheduledToday.length > 1 ? "Choose today’s workout" : "Choose a workout" : "Create your first reusable workout"}</h2>
-              <p>${nextTemplate ? escapeHtml(previewText) : data.templates.length ? scheduledToday.length > 1 ? "More than one routine is scheduled today. Select the one you intend to train." : "No routine is assigned to today. Select one before starting." : "Once a routine exists, assign its scheduled days."}</p>
+              ${nextTemplate ? '<p class="today-workout-meta">' + nextTemplate.exercises.length + ' exercises · ' + prescribedSets + ' sets · about ' + estimatedMinutes + ' minutes</p><div class="today-start-row"><span><small>Expected workout</small><strong>' + escapeHtml(nextTemplate.name) + '</strong></span><button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start workout</button></div><div class="today-exercise-preview">' + previewRows + '</div>' : '<p>' + (data.templates.length ? scheduledToday.length > 1 ? "More than one routine is scheduled today. Select the one you intend to train." : "No routine is assigned to today. Select one before starting." : "Once a routine exists, assign its scheduled days.") + '</p>'}
               <div class="module-action-row">${nextTemplate
-                ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start</button><button class="secondary-action" type="button" data-action="log-template-readiness" data-template-id="' + escapeHtml(nextTemplate.id) + '">Log readiness</button>'
+                ? '<button class="secondary-action" type="button" data-action="open-routines">Choose workout</button><button class="secondary-action" type="button" data-action="log-template-readiness" data-template-id="' + escapeHtml(nextTemplate.id) + '">Log readiness</button>'
                 : data.templates.length ? '' : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}</div>
             </section>
             ${renderQuickStartTemplates(nextTemplate?.id || "")}
@@ -1086,6 +1085,12 @@
         const chipSet = exerciseSets.find((set) => isWorkingSet(set) && !set.completed && !set.skipped) || firstWorkSet;
         const plannedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set)).length;
         const chipRestSeconds = Number(chipSet?.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        const isFirstSessionExercise = activeExercises()[0]?.id === exercise.id;
+        const setOptionsHtml = exerciseSets.map((set) => {
+          const optionLabel = setTypeSemantics(set).isWarmup ? "Warm-up" : "Set " + Number(set.setNumber || 1);
+          const optionRest = Number(set.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+          return '<fieldset class="exercise-set-option"><legend>' + escapeHtml(optionLabel) + '</legend><label><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop','failure','amrap','technique','deload','unknown'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label><label><span>Rest seconds</span><input type="number" min="15" max="3600" step="15" value="' + optionRest + '" data-action="set-rest-seconds" data-set-id="' + set.id + '" aria-label="Rest seconds after ' + escapeHtml(optionLabel) + '" /></label><button type="button" data-action="toggle-skip-set" data-set-id="' + set.id + '">' + (set.skipped ? 'Restore set' : 'Skip set') + '</button><button type="button" data-action="add-warmup-set" data-exercise-id="' + exercise.id + '" aria-label="Insert warm-up above ' + escapeHtml(exercise.name) + ' ' + escapeHtml(optionLabel) + '">Insert warm-up above</button><button type="button" data-action="delete-set" data-set-id="' + set.id + '">Remove set</button></fieldset>';
+        }).join("");
         const chipTarget = chipSet
           ? plannedWorkingSets + " set" + (plannedWorkingSets === 1 ? "" : "s")
             + " · " + targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps) + " reps"
@@ -1103,13 +1108,16 @@
               <h2 class="exercise-name exercise-name-full" title="${escapeHtml(exercise.name)}"><a href="#progress" class="exercise-history-link" data-action="open-exercise-history" data-exercise-id="${escapeHtml(exercise.id)}" data-performance-exercise-id="${escapeHtml(exercise.performanceExerciseId || canonicalExerciseId(exercise))}">${escapeHtml(exercise.name)}</a></h2>
               ${targetChip}
               <details class="exercise-overflow"><summary class="icon-button" aria-label="Exercise menu">${icon.more}</summary><div class="exercise-overflow-menu">
+                <details class="exercise-set-options"><summary>Set options</summary>${setOptionsHtml}</details>
                 <button type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} up">${icon.up}<span>Move up</span></button>
                 <button type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} down">${icon.down}<span>Move down</span></button>
                 <button class="danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" aria-label="Delete exercise ${escapeHtml(exercise.name)}">${icon.delete}<span>Remove exercise</span></button>
+                ${isFirstSessionExercise ? '<button type="button" data-action="log-workout-readiness">' + icon.info + '<span>Log readiness</span></button><button type="button" data-action="save-template">' + icon.templates + '<span>Save as template</span></button>' + (sessionCanBeDiscarded(owningSession) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + owningSession.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : '') : ''}
               </div></details>
             </div>
             ${renderResolvedAction(resolvedActionForScope(owningSession, "exercise", exercise), { session: owningSession, exercise })}
             ${setHtml}
+            ${isActiveExercise && !timer ? renderSharedRestStarter(owningSession) : ""}
             <div data-reconcile-slot="${exercise.id}">${renderReconcilePrompt(exercise)}</div>
             <details class="exercise-details">
               <summary>Exercise details</summary>
@@ -1146,14 +1154,13 @@
       function renderSet(set, exercise, context = {}) {
         const restSeconds = Number(set.targetRestSeconds || context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set }, false);
-        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set }, false);
-        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, set }, false);
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isLoggedMode = visualState === "completed" && !isEditingHistorySession();
         const isNext = visualState === "current";
         const isResting = Boolean(timer?.isActive && timer.setId === set.id);
         const executionLabel = setExecutionLabel(set);
+        const ledgerRoleLabel = setTypeSemantics(set).isWarmup ? "Warm-up" : "Working";
         const warmupIndex = setTypeSemantics(set).isWarmup ? (context.warmupIds || []).indexOf(set.id) : -1;
         const previousSets = !isWorkingSet(set, "progression") ? [] : (context.previousSets || []);
         const role = normalizeSetTypeCode(set.setType, set.isWarmup);
@@ -1175,10 +1182,12 @@
             ? previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "")
             : previousLoadText + " × " + previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "");
         const previousField = setTypeSemantics(set).isWarmup
-          ? '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No comparable warm-up") + '</strong><small>Warm-up</small></div>'
+          ? '<div class="set-field set-previous prior-session-fact"><span>Last comparable</span><strong>No comparable history.</strong><small></small></div>'
           : previous?.priorSessionId
-            ? '<a class="set-field set-previous set-previous-link" href="#progress" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
-            : '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No previous workout found") + '</strong><small>No history</small></div>';
+            ? '<a class="set-field set-previous set-previous-link" data-prior-session-fact href="#progress" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Last comparable</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
+            : previous
+              ? '<div class="set-field set-previous prior-session-fact"><span>Last comparable</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel === "No history" ? "" : previousDateLabel) + '</small></div>'
+              : '<div class="set-field set-previous prior-session-fact"><span>Last comparable</span><strong>No comparable history.</strong><small></small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1202,17 +1211,6 @@
         const actualSummary = resistanceType === "duration" || resistanceType === "distance"
           ? actualPerformanceText + (Number(set.rpe || 0) > 0 ? " @ RPE " + set.rpe : "")
           : actualLoadText + " × " + Number(set.reps || 0) + (Number(set.rpe || 0) > 0 ? " @ " + Number(set.rpe).toFixed(1) : "");
-        const targetRpe = Number(set.targetRpe || set.targetRpeMax || set.targetRpeMin || 0);
-        const rpeDelta = Number(set.rpe || 0) - targetRpe;
-        const isOnTarget = Boolean(targetRpe && Number(set.rpe || 0) && Math.abs(rpeDelta) < 0.05);
-        const rpeDeltaText = isOnTarget
-          ? "on"
-          : !targetRpe || !Number(set.rpe || 0)
-            ? "Logged"
-            : (rpeDelta > 0 ? "+" : "") + formatLoadNumber(rpeDelta);
-        const rpeDeltaClass = !targetRpe || !Number(set.rpe || 0) ? "none" : rpeDelta > 0 ? "out" : rpeDelta < 0 ? "under" : "on";
-        const repTone = Number(set.reps || 0) < Number(set.targetRepMin || set.targetReps || 0) ? "under" : Number(set.reps || 0) > Number(set.targetRepMax || set.targetReps || 0) ? "over" : "on";
-        const repRangeSignal = rangeBar({ low: Number(set.targetRepMin || set.targetReps || 0), high: Number(set.targetRepMax || set.targetReps || 0), actual: isLoggedMode ? Number(set.reps || 0) : Number(set.targetReps || set.targetRepMin || 0), tone: isLoggedMode ? repTone : "none" });
         const statusButton = '<button class="check-button ' + (set.completed ? "checked" : "") + '" type="button" data-action="toggle-set" data-set-id="' + set.id + '" title="' + (set.completed ? "Completed" : "Mark set complete") + '" aria-label="' + (set.completed ? "Set completed" : "Mark set complete") + '" aria-pressed="' + (set.completed ? "true" : "false") + '"' + workoutSafetyDisabledAttributes(completionSafety) + '>' + icon.done + '</button>';
         const loadField = resistanceType === "bodyweight"
           ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
@@ -1220,10 +1218,10 @@
             ? '<div class="set-field"><span>Load</span><div class="resistance-readout">' + noData("External load does not apply") + '</div></div>'
             : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + roundLoadForUnit(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         const setBody = isLoggedMode
-          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</span><span class="act"><span class="lbl">' + escapeHtml(setCompletionClock(set)) + '</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
+          ? '<div class="set-logged" data-set-mode="logged"><div class="drow"><span class="logged-set-label">' + escapeHtml(setLabel) + '</span><span class="logged-set-role">' + escapeHtml(executionLabel) + '</span><strong class="logged-set-actual">' + escapeHtml(actualSummary) + '</strong><small class="logged-set-time">' + escapeHtml(setCompletionClock(set)) + '</small>' + statusButton + '</div></div>'
           : isNext || isEditingHistorySession()
-            ? '<div class="set-current-editor claim-card" data-set-mode="current"><div class="set-current-heading"><div><span class="eyebrow">' + escapeHtml(setLabel + ' · now') + '</span><strong>' + escapeHtml(resistanceType === "duration" || resistanceType === "distance" ? targetSummary : targetLoadText + " × " + targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + " @ RPE " + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe)) + '</strong></div><span class="current-set-count">' + (context.workingSetIds || []).length + ' sets planned</span>' + statusButton + '</div><div class="current-set-inputs">' + previousField + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + (Number(set.rpe || 0) > 0 ? set.rpe : "") + '" placeholder="—" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label></div></div>'
-            : '<div class="set-pending-line" data-set-mode="pending"><span class="pending-set-label">' + escapeHtml(setLabel) + '</span><span class="pending-exercise-name">' + escapeHtml(exercise.name) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</div>';
+            ? '<div class="set-current-editor" data-set-mode="current"><div class="set-current-fact">' + previousField + '</div><div class="set-current-heading"><span class="eyebrow">' + escapeHtml(setLabel) + '</span><strong>' + escapeHtml(ledgerRoleLabel + ' · now') + '</strong><span class="current-target">' + escapeHtml(targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + ' reps · RPE ' + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe) + ' · rest ' + formatTimer(restSeconds)) + '</span></div><div class="current-set-inputs">' + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + (Number(set.rpe || 0) > 0 ? set.rpe : "") + '" placeholder="—" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label>' + statusButton + '</div></div>'
+            : '<div class="set-pending-line" data-set-mode="pending"><span class="pending-set-label">' + escapeHtml(setLabel) + '</span><span class="pending-set-role">' + escapeHtml(ledgerRoleLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong><small>Upcoming</small></div>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             ${isLoggedMode ? "" : `<div class="set-heading">
@@ -1231,20 +1229,6 @@
             </div>`}
             ${setBody}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
-            ${isLoggedMode ? "" : `<details class="set-tools-disclosure" ${isResting || visualState === "edited" || isEditingHistorySession() ? "open" : ""}>
-              <summary aria-label="Set options"><span aria-hidden="true">•••</span></summary>
-              <div class="set-tools-panel">
-                <div class="set-actions">
-                  <label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="${set.id}">${['warmup','straight','top','backoff','drop','failure','amrap','technique','deload','unknown'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('')}</select></label>
-                  <label class="set-rest-editor"><span>Rest seconds</span><input type="number" min="15" max="3600" step="15" value="${restSeconds}" data-action="set-rest-seconds" data-set-id="${set.id}" aria-label="Rest seconds after ${escapeHtml(setLabel)}" ${set.completed ? "disabled" : ""} /></label>
-                  ${set.manualOverride && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
-                  <button class="mini-button" type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Insert warm-up above ${escapeHtml(exercise.name)} set ${set.setNumber}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>Insert warm-up above</button>
-                  <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
-                  <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
-                  ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
-                </div>
-              </div>
-            </details>`}
           </div>
         `;
       }
@@ -1259,30 +1243,26 @@
           : Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const progress = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         const nextContext = timerNextContextLabel(timer);
-        const notificationStatus = timerNotificationStatusLabel(timer);
         const timerLabel = timer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(timer.remainingSeconds);
         const ariaState = timer.isOvertime
           ? "Rest target passed by " + formatOvertime(overtimeSeconds)
           : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining";
         return `
-          <details class="timer-bar" data-timer-id="${timer.id}" data-disclosure-id="rest-timer" data-phase="${timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""} ${timer.isOvertime ? "open" : ""}>
-            <summary class="timer-summary" aria-label="${ariaState}. Open timer controls.">
+          <div class="timer-bar" data-timer-id="${timer.id}" data-phase="${timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""}>
+            <div class="timer-summary" aria-label="${ariaState}.">
               <span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></span>
               <span class="timer-rest-copy"><span>${timer.isOvertime ? "Rest complete" : timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(nextContext)}</small></span>
               <strong data-timer-progress-label>${timerLabel}</strong>
-            </summary>
-            <div class="timer-controls-panel">
-              ${timer.isOvertime
-                ? '<button class="timer-skip" type="button" data-action="clear-timer">Finish rest</button>'
-                : `<div class="timer-primary-controls" aria-label="Rest timer adjustments">
-                    <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">− 15 sec</button>
-                    <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+ 15 sec</button>
-                    <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip rest</button>
-                  </div>
-                  <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>`}
-              <div class="timer-context">${escapeHtml(nextContext + " · " + notificationStatus)}</div>
             </div>
-          </details>
+            <div class="timer-primary-controls" aria-label="Rest timer controls">
+              ${timer.isOvertime
+                ? '<button class="timer-quick-pause" type="button" data-action="clear-timer">Finish</button>'
+                : `<button class="timer-quick-pause" type="button" data-action="toggle-timer" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}"><span>${timer.isPaused ? "Resume" : "Pause"}</span></button>
+                   <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" aria-label="Reduce rest by 15 seconds">−15s</button>
+                   <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" aria-label="Add rest by 15 seconds">+15s</button>
+                   <button class="timer-skip" type="button" data-action="skip-timer">Skip</button>`}
+            </div>
+          </div>
         `;
       }
 
@@ -1311,10 +1291,9 @@
         const visibleNotice = restCompletionController?.getVisibleNotice() || timerCompleteNotice;
         if (!visibleNotice) return "";
         return `
-          <div class="timer-complete-toast" role="alertdialog" aria-live="assertive" aria-label="Rest complete, ${escapeHtml(visibleNotice.setLabel || "next set")} ready">
-            <span class="timer-complete-icon">&#10003;</span>
-            <div><strong>Rest Complete</strong><span>${escapeHtml(visibleNotice.exerciseName)}${visibleNotice.setLabel ? " &#8226; " + escapeHtml(visibleNotice.setLabel) : ""}</span></div>
-            <div class="timer-complete-actions"><button type="button" data-action="return-to-rest-workout">Return to Workout</button><button class="mini-button" type="button" data-action="dismiss-timer-notice" aria-label="Dismiss rest complete alert">Dismiss</button></div>
+          <div class="timer-complete-toast" role="status" aria-live="polite" aria-label="Rest complete, ${escapeHtml(visibleNotice.setLabel || "next set")} ready">
+            <strong>Rest complete</strong><span>${escapeHtml(visibleNotice.exerciseName)}${visibleNotice.setLabel ? " · " + escapeHtml(visibleNotice.setLabel) : ""} ready</span>
+            <button class="mini-button" type="button" data-action="dismiss-timer-notice" aria-label="Dismiss rest complete notice">Dismiss</button>
           </div>
         `;
       }

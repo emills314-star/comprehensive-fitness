@@ -941,7 +941,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await installScenario(page);
   await openPrimaryTab(page, "workout");
   const trigger = page.locator(`[data-action="request-cancel-workout"][data-session-id="${ACTIVE_SESSION_ID}"]`);
-  const menu = page.locator('[data-action="session-menu"]');
+  const menu = page.locator('.exercise-overflow > summary').first();
   await expect(trigger).toHaveCount(1);
 
   if (!await trigger.isVisible()) await menu.click();
@@ -954,7 +954,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep workout", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect.soft(menu, "Escape must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(menu, "Escape must restore focus to the exercise overflow trigger").toBeFocused({ timeout: 1_500 });
 
   if (!await trigger.isVisible()) await menu.click();
   await trigger.click();
@@ -962,7 +962,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Keep workout", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect.soft(menu, "The safe close action must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(menu, "The safe close action must restore focus to the exercise overflow trigger").toBeFocused({ timeout: 1_500 });
 
   if (!await trigger.isVisible()) await menu.click();
   await trigger.click();

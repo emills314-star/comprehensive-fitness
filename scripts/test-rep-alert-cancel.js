@@ -76,7 +76,8 @@ assert.match(resolvedActionSource, /resolvedAction\.action\?\.code[\s\S]*resolve
 assert.doesNotMatch(resolvedActionSource, /confidence|evidence|matrix|qualification/i, "Visible exception guidance must not expose legacy confidence or evidence details");
 assert.doesNotMatch(html, /function renderRolePrescriptionDetails\(/, "The deleted role-level prescription evidence renderer must not return");
 assert.doesNotMatch(setRendererSource, /set-progress-disclosure|Progress when/, "Normal set rows must not expose recommendation-era progression rationale");
-assert.match(setRendererSource, /class="set-tools-disclosure"/, "Secondary set controls remain available through one compact native disclosure");
+assert.match(html, /class="exercise-set-options"/, "Secondary set controls remain owned by the exercise overflow");
+for (const action of ["set-type-override", "set-rest-seconds", "toggle-skip-set"]) assert.match(html, new RegExp('data-action="' + action + '"'), action + " remains available in exercise-owned set options");
 assert.match(html, /class="discard-workout-button"[^>]*>Discard workout</, "Cancellation uses the polished concise destructive action");
 assert.match(html, /unsubmitted draft will be permanently removed[\s\S]*Submitted history and routines stay intact/, "Cancellation must name permanent draft loss and distinguish submitted history and routines that remain");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");

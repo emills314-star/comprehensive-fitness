@@ -147,6 +147,58 @@ test("M5 Start opens one full-screen active logger directly and browser Back ret
   });
 });
 
+test("M5 active-draft Today uses one status surface and stable wide navigation", async ({ page }) => {
+  test.setTimeout(120_000);
+  await installFixture(page, fixtureWithAlternate({ active: true }));
+
+  await expect(page.locator(".today-heading .status-pill")).toHaveCount(0);
+  await expect(page.locator(".today-draft-hero .section-kicker")).toHaveText("Workout in progress");
+  await expect(page.locator('[data-action="resume-active-workout"]')).toHaveAccessibleName("Resume");
+  await expect(page.locator(".today-template-strip:not([open])")).toHaveCSS("border-top-width", "0px");
+  await expect(page.locator('[data-action="open-routines"]')).toHaveCSS("border-top-color", "rgba(0, 0, 0, 0)");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const hero = await page.locator(".today-draft-hero").boundingBox();
+  const navigation = await page.getByRole("navigation", { name: "Main navigation" }).boundingBox();
+  expect(hero).not.toBeNull();
+  expect(hero.width).toBeLessThanOrEqual(720);
+  expect(navigation).not.toBeNull();
+  expect(navigation.x).toBe(0);
+  expect(navigation.width).toBe(1440);
+  expect(navigation.y + navigation.height).toBeLessThanOrEqual(900);
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCSS("border-radius", "0px");
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCSS("box-shadow", "none");
+
+  await page.screenshot({
+    path: path.join(ARTIFACT_DIR, "m5-desktop-kimi-p0-today.png"),
+    fullPage: true
+  });
+});
+
+test("M5 expected-workout Today keeps identity and actions in one focused hero", async ({ page }) => {
+  test.setTimeout(120_000);
+  const expectedFixture = buildTemplateLifecycleFixture();
+  expectedFixture.templates[0].scheduledWeekdays = ["thursday"];
+  await installFixture(page, expectedFixture);
+
+  await expect(page.locator(".today-heading .status-pill")).toHaveCount(0);
+  await expect(page.locator(".today-expected-hero .section-kicker")).toHaveText("Expected workout");
+  await expect(page.locator(".today-expected-hero")).toContainText("Public Synthetic Upper Lifecycle");
+  await expect(page.locator('[data-action="start-next-template"]')).toHaveAccessibleName("Start");
+  await expect(page.locator('[data-action="log-template-readiness"]')).toHaveAccessibleName("Log readiness");
+  await expect(page.locator(".today-expected-hero")).toHaveCSS("box-shadow", "none");
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  const tabletHero = await page.locator(".today-expected-hero").boundingBox();
+  expect(tabletHero).not.toBeNull();
+  expect(tabletHero.width).toBeLessThanOrEqual(720);
+
+  await page.screenshot({
+    path: path.join(ARTIFACT_DIR, "m5-tablet-kimi-p0-expected-today.png"),
+    fullPage: true
+  });
+});
+
 test("M5 optional readiness is secondary, single-step, and available during the workout", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, fixtureWithAlternate());

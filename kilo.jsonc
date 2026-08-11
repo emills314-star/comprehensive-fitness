@@ -1,0 +1,57 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "modal-kimi/kimi-k3",
+  "share": "disabled",
+  "instructions": [
+    "AGENTS.md",
+    "KIMI_HANDOFF.md",
+    ".kilo/rules/*.md"
+  ],
+  "permission": {
+    "*": "ask",
+    "external_directory": "deny",
+    "read": {
+      "*": "allow",
+      ".env*": "deny",
+      "**/.env*": "deny",
+      "personal_fitness_data/**": "deny",
+      "private-personal-data/**": "deny",
+      "www/private-personal-data/**": "deny",
+      "**/*.db": "deny",
+      "**/*.sqlite*": "deny"
+    },
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "edit": {
+      "*": "deny",
+      "KIMI_GLOBAL_DESIGN_SPEC.md": "allow"
+    },
+    "bash": "deny",
+    "task": "deny",
+    "webfetch": "ask",
+    "websearch": "ask"
+  },
+  "agent": {
+    "kimi-design": {
+      "description": "Read-only Kimi design authority that may write only requested design specification documents after explicit approval.",
+      "mode": "primary",
+      "model": "modal-kimi/kimi-k3",
+      "steps": 40,
+      "permission": {
+        "edit": {
+          "*": "deny",
+          "KIMI_GLOBAL_DESIGN_SPEC.md": "allow",
+          "KIMI_*_DESIGN_SPEC.md": "allow",
+          "KIMI_REVIEW_*.md": "allow"
+        },
+        "bash": "deny",
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "task": "deny",
+        "external_directory": "deny"
+      }
+    }
+  }
+}

@@ -258,7 +258,7 @@ test("M7 completes an adapted mobile workout with one concise actual-work result
   await expect(summary.locator(".grade-reasons li")).toHaveCount(3);
   expect(await summary.locator(".workout-highlight").count()).toBeLessThanOrEqual(3);
   await expect(summary.locator('[data-action="close-completed-summary"]')).toHaveText("Done");
-  await expect(summary.locator('[data-action="open-completion-progress"]')).toHaveText("Progress");
+  await expect(summary.locator('[data-action="open-completion-progress"]')).toHaveText("View in Progress");
   await expect(summary.locator(".workout-achievements, .workout-achievement, [data-action='toggle-achievement-detail']")).toHaveCount(0);
   await expect(summary).not.toContainText(/plan complete|target precision|the session, diffed|confidence|category score|adherence/i);
 

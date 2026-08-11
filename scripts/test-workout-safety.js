@@ -70,7 +70,7 @@ assert.match(html, /\.brand-bar::before/, "The top header background must extend
 assert.match(html, /viewingHistorySessionId = isSessionSubmitted/, "Logged workouts must only remain visible when deliberately opened from history");
 assert.doesNotMatch(html, /function weeklyMuscleVolume\(|data-action="open-dashboard-detail"|data-action="set-hypertrophy-scope"/, "Deleted volume dashboards and score scope controls must not remain");
 assert.match(html, /function exercisePerformanceSeries\(/, "Progress must retain a factual exercise-performance series");
-assert.match(html, /renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one performance chart followed by submitted workout history");
+assert.match(html, /renderChart\("performance"[\s\S]*renderHistory\(\{ exercise \}\)/, "Progress must retain one performance chart followed by submitted workout history");
 assert.match(html, /class="completed-summary score-|class="grade-tone score-/, "Stored workout grades must retain their existing factual tone system");
 assert.match(html, /clearDataFlow\.acknowledged && clearDataFlow\.phrase === "CLEAR"/, "Local clearing must require acknowledgment and typed confirmation");
 assert.match(html, /Permanently Clear Local Data/, "The final device-wide deletion action must be explicit");
