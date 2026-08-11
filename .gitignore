@@ -9,6 +9,10 @@ android/app/src/main/assets/public/
 .DS_Store
 .vercel-data/
 artifacts/
+.codex/redesign-state.json
+.codex/redesign-decisions.md
+.codex/redesign-errors.md
+.kilo/node_modules/
 
 # Local design references derived from screenshots with personal workout data.
 docs/design/strong-ui-mockups/

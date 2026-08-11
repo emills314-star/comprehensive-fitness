@@ -686,7 +686,7 @@
         window.clearInterval(timerInterval);
         releaseTimerWakeLock();
         if (previousTimer) cancelRestPush(previousTimer, "replaced");
-        const seconds = Number(options.seconds || set?.targetRestSeconds || exercise?.restSeconds || data.settings.defaultRestSeconds || 90);
+        const seconds = normalizeRestSeconds(options.seconds ?? set?.targetRestSeconds ?? exercise?.restSeconds ?? data.settings.defaultRestSeconds, 90);
         const next = requestedNext || (set?.completed || set?.skipped ? nextIncompleteSet(set.id) : set);
         restCompletionController?.dismiss("replaced_by_new_timer");
         timerCompleteNotice = null;
@@ -718,7 +718,9 @@
             const block = document.getElementById("set-" + setId);
             const slot = document.querySelector(".workout-timer-slot");
             block?.classList.add("resting-set");
-            if (slot && !slot.querySelector(".timer-bar")) slot.innerHTML = renderTimer(setId);
+            if (slot) slot.innerHTML = renderTimer(setId);
+            const dock = document.querySelector(".active-rest-dock");
+            if (dock) dock.innerHTML = renderTimer(setId);
             updateWorkoutStatusDom();
           });
         } else render();
@@ -727,6 +729,7 @@
 
       function startTimerInterval() {
         window.clearInterval(timerInterval);
+        timerInterval = 0;
         timerInterval = window.setInterval(() => {
           if (!timer || timer.isPaused || !timer.isActive) return;
           if (timer.isOvertime) {
@@ -769,7 +772,8 @@
           ? "Rest target passed by " + formatOvertime(overtimeSeconds) + ". Open timer controls."
           : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining. Open timer controls.");
         bar.dataset.phase = timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting";
-        bar.toggleAttribute("data-paused", timer.isPaused);
+        if (timer.isPaused) bar.setAttribute("data-paused", "true");
+        else bar.removeAttribute("data-paused");
         if (progress) {
           progress.setAttribute("aria-valuenow", String(percent));
           progress.style.setProperty("--timer-progress", percent + "%");

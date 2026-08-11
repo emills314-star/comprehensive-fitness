@@ -246,7 +246,10 @@ async function openActiveWorkout(page) {
 
 test("m1 V3 progressive workout retains every functional control in the compact hierarchy", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m1 reference is a phone composition.");
-  await page.setViewportSize({ width: 390, height: 844 });
+  const requestedViewport = /^\d+x\d+$/.test(process.env.CF_VIEWPORT || "")
+    ? process.env.CF_VIEWPORT.split("x").map(Number)
+    : [390, 844];
+  await page.setViewportSize({ width: requestedViewport[0], height: requestedViewport[1] });
   await installFixture(page, buildM1ProgressiveFixture());
   await openActiveWorkout(page);
   await page.evaluate(({ exerciseId, restingSetId, nextSetId }) => {
@@ -265,13 +268,15 @@ test("m1 V3 progressive workout retains every functional control in the compact 
   await expect(page.locator('.set-pending-line[data-set-mode="pending"]')).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Mark set complete" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
-  await expect(page.locator('.session-dock [aria-label="Workout menu"]')).toBeVisible();
+  await expect(page.locator('.session-dock [aria-label="Workout menu"]')).toHaveCount(0);
+  await expect(page.locator(".session-dock")).toHaveText(/Back to Today.*Finish/s);
   await expect(page.locator("[data-workout-rollup]")).toHaveCount(0);
-  await expect(page.locator(".workout-timer-slot > .timer-bar")).toHaveCount(1);
+  await expect(page.locator(".active-rest-dock > .timer-bar")).toHaveCount(1);
   await expect(page.locator(".set-block .timer-bar")).toHaveCount(0);
   await expect(page.locator(`[data-action="set-weight"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("185");
   await expect(page.locator(`[data-action="set-reps"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("8");
-  await expect(page.locator(".set-tools-disclosure")).toHaveCount(4);
+  await expect(page.locator(".set-tools-disclosure")).toHaveCount(0);
+  await expect(page.locator('.exercise-overflow [data-action="toggle-skip-set"]')).toHaveCount(6);
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
 
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
@@ -613,9 +618,9 @@ test("m7 workout exit stays in the persistent session dock", async ({ page }, te
   await expect(dock).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
   await expect(dock.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
-  await dock.locator(".session-dock-overflow > summary").click();
-  await expect(dock.getByRole("button", { name: /Save as template/ })).toBeVisible();
-  await expect(dock.getByRole("button", { name: /Cancel workout/ })).toBeVisible();
+  await page.locator(".exercise-overflow > summary").first().click();
+  await expect(page.getByRole("button", { name: /Save as template/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Cancel workout/ })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m7-session-dock-candidate.png"),

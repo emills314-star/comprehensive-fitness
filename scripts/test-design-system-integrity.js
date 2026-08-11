@@ -59,7 +59,7 @@ assert.doesNotMatch(history, /\b(?:setPrescription|finalPrescription|exercise\.p
 
 assert.match(renderChartPointDetail, /Selected session[\s\S]*chart-point-rollup[\s\S]*load[\s\S]*reps[\s\S]*RPE[\s\S]*role[\s\S]*Recorded sets/, "A selected factual chart point must expose date, load, reps, RPE, role, and source sets");
 assert.doesNotMatch(views, /function readinessMetricDelta\(|function readinessMetricField\(/, "the categorical readiness flow must not retain numeric delta scoring");
-assert.match(renderOptionalReadinessSheet, /Not entered[\s\S]*Usual[\s\S]*Unusually good[\s\S]*Meaningfully poor/, "readiness must remain a brief categorical deviation input");
+assert.match(renderOptionalReadinessSheet, /Not entered[\s\S]*Worse than usual[\s\S]*About usual[\s\S]*Better than usual/, "readiness must remain a brief low-to-high categorical deviation input");
 assert.doesNotMatch(renderStoragePersistenceFact, /class="ri-val d |tone:/, "storage-persistence facts must remain plain ink");
 
 const subFloorRem = [...style.matchAll(/font-size:\s*(0?\.\d+)rem/g)]

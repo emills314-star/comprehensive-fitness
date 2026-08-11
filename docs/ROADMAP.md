@@ -1,5 +1,53 @@
 # Roadmap
 
+## 2026-08-09 K3 corrective visual redesign
+
+- **IMPLEMENTED LOCALLY:** replaced the incomplete production workout translation with the approved Direction A ledger structure, retaining only the approved blue-gray comparable-history emphasis and C-inspired structural rest rail with explicit Pause/Resume.
+- **IMPLEMENTED LOCALLY:** removed duplicate session header status/progress/pause/menu surfaces, ambiguous completed-set deltas, row-owned option disclosures, and the obstructive rest-complete alert dialog.
+- **VERIFIED LOCALLY:** the synchronized candidate passes 52/52 public scripts, static lint, 26/26 PWA/native assets, direct mobile/desktop lifecycle and serious/critical axe gates, diff hygiene, and the complete eleven-screen comparison capture. The next exercise remains visible at 390 x 844 and the workout has one header, one open row, and one rest surface.
+- **NEEDS REVIEW:** physical-device behavior, owner baseline acceptance, hosted verification, commit, push, merge, deployment, and publication remain outside this local task.
+
+## 2026-08-08 Kimi K3 three-direction review gate — REVIEW-READY LOCALLY
+
+- **IMPLEMENTED LOCALLY:** persistent redesign state, curated protected-logic/context documents, a headless read-only K3 wrapper, public-synthetic Chromium baseline evidence, three materially distinct K3 directions, one isolated interactive browser design lab, 33 screenshots per capture pass, direction-specific K3 critique, Critical/High prototype corrections, final K3 scoring, and a mobile-first review board.
+- **K3 RANKING:** A / Logbook 88.2; B / Spotter Cards 85.3; C / Session Spine 81.7. K3 and Codex recommend A with bounded prior-performance/rest borrowings from B/C.
+- **PRODUCT GATE:** production redesign has not begun. State is `awaiting_design_approval`; accepted responses are APPROVE A/B/C, APPROVE RECOMMENDED, or APPROVE HYBRID.
+- **PROTECTED SCOPE:** prototypes use synthetic data only and do not write production persistence, call APIs, change recommendation logic, add retired product surfaces, or touch personal fitness data.
+- **NEEDS REVIEW:** the untouched baseline mockup-fidelity capture recorded 7/10 passing cases and three revision-sensitive assertion failures; hosted, physical-device, final production, publication, and owner visual acceptance gates remain open.
+
+## 2026-08-08 Kimi P0 Today hierarchy and navigation — IMPLEMENTED LOCALLY
+
+- Removed the duplicate active-draft status while preserving the exact Resume behavior and copy.
+- Removed the redundant Ready chip from the scheduled expected-workout state while preserving Plan needed when no routine is selected.
+- Flattened and constrained the Today active-draft composition, converted closed workout selection and contextual header controls to quiet actions, and replaced the rounded floating destination dock with a full-width, centered two-tab bar.
+- Added focused mobile/desktop Playwright regressions covering active-draft and expected-workout status hierarchy, quiet actions, 720px wide-screen measure, tablet composition, full-width navigation bounds, and flat navigation styling; all four focused project cases pass.
+- Static lint passes, web/PWA source synchronization completed, and visual evidence was inspected at 1440 × 900.
+- **NEEDS REVIEW:** the complete M5 spec file exceeded a four-minute command ceiling without emitting results; the new test passes independently in both projects, but the broader file is not claimed as passed in this phase.
+- Next: apply Kimi P1 density rules to active-workout set entry and rest surfaces, then run the surrounding workout/accessibility regression set.
+
+## 2026-08-08 Modal + Kilo + Kimi K3 design workflow — GLOBAL SPEC COMPLETE LOCALLY
+
+- Created an isolated `codex/kimi-k3-redesign` worktree from the current local redesign candidate without touching the original untracked work.
+- Added conservative project-level Kilo configuration, security/product/verification rules, a current-authority handoff, three phase prompts, and a controlled launcher.
+- Preserved the isolated `codex/kimi-k3-redesign` worktree, verified Kilo CLI 7.4.20, and installed Modal CLI 1.5.3 in Codex's bundled Python runtime without adding a repository dependency.
+- Verified the public $0 Starter/$30 monthly credit terms, Shared Kimi K3 availability, public model identifier, and token pricing from official Modal sources.
+- Added the design-authority/context/usage/implementation documents and five scoped Kimi design prompts. They follow the current two-destination product and do not restore retired mesocycle, dashboard, theme, or numeric-coaching systems.
+- Authenticated Starter plan and $30 monthly grant are verified. The owner reported that a payment method was required to unlock the grant; a hard $29 workspace budget now stops running apps before the final dollar is consumed.
+- The token-billed Shared `moonshotai/Kimi-K3` endpoint is live, Kilo exposes `modal-kimi/kimi-k3`, and the minimal smoke test returned `KIMI_K3_MODAL_OK`.
+- Ran one bounded global design-system session against four synthetic Today baselines and persisted its detailed output in `KIMI_GLOBAL_DESIGN_SPEC.md`. Modal now reports $0.22 usage, $0.22 credits applied, and $0 total spend.
+- One user-scoped proxy credential remains; no secret is stored in Git. No dedicated GPU endpoint, paid plan, commit, push, deployment, or publication occurred.
+- The first Codex P0 implementation slice is recorded above; remaining P0 work continues in subsequent bounded phases.
+- Baseline evidence records one fresh-Windows-checkout LF/CRLF parity failure, a bounded full Playwright timeout with pre-existing candidate failures, and a local-only `404 /api/push/config` console warning; setup did not alter application code to hide them.
+- This setup does not reopen final feature disposition or authorize implementation, commit, push, deployment, publication, or baseline acceptance.
+
+## 2026-08-07 active-session correctness — IMPLEMENTED LOCALLY
+
+- Fixed stale timer replacement with one absolute-deadline, versioned timer and idempotent completion path.
+- Added per-set rest fallback/editing without rewriting submitted history.
+- Added weekday assignment, deterministic Today selection, readiness ordering, and stable-identity history return.
+- Added only targeted pinned-timer, completion, dock, overflow, and wrapping presentation changes.
+- Source/`www` packaging advances to service-worker cache v105; external device, hosted, publication, and incomplete verification gates remain open.
+
 ## Metadata
 
 - **Purpose:** Current implementation status, remaining gates, risks, and explicitly excluded work
@@ -85,6 +133,25 @@ Do not begin new product work after M8. Do not merge, push, deploy, mutate produ
 - **NEEDS REVIEW:** hosted asset, PWA upgrade, and lifecycle verification remain blocked until this second remediation is independently approved, explicitly authorized for publication, committed, pushed, merged, and deployed.
 
 ## External and human gates
+
+### 2026-08-08 Kimi K3 redesign direction
+
+- **IMPLEMENTED LOCALLY:** the owner approved a hybrid using A — Logbook as the base, a more visible cool blue-gray **Last comparable** fact row, and C-inspired structural rest progress adapted to the Logbook palette with an explicit Pause/Resume control.
+- The production translation now applies Direction A's actual page structure across Today, active workout, completion, Progress, Routines, and Settings: frameless ruled sections, a fixed desktop navigation rail, compact mobile navigation, a one-line sticky session bar, and a dense inline workout ledger. The earlier narrow active-workout styling pass was incomplete and is superseded by this full-shell translation.
+- The PWA shell cache advanced exactly once for this corrective task, from v116 to v117, so installed and local previews activate the redesigned shell coherently instead of retaining the previous cached presentation.
+- The implementation is presentation-only: comparable-history resolution, timer persistence/overtime/notification semantics, workout mutation rules, and the two-destination product boundary are unchanged.
+- Verification passed on the final local candidate: static lint; 52/52 public contract scripts; 26/26 PWA/native packaging assets; direct-Playwright workout/rest/completion plus serious/critical axe checks at 390 × 844 and 1440 × 900; `git diff --check`; root/`www` synchronization; and regeneration of every required mobile/desktop production screenshot plus the comparison board.
+- Visual reconciliation removed the Critical/High structural mismatches: the general Logbook masthead is absent during active work, the session bar contains only Back/context/Finish, the current set is one inline row, rest is one structural rail, Today/Progress/Routines/Completion use ruled page compositions, and the desktop rest controls no longer overlap their summary or session bar.
+- **OWNER APPROVED 2026-08-08:** the approved hybrid deviations remain the cool blue-gray **Last comparable** treatment, Direction C structural rest progress in the Logbook palette, and explicit Pause/Resume. Fresh acceptance of the regenerated comparison board has not been inferred.
+- **NEEDS REVIEW:** owner visual-baseline acceptance, physical-device timer behavior, hosted verification, and every commit/push/merge/deploy/publication gate remain outstanding.
+
+### 2026-08-07 expedited active-session release
+
+- **IMPLEMENTED:** active-session timer replacement, per-set rest targets, weekday routine scheduling, readiness ordering/copy, exact-identity exercise-history navigation, compact pinned timer/dock behavior, compatibility schema changes, root/`www` synchronization, and service-worker cache v105.
+- Pinned Node 22.23.0/npm 10.9.8 public release suite passed: lint, workflows, tracked privacy, dependency policy, 52/52 public scripts, research validation, and 26/26 PWA/native packaging assets.
+- Focused mobile and desktop Playwright coverage passed for the critical workout lifecycle, timer persistence/overtime, and consecutive timer replacement regression.
+- **ASSUMPTION (owner-authorized release waiver):** for this production deployment only, the owner explicitly waived fresh Claude independent review, the complete 324-case Playwright matrix, and the five-workout acceptance gate. The attempted full matrix exceeded its 15-minute command ceiling without a reported assertion failure and is recorded as waived, not passed.
+- Physical-device push, vibration, sound, lock-screen timing, and installed-PWA suspension behavior remain unverified external gates and are not represented as passed.
 
 These cannot be claimed from the current local environment:
 

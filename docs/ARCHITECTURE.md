@@ -1,5 +1,11 @@
 # Architecture
 
+## Active rest and weekday selection — IMPLEMENTED LOCALLY 2026-08-07
+
+The active workout owns one versioned timer. Running time derives from `endsAt`; paused time retains bounded remaining seconds. Set completion idempotently records completion, cancels/replaces the preceding timer and push schedule, creates one interval, and persists the combined active draft. The shell renders that record once in a pinned slot.
+
+Routine `scheduledWeekdays` metadata is normalized and matched to the local weekday. Exactly one match is recommended; zero or multiple matches require selection. Exact weekday-name tokens are a fallback only when canonical metadata is absent. Legacy `expectedTemplateId` is compatible but no longer schedule authority. Set `targetRestSeconds`, routine set-role rest, exercise rest, and the app default form the fallback without backfilling submitted history.
+
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries

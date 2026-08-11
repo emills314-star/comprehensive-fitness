@@ -536,7 +536,7 @@
             })) : []);
         const highlights = currentHighlights.slice(0, 3);
         const highlightSection = highlights.length
-          ? '<section class="workout-summary-section completion-highlights" aria-labelledby="completion-highlights-title"><h3 id="completion-highlights-title">Progress highlights</h3><div class="workout-highlight-list">' + highlights.map((item) => '<article class="workout-highlight"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></article>').join('') + '</div></section>'
+          ? '<section class="workout-summary-section completion-highlights" aria-labelledby="completion-highlights-title"><h3 id="completion-highlights-title">Highlights</h3><div class="workout-highlight-list">' + highlights.map((item) => '<article class="workout-highlight"><small>' + escapeHtml(item.type === "pr" ? "Personal record" : "Progress") + '</small><strong>' + escapeHtml(String(item.title || "Progress").replace(/\s+—\s+Best estimated performance$/i, "")) + '</strong><span title="' + escapeHtml(item.detail) + '">' + escapeHtml(String(item.detail || "Recorded progress.").split(". ")[0]) + '</span></article>').join('') + '</div></section>'
           : '';
         const reasons = [...analysis.gradeReasons].filter(Boolean);
         if (!analysis.currentContract && reasons.length < 2) reasons.push("Stored as " + analysis.gradeVersion + "; newer grade rules were not applied.");
@@ -556,12 +556,20 @@
         const gradeHeadingTag = options.history ? "h2" : "h1";
         const actions = options.history
           ? ''
-          : '<div class="completion-actions"><button class="primary-action" type="button" data-action="close-completed-summary">Done</button><button type="button" data-action="open-completion-progress" data-exercise-id="' + escapeHtml(progressExerciseId) + '" data-resistance-type="' + escapeHtml(progressResistanceType) + '">Progress</button></div>';
+          : '<div class="completion-actions"><button class="primary-action" type="button" data-action="close-completed-summary">Done</button><button type="button" data-action="open-completion-progress" data-exercise-id="' + escapeHtml(progressExerciseId) + '" data-resistance-type="' + escapeHtml(progressResistanceType) + '">View in Progress</button></div>';
+        const totalWorkingSets = facts.sets.filter((set) => isWorkingSet(set)).length;
+        const completedWorkingSets = facts.sets.filter((set) => isWorkingSet(set) && set.completed && !set.skipped).length;
+        const completionFacts = [
+          facts.durationMinutes ? facts.durationMinutes + " minutes" : "Duration not recorded",
+          completedWorkingSets + " of " + totalWorkingSets + " sets",
+          "average RPE " + (analysis.metrics?.averageRpe ? Number(analysis.metrics.averageRpe).toFixed(1) : analysis.metrics?.rpeLoggedRatio ? "recorded" : "not recorded")
+        ].join(" · ");
         return '<section class="completed-summary concise-completion ' + tone + '" aria-label="Workout completion">'
-          + (options.history ? '' : '<div class="summary-toolbar"><span class="section-kicker">Session logged</span>' + actions + '</div>')
+          + (options.history ? '' : '<span class="visually-hidden">Session logged</span>')
           + (options.history ? '' : renderResolvedAction(resolvedActionForScope(session, "session"), { session }))
-          + '<div class="workout-grade-hero"><div class="workout-grade-copy"><div class="section-kicker">' + escapeHtml(session.title || (options.history ? 'Saved workout' : 'Workout logged')) + (facts.durationMinutes ? ' · ' + facts.durationMinutes + ' min' : '') + '</div><' + gradeHeadingTag + '>' + escapeHtml(workoutGradeInterpretation(analysis.grade)) + '</' + gradeHeadingTag + '><span class="workout-grade-version">Grade version ' + escapeHtml(analysis.gradeVersion) + '</span></div><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(analysis.grade) + '">' + escapeHtml(analysis.grade) + '</div></div>'
-          + '<section class="workout-summary-section grade-reasons" aria-labelledby="grade-reasons-title"><h3 id="grade-reasons-title">Why this grade</h3><ul>' + reasons.slice(0, 3).map((reason) => '<li>' + escapeHtml(reason) + '</li>').join('') + '</ul></section>'
+          + '<div class="workout-grade-hero"><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(analysis.grade) + '">' + escapeHtml(analysis.grade) + '</div><div class="workout-grade-copy"><div class="section-kicker">Workout logged</div><' + gradeHeadingTag + '>' + escapeHtml(workoutGradeInterpretation(analysis.grade)) + '.</' + gradeHeadingTag + '><p class="workout-completion-facts">' + escapeHtml(completionFacts) + '</p><span class="workout-grade-version">Grade version ' + escapeHtml(analysis.gradeVersion) + '</span></div></div>'
+          + '<section class="workout-summary-section grade-reasons" aria-labelledby="grade-reasons-title"><h3 id="grade-reasons-title">Why this grade</h3><ul>' + reasons.slice(0, 3).map((reason) => '<li><span aria-hidden="true">✓</span>' + escapeHtml(reason) + '</li>').join('') + '</ul></section>'
           + highlightSection
+          + actions
           + '</section>';
       }

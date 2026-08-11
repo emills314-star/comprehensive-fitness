@@ -114,7 +114,7 @@ test("workout completion renders one concise grade result without achievement an
   await expect(summary.locator(".grade-reasons li")).toHaveCount(2);
   expect(await summary.locator(".workout-highlight").count()).toBeLessThanOrEqual(3);
   await expect(summary.locator('[data-action="close-completed-summary"]')).toHaveText("Done");
-  await expect(summary.locator('[data-action="open-completion-progress"]')).toHaveText("Progress");
+  await expect(summary.locator('[data-action="open-completion-progress"]')).toHaveText("View in Progress");
   await expect(summary.locator(".workout-achievements, .workout-achievement, [data-action='toggle-achievement-detail']")).toHaveCount(0);
   await expect(summary).not.toContainText(/plan complete|target precision|the session, diffed|confidence|category score|adherence/i);
   const geometry = await summary.evaluate((element) => ({
@@ -162,8 +162,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
 
   await templateCard.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+  await expect(page.locator(".session-dock").getByRole("heading", { name: EXERCISE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator(".session-dock-progress")).toHaveCount(0);
   await expect(page.locator(".exercise-card")).toHaveCount(1);
 
   const active = await waitForPersisted(page, (stored) => stored?.sessions?.some((session) => session.templateId === templateId && session.workoutStarted && !session.submitted), "template start must persist one active workout");
@@ -182,18 +182,19 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(0);
   await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
   await expect(completion).toBeFocused();
-  await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 2 sets");
-  const timer = page.locator(".workout-timer-slot > .timer-bar");
+  await expect(page.locator('[data-session-dock-progress]')).toHaveCount(0);
+  const timer = page.locator(".active-rest-dock > .timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await expect(firstWorkingSet.locator(".timer-bar"), "the M1 rest strip must not be nested inside a logged set").toHaveCount(0);
-  await timer.locator("summary").click();
+  await expect(timer.locator('[role="progressbar"]')).toBeVisible();
+  await expect(timer.getByRole("button", { name: "Pause timer" })).toBeVisible();
   await timer.getByRole("button", { name: "Pause timer" }).click();
+  await expect(timer).toHaveAttribute("data-paused", "true");
   await expect(timer.getByRole("button", { name: "Resume timer" })).toBeVisible();
   await timer.getByRole("button", { name: "Resume timer" }).click();
   await timer.getByRole("button", { name: "Add 15 seconds" }).click();
-  if (!await timer.evaluate((element) => element.open)) await timer.locator("summary").click();
-  await timer.getByRole("button", { name: "Skip rest", exact: true }).click();
-  await expect(page.locator(".workout-timer-slot > .timer-bar")).toHaveCount(0);
+  await timer.getByRole("button", { name: "Skip", exact: true }).click();
+  await expect(page.locator(".active-rest-dock > .timer-bar")).toHaveCount(0);
 
   await page.locator('[data-action="request-submit-workout"]').click();
   await expect(page.getByText("Log this workout as completed?", { exact: true })).toBeVisible();

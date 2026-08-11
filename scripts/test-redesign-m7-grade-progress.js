@@ -155,7 +155,7 @@ assert.match(progressWindow, /monthIndex\s*=\s*latestYear\s*\*\s*12\s*\+\s*lates
 assert.match(progressWindow, /windowName === "all"[\s\S]*points\.filter\(\(point\) => point\.date >= cutoff\)/, "All-history and recent chart windows must share one ephemeral filter");
 
 const liftProgress = functionSource(analysis, "renderLiftProgress", "restAlertState");
-assert.match(liftProgress, /progressPointsForDateWindow\(progress\.points\)[\s\S]*renderChart\("performance", progress\.title, visiblePoints[\s\S]*renderHistory\(\)/, "The date range must filter only the chart while chronological workout history stays complete");
+assert.match(liftProgress, /progressPointsForDateWindow\(progress\.points\)[\s\S]*renderChart\("performance", progress\.title, visiblePoints[\s\S]*renderHistory\(\{ exercise \}\)/, "The date range must filter only the chart while chronological workout history stays complete");
 
 const catalog = functionSource(foundation, "exerciseCatalog", "selectedExerciseRecord");
 assert.match(catalog, /data\.sessions\.filter\(\(session\) => isSessionSubmitted\(session\)\)/, "Exercise search must derive from every submitted workout");

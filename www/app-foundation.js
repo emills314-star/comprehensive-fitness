@@ -124,6 +124,9 @@
       const canceledRestScheduleKeys = new Map();
       let pushOperationWriteChain = Promise.resolve();
       let selectedExerciseId = "";
+      let todaySelectedTemplateId = "";
+      let exerciseHistoryReturnState = null;
+      const completingSetIds = new Set();
       let chartExerciseDraft = "";
       let chartExerciseSearchOpen = false;
       let chartExerciseSearchError = "";
@@ -721,10 +724,43 @@
         };
       }
 
-      function expectedWorkoutTemplate(model = data) {
+      function normalizeRestSeconds(value, fallback = 90) {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric) && Number.isInteger(numeric) && numeric >= 15 && numeric <= 3600) return numeric;
+        const safeFallback = Number(fallback);
+        return Number.isFinite(safeFallback) && safeFallback >= 15 ? Math.min(3600, Math.round(safeFallback)) : 90;
+      }
+
+      const weekdayKeys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+      function normalizeScheduledWeekdays(value) {
+        return [...new Set((Array.isArray(value) ? value : []).map((day) => String(day || "").toLowerCase()).filter((day) => weekdayKeys.includes(day)))];
+      }
+
+      function localWeekdayKey(date = new Date()) {
+        return weekdayKeys[date.getDay()];
+      }
+
+      function legacyTemplateWeekdays(template) {
+        const words = String(template?.name || "").toLowerCase().match(/[a-z]+/g) || [];
+        return weekdayKeys.filter((day) => words.includes(day));
+      }
+
+      function scheduledTemplatesForToday(model = data, date = new Date()) {
         const templates = Array.isArray(model?.templates) ? model.templates : [];
-        const expectedTemplateId = String(model?.settings?.expectedTemplateId || "");
-        return templates.find((template) => template.id === expectedTemplateId) || null;
+        const today = localWeekdayKey(date);
+        const hasCanonicalSchedule = templates.some((template) => normalizeScheduledWeekdays(template.scheduledWeekdays).length > 0);
+        return templates.filter((template) => (hasCanonicalSchedule
+          ? normalizeScheduledWeekdays(template.scheduledWeekdays)
+          : legacyTemplateWeekdays(template)).includes(today));
+      }
+
+      function expectedWorkoutTemplate(model = data, date = new Date()) {
+        const templates = Array.isArray(model?.templates) ? model.templates : [];
+        const manuallySelected = templates.find((template) => template.id === todaySelectedTemplateId);
+        if (manuallySelected) return manuallySelected;
+        const scheduled = scheduledTemplatesForToday(model, date);
+        return scheduled.length === 1 ? scheduled[0] : null;
       }
 
       function workoutDurationTimestamp(value) {
@@ -1314,6 +1350,7 @@
         });
         model.templates = (Array.isArray(model.templates) ? model.templates : []).map((template) => ({
           ...template,
+          scheduledWeekdays: normalizeScheduledWeekdays(template.scheduledWeekdays),
           exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => {
             const stable = normalizeStableTemplateExercise(exercise);
             const resistanceType = inferResistanceType(stable.name, stable);
@@ -1321,9 +1358,7 @@
             return { ...stable, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
           })
         }));
-        if (!model.templates.some((template) => template.id === model.settings.expectedTemplateId)) {
-          model.settings.expectedTemplateId = model.templates[0]?.id || "";
-        }
+        if (!model.templates.some((template) => template.id === model.settings.expectedTemplateId)) model.settings.expectedTemplateId = "";
         model.appDataVersion = Math.max(3, Number(model.appDataVersion || 0));
         delete model.recommendationHistory;
         delete model.manualOverrides;
