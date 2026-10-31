@@ -36,7 +36,7 @@ assert.match(html, /return sessionHasStarted\(session\);/, "The active guard mus
 assert.match(html, /item\.id === activeWorkoutId \|\| item\.id === session\?\.id/, "The session picker must exclude unrelated unsubmitted drafts");
 const renderWorkoutSource = extractBraceBlock(html, "function renderWorkout(");
 assert.doesNotMatch(renderWorkoutSource, /data-action="new-session"/, "The active workout must not expose a redundant new-session control");
-assert.match(html, />Discard workout</, "Cancellation must use concise explicit destructive wording inside the confirmation dialog");
+assert.match(html, /replacement \? "Replace workout" : "Discard workout"/, "Cancellation must use concise explicit replacement or discard wording inside the confirmation dialog");
 assert.match(html, /function sessionCanBeDiscarded\(session\)/, "Any open legacy or canonical draft must be explicitly discardable");
 assert.match(html, /data-action="request-cancel-workout" data-session-id=/, "The cancel action must identify the visible draft instead of assuming it is canonical");
 assert.match(html, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id\)/, "Cancellation must remove only the selected active session");
@@ -48,7 +48,7 @@ const mobileFormControlCss = extractBraceBlock(html, "@media (max-width: 719px)"
 assert.match(mobileFormControlCss, /input, select, textarea \{ font-size: max\(16px,\s*1rem\); \}/, "Mobile form controls must prevent iOS focus zoom without overriding larger user text");
 assert.doesNotMatch(html, /function renderPrescriptionDetails\(|function renderRolePrescriptionDetails\(/, "The active logger must not retain normal recommendation/evidence renderers");
 assert.match(html, /function renderResolvedAction\(/, "Rare exceptions must use the single canonical resolved-action renderer");
-assert.match(html, /unsubmitted draft will be permanently removed[\s\S]*Submitted history and routines stay intact/, "Workout cancellation must name permanent draft loss and the submitted history and routines that remain");
+assert.match(html, /unsubmitted session will be permanently removed[\s\S]*Submitted history and routines stay intact/, "Workout cancellation must name permanent session loss and the submitted history and routines that remain");
 assert.match(html, /async function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit asynchronous edit transaction");
 const beginHistoryEditStart = html.indexOf("async function beginHistoryEdit()");
 const beginHistoryEditEnd = html.indexOf("function requestHistoryEditConfirmation", beginHistoryEditStart);
@@ -64,13 +64,13 @@ assert.match(html, /if \(action === "close-completed-summary"\) returnToToday/, 
 assert.match(html, /action === "start-template" \|\| action === "start-next-template"[\s\S]*startTemplate\([^;]*defaultRecovery\(\), "usual"\)/, "Start must open the active logger directly with usual readiness");
 assert.doesNotMatch(html, /function explainReadinessAdjustmentChoice\(|Why these levers:/, "The normal flow must not retain the deleted readiness target-mutation explanation");
 assert.match(html, /function renderLiftHome\(\)/, "The idle state must use the dedicated Today workout view");
-assert.match(html, /Expected workout[\s\S]*data-action="start-next-template"/, "Today must lead with the expected workout and one primary Start action");
-assert.doesNotMatch(html, /Overall Program Hypertrophy Score|function hypertrophyScoreTone\(|function hypertrophyAnalysis\(/, "Deleted hypertrophy score products must not remain");
+assert.match(html, /Choose your workout[\s\S]*data-action="start-template"/, "Today must lead with the approved workout chooser and a direct Start action");
+assert.match(html, /rollingHypertrophySummary\(\)/, "Today must use the shared rolling hypertrophy-score selector");
 assert.match(html, /\.brand-bar::before/, "The top header background must extend across the full viewport");
 assert.match(html, /viewingHistorySessionId = isSessionSubmitted/, "Logged workouts must only remain visible when deliberately opened from history");
 assert.doesNotMatch(html, /function weeklyMuscleVolume\(|data-action="open-dashboard-detail"|data-action="set-hypertrophy-scope"/, "Deleted volume dashboards and score scope controls must not remain");
 assert.match(html, /function exercisePerformanceSeries\(/, "Progress must retain a factual exercise-performance series");
-assert.match(html, /renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one performance chart followed by submitted workout history");
+assert.match(html, /renderProgressModeSwitch[\s\S]*renderProgressSessions[\s\S]*renderProgressExercises/, "Progress must expose the approved Sessions and Exercises views");
 assert.match(html, /class="completed-summary score-|class="grade-tone score-/, "Stored workout grades must retain their existing factual tone system");
 assert.match(html, /clearDataFlow\.acknowledged && clearDataFlow\.phrase === "CLEAR"/, "Local clearing must require acknowledgment and typed confirmation");
 assert.match(html, /Permanently Clear Local Data/, "The final device-wide deletion action must be explicit");

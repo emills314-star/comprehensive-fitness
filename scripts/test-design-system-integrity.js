@@ -36,20 +36,21 @@ assert.doesNotMatch(renderTemplateStartSheet, /Nothing is lost either way/, "des
 assert.match(renderTemplateStartSheet, /data-action="discard-active-workout"/, "the active-draft conflict must offer an explicit Discard action");
 assert.match(renderCancelWorkoutSheet, /permanently remove|permanently removed/i, "the destructive confirmation must name permanent draft loss");
 assert.doesNotMatch(renderTemplateStartSheet, /step === ["'](?:confirm|review)["']|review-template-readiness|start-original-workout/, "the start sheet must not retain confirmation or prescription-review states");
-assert.match(renderHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Every submitted workout remains available/, "Progress must retain the full submitted archive in chronological order");
+assert.match(renderHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Every submitted session remains available/, "Progress must retain the full submitted archive in chronological order");
 assert.match(renderUpdateBanner, /wait while an active workout remains open/, "update copy must describe the real active-workout gate");
 
 assert.doesNotMatch(renderRoot, /shellProgress/, "the shell must not repeat workout progress owned by the workout and dock");
 assert.doesNotMatch(renderWorkout, /workout-status-strip/, "the active hero must not repeat its current-focus fact");
 assert.doesNotMatch(renderHistory, /History · \$\{totalSessions\}/, "History count must be owned by the roll-up");
 assert.doesNotMatch(renderCancelWorkoutSheet, /<h2[^>]*>\$\{completedSets\}/, "the cancel heading must not repeat the diff-owned completed-set count");
-assert.match(renderCancelWorkoutSheet, /completedSets[\s\S]*unsubmitted draft will be permanently removed[\s\S]*Submitted history and routines stay intact/, "destructive copy must concisely distinguish draft loss from preserved records");
+assert.match(renderCancelWorkoutSheet, /completedSets[\s\S]*unsubmitted session will be permanently removed[\s\S]*Submitted history and routines stay intact/, "destructive copy must concisely distinguish session loss from preserved records");
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
 assert.match(renderCompletedSummary, /workout-grade-hero[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value in the completion hero");
 assert.match(renderCompletedSummary, /Why this grade[\s\S]*reasons\.slice\(0, 3\)/, "the completion hero must pair the grade with at most three plain reasons");
 assert.doesNotMatch(renderCompletedSummary, /confidence|categoryScores|internalScore|summary-diff-result|achievement/i, "the concise completion must not expose grade internals, plan adherence, or achievements");
-assert.match(renderLiftHome, /Expected workout[\s\S]*data-action="start-next-template"/, "Today must present the expected workout and one primary Start action");
-assert.doesNotMatch(renderLiftHome, /Stable target|Last time|weekly volume|hypertrophy|confidence|evidence/i, "Today must not restore the deleted analysis preview");
+assert.match(renderLiftHome, /Choose your workout[\s\S]*data-action="start-template"/, "Empty Today must present the approved workout chooser with direct actions");
+assert.match(renderLiftHome, /rollingHypertrophySummary\(\)/, "Today must consume the shared rolling score selector");
+assert.doesNotMatch(renderLiftHome, /Stable target|Last time|weekly volume|confidence|evidence/i, "Today must not restore deleted recommendation or volume previews");
 assert.match(renderResolvedAction, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "the exception renderer must remain silent unless the canonical resolver produced an action");
 assert.match(renderResolvedAction, /resolvedAction\.action\?\.code[\s\S]*resolvedAction\.category[\s\S]*resolvedAction\.reasonCodes/, "the exception renderer must consume the canonical resolved action rather than recomputing a recommendation");
 assert.doesNotMatch(renderResolvedAction, /confidence|evidence|matrix|training window|qualification/i, "the concise exception card must not expose internal confidence or evidence machinery");

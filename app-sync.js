@@ -713,17 +713,7 @@
         setRestNavigationState(timer, "active", next);
         startTimerInterval();
         measurePerformance("timer:saveRuntime", () => saveRuntime());
-        if (options.deferRender) {
-          measurePerformance("timer:updateDom", () => {
-            const block = document.getElementById("set-" + setId);
-            const slot = document.querySelector(".workout-timer-slot");
-            block?.classList.add("resting-set");
-            if (slot) slot.innerHTML = renderTimer(setId);
-            const dock = document.querySelector(".active-rest-dock");
-            if (dock) dock.innerHTML = renderTimer(setId);
-            updateWorkoutStatusDom();
-          });
-        } else render();
+        measurePerformance("timer:renderHeader", render);
         measurePerformance("timer:schedulePush", () => scheduleRestPush({ ...timer }));
       }
 
@@ -840,6 +830,7 @@
         }
         saveRuntime();
         removeTimerDom(previous);
+        render();
         if (activeSetId) {
           applyCurrentSetVisual(activeSetId, activeSetNotice || "Current set");
           const nextControl = root.querySelector('[data-set-id="' + activeSetId + '"][data-action="set-weight"], [data-set-id="' + activeSetId + '"][data-action="set-reps"], [data-set-id="' + activeSetId + '"][data-action="set-duration"], [data-set-id="' + activeSetId + '"][data-action="set-distance"], [data-set-id="' + activeSetId + '"][data-action="set-rpe"], [data-set-id="' + activeSetId + '"][data-action="toggle-set"]');

@@ -68,7 +68,7 @@ test.beforeAll(() => {
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 });
 
-test("M4 Progress is one factual mobile history view with tappable source facts", async ({ page }) => {
+test("M4 Progress exposes scoped exercise facts and separate completed sessions", async ({ page }) => {
   test.setTimeout(120_000);
   const consoleErrors = [];
   page.on("console", (message) => {
@@ -80,23 +80,23 @@ test("M4 Progress is one factual mobile history view with tappable source facts"
 
   await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
   await page.waitForTimeout(250);
-  await expect(page.getByRole("heading", { name: "Training history" })).toBeVisible();
-  const search = page.getByRole("combobox", { name: "Search or select exercise" });
+  await expect(page.getByRole("heading", { name: "Completed sessions" })).toBeVisible();
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  const search = page.getByRole("searchbox", { name: "Search exercises" });
   await search.fill(VARIANT);
-  await page.locator('[data-action="select-chart-exercise"]').filter({ hasText: VARIANT }).click();
+  await page.locator('[data-action="open-progress-exercise"]').filter({ hasText: VARIANT }).click();
 
-  await expect(page.getByText("Performance trend")).toBeVisible();
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("2 recent sessions");
+  await expect(page.locator(".exercise-detail-hero h1")).toHaveText(VARIANT);
   await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(2);
   await page.locator('[data-action="show-chart-point"]').last().click();
   const detail = page.locator(".chart-detail");
   await expect(detail).toContainText("Jul");
-  await expect(detail).toContainText("1234.5");
+  await expect(detail).toContainText("1,234.5");
   await expect(detail).toContainText("10");
   await expect(detail).toContainText("8.5");
   await expect(detail).toContainText(/Top Set|top/i);
   await expect(detail).toContainText("Public Synthetic Logged Upper Session");
-  await expect(page.getByText("Public Synthetic Earlier Session")).toBeVisible();
+  await expect(page.getByText("Completed workouts", { exact: true })).toHaveCount(0);
 
   await expect(page.getByText(/weekly volume|hypertrophy|research status|confidence score|evidence matrix/i)).toHaveCount(0);
   await expect(page.getByRole("button", { name: /overview|lifts|history/i })).toHaveCount(0);
@@ -114,8 +114,10 @@ test("M4 Progress has a stable empty state without deleted analysis controls", a
   await installFixture(page, fixture);
 
   await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
-  await expect(page.getByRole("heading", { name: "Training history" })).toBeVisible();
-  await expect(page.getByText("Complete a workout to add exercise history.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Completed sessions" })).toBeVisible();
+  await expect(page.getByText("Completed sessions will appear here.", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  await expect(page.getByText("No exercises match this search.", { exact: true })).toBeVisible();
   await expect(page.locator('[data-action="show-chart-point"], [data-action="dashboard-week"], [data-action="hypertrophy-window"]')).toHaveCount(0);
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m4-mobile-progress-empty.png"), fullPage: true });
 });

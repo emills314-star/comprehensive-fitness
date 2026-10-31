@@ -289,9 +289,8 @@ test("M7 completes an adapted mobile workout with one concise actual-work result
 
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m7-mobile-adapted-completion.png"), fullPage: true });
   await summary.locator('[data-action="open-completion-progress"]').click();
-  await expect(page.getByRole("heading", { name: "Training history" })).toBeVisible();
-  await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(LONG_VARIANT);
-  const selectedVariant = page.locator(".chart-viewing-summary strong");
+  await expect(page.locator(".exercise-detail-view")).toBeVisible();
+  const selectedVariant = page.locator(".exercise-detail-hero h1");
   await expect(selectedVariant).toHaveText(LONG_VARIANT);
   expect(await selectedVariant.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(2);
@@ -338,8 +337,8 @@ test("M7 completion Progress stays contextual when a baseline workout has no hig
   await expect(progress).toHaveAttribute("data-exercise-id", expectedExerciseId);
   await expect(progress).toHaveAttribute("data-resistance-type", "external");
   await progress.click();
-  await expect(page.locator(".chart-viewing-summary strong")).toHaveText(LONG_VARIANT);
-  await expect(page.locator(".primary-analysis-chart")).toContainText("Best completed load");
+  await expect(page.locator(".exercise-detail-hero h1")).toHaveText(LONG_VARIANT);
+  await expect(page.locator(".primary-analysis-chart")).toContainText(/Estimated 1RM trend|Performance trend/);
   expect(browserErrors).toEqual([]);
 });
 
@@ -398,28 +397,22 @@ test("M7 Progress keeps old history and exact variants while charting one compar
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, progressFixture());
   await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
-
-  const search = page.getByRole("combobox", { name: "Search or select exercise" });
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  const search = page.getByRole("searchbox", { name: "Search exercises" });
   await search.fill(LONG_VARIANT);
-  const heavySuggestions = page.locator('[data-action="select-chart-exercise"]').filter({ hasText: LONG_VARIANT });
+  const variantIds = await page.evaluate((name) => exerciseCatalog().filter((exercise) => exercise.name === name).map((exercise) => ({ id: exercise.id, resistanceType: exercise.resistanceType })), LONG_VARIANT);
+  const externalId = variantIds.find((item) => item.resistanceType === "external").id;
+  const durationId = variantIds.find((item) => item.resistanceType === "duration").id;
+  const heavySuggestions = page.locator('[data-action="open-progress-exercise"]').filter({ hasText: LONG_VARIANT });
   await expect(heavySuggestions).toHaveCount(2);
-  await heavySuggestions.filter({ hasText: "External load" }).click();
-  const selectedHeavyVariant = page.locator(".chart-viewing-summary strong");
+  await page.locator(`[data-action="open-progress-exercise"][data-exercise-id="${externalId}"]`).click();
+  const selectedHeavyVariant = page.locator(".exercise-detail-hero h1");
   await expect(selectedHeavyVariant).toHaveText(LONG_VARIANT);
   expect(await selectedHeavyVariant.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("2 recent sessions");
   await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(2);
-  await expect(page.locator(".chart-control-context")).toContainText("top set observations");
-  await expect(page.getByText("Public Synthetic Older Heavy Session", { exact: true })).toBeVisible();
-  await expect(page.getByText("Public Synthetic Light Variant Session", { exact: true })).toBeVisible();
-  await expect(page.getByRole("radio", { name: "Recent six months" })).toBeChecked();
-  await page.getByRole("radio", { name: "All history" }).click();
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("3 sessions");
-  await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(3);
-
   await page.locator('[data-action="show-chart-point"]').last().click();
   const latestDetail = page.locator(".chart-detail");
-  await expect(latestDetail).toContainText("1234.5");
+  await expect(latestDetail).toContainText("1,234.5");
   await expect(latestDetail).toContainText("8.5");
   await expect(latestDetail).toContainText("Top set");
   await expect(latestDetail).toContainText("Exercise note: two-second pause on every repetition.");
@@ -427,32 +420,26 @@ test("M7 Progress keeps old history and exact variants while charting one compar
   await expect(latestDetail).toContainText("manual-correction:public-synthetic-ui-fixture");
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m7-mobile-progress-heavy-point-detail.png"), fullPage: true });
 
-  await page.locator('[data-action="show-chart-point"]').nth(1).click();
+  await page.locator('[data-action="show-chart-point"]').first().click();
   const priorDetail = page.locator(".chart-detail");
-  await expect(priorDetail).toContainText("1100");
+  await expect(priorDetail).toContainText("1,100");
   await expect(priorDetail).not.toContainText("9999");
   await expect(priorDetail).not.toContainText("Back-off set");
 
-  await page.locator('[data-action="show-chart-point"]').first().click();
-  const importedUnitDetail = page.locator(".chart-detail");
-  await expect(importedUnitDetail).toContainText("882 lb");
-  await expect(importedUnitDetail).toContainText("Imported: 400 kg");
-
+  await page.locator('[data-action="close-progress-exercise"]').click();
   await search.fill(LONG_VARIANT);
-  await page.locator('[data-action="select-chart-exercise"]').filter({ hasText: LONG_VARIANT }).filter({ hasText: "Duration" }).click();
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("1 session");
+  await page.locator(`[data-action="open-progress-exercise"][data-exercise-id="${durationId}"]`).click();
   await expect(page.locator(".primary-analysis-chart")).toContainText("Best completed duration");
   await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(1);
 
+  await page.locator('[data-action="close-progress-exercise"]').click();
   await search.fill(LIGHT_VARIANT);
-  await page.locator('[data-action="select-chart-exercise"]').filter({ hasText: LIGHT_VARIANT }).click();
-  const selectedLightVariant = page.locator(".chart-viewing-summary strong");
+  await page.locator('[data-action="open-progress-exercise"]').filter({ hasText: LIGHT_VARIANT }).click();
+  const selectedLightVariant = page.locator(".exercise-detail-hero h1");
   await expect(selectedLightVariant).toHaveText(LIGHT_VARIANT);
   expect(await selectedLightVariant.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("1 session");
   await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(1);
-  await expect(page.locator(".chart-control-context")).toContainText("Named variants and resistance types remain separate.");
-  await expect(page.locator(".progress-switcher, [data-action='set-progress-view']")).toHaveCount(0);
+  await expect(page.locator(".exercise-detail-method")).toContainText("Named variants and resistance types remain separate.");
   expect(browserErrors).toEqual([]);
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m7-mobile-progress-variant-role-source.png"), fullPage: true });
 });

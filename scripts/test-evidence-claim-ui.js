@@ -77,7 +77,7 @@ for (const legacyRenderer of [
   assert.doesNotMatch(views, new RegExp(`function ${legacyRenderer}\\(`), `${legacyRenderer} must remain deleted from normal workout presentation`);
 }
 assert.doesNotMatch(analysis, /function renderRecommendation\(|coachRecommendationForExercise\(|function hypertrophyAnalysis\(|function weeklyMuscleVolume\(/, "Factual progress charts must not become a second recommendation or hidden analysis surface");
-assert.match(analysis, /renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one factual chart and chronological workout history");
+assert.match(analysis, /function renderProgressSessions[\s\S]*renderHistory\(\)[\s\S]*function renderExerciseProgressDetail[\s\S]*renderChart\('performance'/, "Progress must retain chronological sessions and one scoped factual chart");
 assert.doesNotMatch(analysis, /research exercises|research version|prescription evidence status/i, "Settings and Progress must not expose research/evidence status");
 
 const focusAllowlist = foundation.match(/const focusActionAllowlist = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";

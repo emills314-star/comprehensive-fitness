@@ -98,7 +98,7 @@ function functionSource(input, name) {
 const renderWorkout = functionSource(views, "renderWorkout");
 const renderExercise = functionSource(views, "renderExercise");
 const renderSet = functionSource(views, "renderSet");
-const renderTimer = functionSource(views, "renderTimer");
+const renderActiveSessionHeader = functionSource(views, "renderActiveSessionHeader");
 const substitute = functionSource(workout, "applyExerciseSubstitution");
 const addExercise = functionSource(workout, "addExercise");
 const patchSetValue = functionSource(workout, "patchSetValue");
@@ -203,9 +203,9 @@ assert.match(renderWorkout, /workout-timer-slot/, "The timer and shared starter 
 assert.doesNotMatch(renderSet, /set-rest-button|data-action="start-timer"/, "No set row may repeat a rest-start button");
 assert.doesNotMatch(html, /\.set-rest-button/, "Deleted per-set rest-button styling must not remain");
 
-assert.match(renderTimer, /data-phase="\$\{[\s\S]*overtime/, "The timer renderer must expose an explicit overtime phase");
-assert.match(renderTimer, /data-timer-progress-label/, "The recoverable timer must retain one stable progress label");
-assert.match(renderTimer, /\+/, "The rendered overtime value must be visibly prefixed with +");
+assert.match(renderActiveSessionHeader, /data-phase=[\s\S]*overtime/, "The header timer must expose an explicit overtime phase");
+assert.match(renderActiveSessionHeader, /data-timer-progress-label/, "The recoverable header timer must retain one stable progress label");
+assert.match(renderActiveSessionHeader, /"\+" \+ formatOvertime/, "The rendered overtime value must be visibly prefixed with +");
 assert.match(sync, /dataset\.phase\s*=\s*["']overtime["']|dataset\.phase\s*=[^;\n]*overtime/, "Incremental timer updates must preserve the overtime phase");
 assert.match(sync, /progressLabel\.textContent[\s\S]*\+/, "Incremental timer updates must preserve the +mm:ss overtime label");
 assert.match(interactions, /visibilitychange[\s\S]*Date\.now\(\)[\s\S]*render|visibilitychange[\s\S]*sync/, "Returning from the background must reconcile timer state from wall-clock time");

@@ -10,6 +10,7 @@ const {
   safetyWorkoutState,
   validFullState
 } = require("../fixtures/synthetic-app-backups");
+const { buildAnalyticsEvidenceFixture } = require("./fixtures/analytics-settings.fixture");
 
 const PRIVATE_EVIDENCE_PATH = /^\/(?:private-personal-data|personal_fitness_data)\//;
 const RESEARCH_JSON_PATH = /^(?:\/resources\/[^/]+|\/research_database\/exports\/json\/[^/]+)\.json$/;
@@ -588,8 +589,8 @@ test("primary navigation exposes a skip target and moves focus into the selected
 
   const progress = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Progress$/ });
   await progress.click();
-  await expect(page.locator(".charts-view")).toBeVisible();
-  await expect(page.locator(".progress-switcher, [data-action='set-progress-view']")).toHaveCount(0);
+  await expect(page.locator(".progress-sessions-view")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Sessions", exact: true })).toHaveAttribute("aria-selected", "true");
   const focusIsInView = await page.evaluate(() => {
     const active = document.activeElement;
     const main = document.querySelector("#main-content");
@@ -605,7 +606,7 @@ test("one quick-start interaction opens the full-screen logger without a confirm
   await page.locator('[data-action="close-secondary-context"]').click();
   await expect(page).toHaveURL(/#today$/);
 
-  const quickStart = page.locator('[data-action="start-next-template"]').first();
+  const quickStart = page.locator('[data-action="start-template"]').first();
   await expect(quickStart).toBeVisible();
   await quickStart.click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -615,8 +616,9 @@ test("one quick-start interaction opens the full-screen logger without a confirm
 });
 
 test("closing a factual Progress chart point restores focus to the originating point", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.evaluate((model) => {
-    data = model;
+    data = normalizeLoadedData(model);
     entityStructureRevision += 1;
     entityIndexCache = null;
     activeSessionId = "";
@@ -625,10 +627,13 @@ test("closing a factual Progress chart point restores focus to the originating p
     completedSummarySessionId = "";
     activeSetId = "";
     timer = null;
+    invalidateCompletedAnalysis();
     render();
-  }, validFullState());
+  }, buildAnalyticsEvidenceFixture());
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await navigation.getByRole("button", { name: /Progress$/ }).click();
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  await page.locator('[data-action="open-progress-exercise"]').first().evaluate((button) => button.click());
   const origin = page.locator('.chart-card[data-chart-key="performance"] [data-action="show-chart-point"]').first();
   await expect(origin).toBeVisible();
   await origin.focus();

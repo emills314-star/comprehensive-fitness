@@ -1,17 +1,26 @@
 # UI and UX
 
+## Quiet Control refresh — IMPLEMENTED LOCALLY 2026-08-15
+
+- Empty Today says **Choose your workout** and never says **Choose another workout** until a session exists.
+- A polished rolling score card links to Progress → Exercises and labels the actual completed-session count when fewer than ten exist.
+- The compact pinned active-session header visually centers the session name and owns the sole blue **Ready**/rest-countdown treatment.
+- Completed set rows use a checkmark and restrained mint treatment; upcoming set checks are visibly gray and disabled.
+- Every set row shows position-matched previous-session load, repetitions, and RPE when available.
+- Progress switches between Sessions and Exercises; stable exercise IDs open one read-only exercise detail with no completed-session list.
+
 ## Active-session targeted improvements — IMPLEMENTED LOCALLY 2026-08-07
 
 - Rest appears once in a compact pinned, safe-area-aware bar using shared timer state.
 - Incomplete sets expose per-set rest editing; completion uses an icon and accessible label.
 - Stable-identity exercise links open Progress and return with workout, current-set, timer, entered-data, and scroll context intact.
-- The compact bottom dock keeps its overflow above the dock and within the viewport.
+- The pinned session header owns the workout overflow menu; the bottom dock contains only progress, duration control, and Finish so menu actions are not duplicated.
 - Readiness wraps on mobile and preserves “Not entered” versus soreness “Not recorded.”
 
 ## Metadata
 
 - **Purpose:** Current navigation, screen, copy, interaction, and accessibility contract
-- **Last verified:** 2026-08-02
+- **Last verified:** 2026-08-15
 - **Status:** **CORRECTED CANDIDATE VERIFIED LOCALLY; INDEPENDENT ACCEPTANCE BLOCKED**
 - **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md)
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
@@ -25,25 +34,26 @@ Persistent navigation contains exactly:
 
 Routines and Settings are contextual screens and return to Today. Workout/exercise history is reached contextually from Progress or the active workout. An active workout is full-screen and hides persistent navigation.
 
-Retired route hashes do not remain as hidden features. They normalize to Today. There is no Dashboard, Plan, More, Insights, Advanced, persistent Routines tab, or persistent Progress subview switcher.
+Retired route hashes do not remain as hidden features. They normalize to Today. There is no Dashboard, Plan, More, Insights, Advanced, or persistent Routines tab. Progress intentionally owns a Sessions/Exercises mode switch and stable-ID exercise-detail query state.
 
 The production product uses one fixed light presentation. There is no theme selector, color-package selector, or appearance-settings group.
 
 ## Today
 
-The first useful viewport shows:
+With no loaded session, the first useful viewport shows:
 
-- the expected routine/workout identity;
-- a concise exercise preview;
-- one primary **Start** action;
-- secondary **Choose another workout**;
+- one rolling ten-completed-session hypertrophy summary;
+- the honest available completed-session count;
+- the primary prompt **Choose your workout**;
+- directly selectable workouts;
 - optional **Log readiness**;
-- **Resume** instead of Start when a draft exists;
 - at most one session exception when the canonical resolver permits it.
+
+After a session is loaded, Today shows **Resume** and **Choose another workout**. The replacement wording never appears in the no-session state. A session with no logged/skipped/edited set, note, readiness, or recovery progress can be replaced directly; otherwise a clear confirmation is required before abandonment and replacement.
 
 Start opens the active logger directly. There is no readiness, prescription-review, or confirmation step before normal Start.
 
-If another draft is active, the user receives exactly Resume, Finish, or Discard. Discard opens a concise destructive confirmation and removes only the confirmed draft; it does not silently start the newly requested routine.
+If a progressed draft is active, the confirmation preserves Resume/Finish/cancel choices and names the requested replacement. Confirmed replacement removes only that draft and then loads the selected workout as a new session.
 
 ## Optional readiness
 
@@ -71,7 +81,11 @@ The active screen prioritizes:
 - load, repetitions, and RPE;
 - shared rest state.
 
+The pinned header uses an asymmetric-safe three-column grid so the session name remains visually centered. The old **In progress** badge is removed. The left slot says **Ready** or shows the live blue countdown/progress; timer controls remain reachable without a second rest bar. Long names truncate gracefully and preserve the overflow menu touch target.
+
 Current, completed, pending, skipped, and warm-up states are distinguishable without relying on color alone. Meaningful variant suffixes wrap rather than truncate.
+
+Only the current set has an enabled completion control. Upcoming sets show a gray disabled check. Completing a set adds a green check and subtle mint row treatment, de-emphasizes the row, and preserves readable load/repetition/RPE facts. The exercise container receives its restrained completed state only after every required working set is logged.
 
 ### Inputs
 
@@ -91,11 +105,11 @@ Changes apply to the current workout by default. Saving a suitable substituted e
 
 ### Prior performance
 
-Previous facts match exact performance identity, resistance type, and comparable set role. Warm-up and unknown-role work do not qualify as progression evidence. Ambiguous or absent prior data is shown as unavailable rather than inferred.
+Previous facts match exact performance identity, resistance type, and stable row position/role in the most recent completed comparable session. Each row—set 1 to set 1, set 2 to set 2, and so on—shows load, repetitions, and RPE. Warm-ups may compare only with the same warm-up position and still do not qualify as progression evidence. Ambiguous or absent prior data is shown as unavailable rather than inferred.
 
 ### Rest
 
-One shared rest control appears after completed, non-skipped work. It:
+One shared rest control appears in the active-session header after completed, non-skipped work. It:
 
 - uses the exercise/role rest default;
 - shows remaining time and overtime;
@@ -105,6 +119,8 @@ One shared rest control appears after completed, non-skipped work. It:
 - remains functional in-app when notifications are unavailable or denied.
 
 Physical-device suspension, lock-screen delivery, sound, vibration, and software-keyboard behavior remain device acceptance gates.
+
+Status toasts do not capture taps outside an explicit action button. This keeps the pinned workout menu usable while an Undo/status message is visible without making the toast's explicit Undo action inert.
 
 ### Recovery
 
@@ -137,17 +153,16 @@ The current prospective grade writes algorithm `actual-work-rubric/1.1.0`. Store
 
 ## Progress
 
-Progress is one coherent destination:
+Progress is one coherent destination with two top-level modes:
 
-- exercise/variant selection;
-- a recent default or all-history range;
-- one interpretable comparable-performance chart;
-- inspectable chart points;
-- chronological submitted-workout history.
+- **Sessions:** chronological submitted-session cards with session/workout name, date, duration, stored grade, supporting facts, notable PR where present, and detail navigation.
+- **Exercises:** searchable exact exercise variants with current valid hypertrophy score, recent trend, latest performance, retained best e1RM where applicable, and stable-ID detail navigation.
+
+Exercise detail makes the exact exercise name dominant, offers **Back to workout** when launched from an active session, retains active scroll/timer/entered state, shows one interpretable trend chart with inspectable source points, and presents a distinct estimated-1RM record/source/next-threshold card. It is read-only and has no replace-exercise or completed-session list.
 
 A chart point reveals date, raw and display load/unit facts, repetitions, RPE, role, source session, notes, and provenance where present. Exact variants, resistance types, and roles stay separate. Older workouts remain reachable; a recent default never deletes or archives them.
 
-There is no Overview/Lifts/History switcher, Dashboard, weekly volume, hypertrophy, fatigue, readiness, evidence, research-status, confidence, scorecard, or PR-only destination.
+There is no Dashboard, weekly-volume, fatigue, readiness, evidence, research-status, confidence, program-score, or PR-only destination. The Sessions/Exercises switch and narrowly scoped hypertrophy/e1RM displays are the approved Progress exception.
 
 ## Routines and Settings
 

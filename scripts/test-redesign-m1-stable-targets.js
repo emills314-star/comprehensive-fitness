@@ -99,7 +99,7 @@ const prior = [
   { id: "prior-backoff", setType: "backoff", setTypeIndex: 0, reps: 11, weight: 90, rpe: 7.5 }
 ];
 assert.equal(runtime.previousComparableSetForRole(prior, "backoff", 0).id, "prior-backoff");
-assert.equal(runtime.previousComparableSetForRole(prior, "drop", 0), null);
+assert.equal(runtime.previousComparableSetForRole(prior, "drop", 0, 0).id, "prior-top", "A changed role must still compare the same ordinal working set");
 assert.equal(runtime.exerciseMatches("Synthetic Press — Heavy", "Synthetic Press — Light"), false, "Named variants must retain separate identity and history");
 
 const normal = runtime.factualSetPrefillForWorkoutStart(

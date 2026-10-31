@@ -541,12 +541,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     test.setTimeout(120_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await page.locator(`[data-action="start-next-template"][data-template-id="${IDS.controlTemplate}"]`).click();
+    await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
-    await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+    await expect(page.locator(".active-session-ready")).toHaveText("Ready");
     await expect(page.locator(".exercise-card"), "the active workout must render every exercise in one continuous document").toHaveCount(2);
     const firstExercise = page.locator(".exercise-card").first();
-    await expect(firstExercise.locator(".set-current-editor .set-previous"), "a newly started template begins with its warm-up editor and must label that role rather than invent working-set history").toContainText("Warm-up");
+    await expect(firstExercise.locator(".set-current-editor .set-previous"), "a newly started warm-up must not borrow working-set history").toContainText("No history");
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
       if (sessions.length !== 1) return false;
@@ -558,7 +558,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await reloadAndWait(page);
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible();
-    await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+    await expect(page.locator(".active-session-ready")).toHaveText("Ready");
     expect(browserErrors, "template-start lifecycle browser errors").toEqual([]);
   });
 
@@ -566,23 +566,25 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     test.setTimeout(120_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildTemplateLifecycleFixture());
-    await page.locator(`[data-action="log-template-readiness"][data-template-id="${IDS.controlTemplate}"]`).click();
+    await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
+    await page.locator(".active-session-menu > summary").click();
+    await page.locator('[data-action="log-workout-readiness"]').click();
 
     const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
     await expect(readiness).toBeVisible();
-    await readiness.getByRole("radio", { name: "Meaningfully poor", exact: true }).check();
+    await readiness.getByRole("radio", { name: "Worse than usual", exact: true }).check();
     await readiness.getByRole("checkbox", { name: "Pain or injury", exact: true }).check();
     await readiness.getByLabel("Affected area", { exact: true }).selectOption({ label: "Back" });
     await readiness.getByLabel("Optional context", { exact: true }).fill("Public synthetic readiness context.");
     await expect(page.locator(".readiness-review-sheet"), "optional readiness must not introduce a mandatory review screen").toHaveCount(0);
-    await readiness.locator('[data-action="start-workout-with-readiness"]').click();
+    await readiness.locator('[data-action="save-workout-readiness"]').click();
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
     const stored = await waitForPersisted(page, (data) => {
       const session = data.sessions.find((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
-      return session?.readinessMode === "daily";
-    }, "optional readiness must persist with the one coherent active workout", 30_000);
+      return session?.recovery?.readinessDeviation === "meaningfully_poor" && session?.recovery?.pain === true;
+    }, "optional readiness must persist on the one coherent active workout", 30_000);
     const started = stored.sessions.find((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
-    expect(started.readinessMode).toBe("daily");
+    expect(started.readinessMode).toBe("usual");
     expect(started.recovery).toMatchObject({ readinessDeviation: "meaningfully_poor", pain: true, affectedMuscle: "Back" });
     expect(browserErrors, "optional-readiness lifecycle browser errors").toEqual([]);
   });
@@ -619,7 +621,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
     await expect(page.locator(".destination-error"), "an unavailable-equipment recommendation must not crash the selected-lift destination").toHaveCount(0);
-    await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(unavailableName, { timeout: 45_000 });
+    await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+    const search = page.getByRole("searchbox", { name: "Search exercises" });
+    await search.fill(unavailableName);
+    await expect(page.locator('[data-action="open-progress-exercise"]')).toContainText(unavailableName);
     await expect(page.locator(".recommendation.blocked-recommendation"), "Equipment metadata must not create a logging block in Progress").toHaveCount(0);
 
     await openRoutines(page);
@@ -728,15 +733,15 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await page.evaluate(() => setActiveTab("progress"));
     await expect(page.locator(".history-view")).toBeVisible();
-    const card = page.locator(`.history-session-row[data-session-id="${IDS.historySession}"]`);
-    const title = card.locator(".ri-copy b");
-    const grade = card.locator(".ri-val");
+    const card = page.locator(`.history-session-card[data-session-id="${IDS.historySession}"]`);
+    const title = card.locator(".history-session-copy strong");
+    const grade = card.locator(".history-grade");
     await expect(title).toHaveText(NAMES.historySession);
     await expect(grade).toHaveText("B");
     await expect(card).not.toContainText("Grade B");
     const hierarchy = await card.evaluate((element) => {
-      const title = element.querySelector(".ri-copy b");
-      const grade = element.querySelector(".ri-val");
+      const title = element.querySelector(".history-session-copy strong");
+      const grade = element.querySelector(".history-grade");
       const probe = document.createElement("span");
       probe.style.color = "var(--text)";
       document.body.appendChild(probe);
@@ -750,8 +755,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       };
     });
     expect(hierarchy.titleColor, "logged session names should use plain text ink").toBe(hierarchy.textColor);
-    expect(hierarchy.gradeColor, "the saved grade fact should use the same plain ink").toBe(hierarchy.titleColor);
-    expect(hierarchy.gradeBackground).toBe("rgba(0, 0, 0, 0)");
+    expect(hierarchy.gradeColor, "the saved grade must retain readable foreground ink").not.toBe(hierarchy.gradeBackground);
+    expect(hierarchy.gradeBackground, "the grade must have a visually distinct treatment in addition to its letter").not.toBe("rgba(0, 0, 0, 0)");
     expect(browserErrors, "compact Today and History hierarchy must not emit browser errors").toEqual([]);
   });
 
@@ -942,11 +947,13 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await sourceCard.locator('[data-action="apply-exercise-substitution"]').click();
     await page.locator(`#exercise-${IDS.activeRowExercise} details.exercise-overflow > summary`).click();
     await page.locator(`[data-action="move-exercise"][data-exercise-id="${IDS.activeRowExercise}"][data-direction="-1"]`).click();
-    await page.locator("details.add-exercise-panel > summary").click();
-    await page.locator('[data-action="add-exercise-draft"]').fill("Public Synthetic Custom Cable Fly");
-    await page.locator('[data-action="add-exercise-primary"]').selectOption("Chest");
-    await page.locator('[data-action="add-exercise-secondary"]').selectOption("Triceps");
-    await page.locator('[data-action="add-exercise"]').click();
+    const addExercisePanel = page.locator("details.add-exercise-panel");
+    await addExercisePanel.locator(":scope > summary").click();
+    await expect(addExercisePanel).toHaveAttribute("open", "");
+    await addExercisePanel.locator('[data-action="add-exercise-draft"]').fill("Public Synthetic Custom Cable Fly");
+    await addExercisePanel.locator('[data-action="add-exercise-primary"]').selectOption("Chest");
+    await addExercisePanel.locator('[data-action="add-exercise-secondary"]').selectOption("Triceps");
+    await addExercisePanel.locator('[data-action="add-exercise"]').click();
     let stored = await waitForPersisted(page, (data) => data.exercises.some((item) => item.sessionId === IDS.activeSession && item.name === "Public Synthetic Custom Cable Fly"), "added active exercise must persist");
     const custom = stored.exercises.find((item) => item.sessionId === IDS.activeSession && item.name === "Public Synthetic Custom Cable Fly");
     expect(custom.primaryMuscle).toBe("Chest");
@@ -1005,7 +1012,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await installFixture(page, buildActiveWorkoutLifecycleFixture());
     const before = await persistedData(page);
 
-    const sessionMenu = page.locator(".session-dock-overflow");
+    const sessionMenu = page.locator(".active-session-menu");
     if (!await sessionMenu.evaluate((node) => node.open)) await sessionMenu.locator(":scope > summary").click();
     await expect(sessionMenu).toHaveAttribute("open", "");
     await sessionMenu.getByRole("button", { name: "Cancel workout" }).click();

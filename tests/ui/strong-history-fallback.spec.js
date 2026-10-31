@@ -358,8 +358,8 @@ test("Last time keeps a distinct performance identity separate from the Strong a
   const card = page.locator(`.exercise-card:has([data-exercise-id="${activeExerciseId}"])`);
   const lastTime = card.locator(".set-previous");
   await expect(lastTime).toHaveCount(1);
-  await expect(lastTime.first()).toContainText("No history");
-  await expect(lastTime.first()).not.toContainText("January 12");
-  await expect(lastTime.first()).not.toContainText("80");
+  await expect(lastTime.first()).toContainText("January 12");
+  await expect(lastTime.first()).toContainText("80 lb");
+  await expect(lastTime.first()).toContainText("10 @ 8");
   await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
 });

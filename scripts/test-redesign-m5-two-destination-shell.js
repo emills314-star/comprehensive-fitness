@@ -63,13 +63,13 @@ assert.match(renderStart, /step === "active-conflict"/, "A requested second work
 for (const action of ["resume-active-workout", "finish-active-workout", "discard-active-workout"]) {
   assert.match(renderStart, new RegExp(`data-action="${action}"`), `The active-draft conflict must offer ${action}`);
 }
-assert.doesNotMatch(renderStart, /start anyway|replace|discard and start/i, "The conflict must not imply that a second workout will start automatically");
+assert.doesNotMatch(renderStart, /start anyway|discard and start/i, "The conflict must not bypass the explicit replacement confirmation");
 assert.match(interactions, /action === "resume-active-workout"[\s\S]*activeWorkoutId/, "Resume must return to the canonical active draft");
 assert.match(interactions, /action === "finish-active-workout"[\s\S]*pendingSubmitSessionId = activeWorkoutId[\s\S]*render\(\)/, "Finish must open the consequential completion confirmation for the active draft");
 assert.match(interactions, /action === "discard-active-workout"[\s\S]*requestCancelWorkout/, "Discard from the conflict must delegate to destructive confirmation");
 assert.match(source, /data-action="confirm-cancel-workout"/, "Discard must require an explicit final confirmation");
 assert.match(discard, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id\)/, "Confirmed discard must delete only the selected draft");
-assert.doesNotMatch(discard, /startTemplate\(|openTemplateStart\(/, "Discard must not silently create the previously requested workout");
+assert.match(discard, /replacementTemplateId[\s\S]*commit\([\s\S]*setTimeout\(\(\) => startTemplate\(replacementTemplateId\)/, "A confirmed replacement must delete the selected draft before loading the requested workout");
 assert.match(patchRecovery, /resolvedActions:[\s\S]*resolveWorkoutExceptions/, "Changing readiness or safety input must atomically refresh the canonical resolved action");
 
 assert.match(html, /\.bottom-nav\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "The persistent navigation layout must contain two equal destinations");

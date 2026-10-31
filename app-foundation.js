@@ -51,7 +51,7 @@
         "open-routines", "open-settings", "close-secondary-context", "close-workout-context",
         "keep-workout", "keep-history-editing", "cancel-clear-data",
         "open-history", "open-progress", "retry-view-render", "focus-workout-exercise",
-        "show-chart-point", "close-chart-point",
+        "show-chart-point", "close-chart-point", "set-progress-mode", "open-progress-exercise", "close-progress-exercise", "open-rolling-hypertrophy", "filter-progress-exercises",
         "cancel-template-start",
         "template-readiness-deviation", "template-readiness-soreness", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
@@ -124,8 +124,10 @@
       const canceledRestScheduleKeys = new Map();
       let pushOperationWriteChain = Promise.resolve();
       let selectedExerciseId = "";
-      let todaySelectedTemplateId = "";
       let exerciseHistoryReturnState = null;
+      let progressMode = "sessions";
+      let progressExerciseDetailId = "";
+      let progressExerciseSearchQuery = "";
       const completingSetIds = new Set();
       let chartExerciseDraft = "";
       let chartExerciseSearchOpen = false;
@@ -256,6 +258,8 @@
       const previousPerformanceCache = new Map();
       const submittedPerformanceIndexCache = new Map();
       const exerciseProgressCache = new Map();
+      const hypertrophyScoreCache = new Map();
+      const exerciseRecordCache = new Map();
       const prescriptionIdentityResolutionCache = new Map();
       let prescriptionIdentityCacheEngine = null;
       let prescriptionIdentityCacheResolver = null;
@@ -323,7 +327,7 @@
       }
 
       function isCompletedWorkout(session) {
-        if (!session || session.deletedAt || session.trashed || session.canceledAt || session.workoutState === "canceled") return false;
+        if (!session || session.deletedAt || session.trashed || session.canceledAt || session.abandonedAt || ["canceled", "cancelled", "abandoned", "active", "inactive", "idle"].includes(session.workoutState)) return false;
         return session.submitted === true || session.workoutState === "completed" || (session.source === "strong" && session.submitted !== false);
       }
 
@@ -757,8 +761,6 @@
 
       function expectedWorkoutTemplate(model = data, date = new Date()) {
         const templates = Array.isArray(model?.templates) ? model.templates : [];
-        const manuallySelected = templates.find((template) => template.id === todaySelectedTemplateId);
-        if (manuallySelected) return manuallySelected;
         const scheduled = scheduledTemplatesForToday(model, date);
         return scheduled.length === 1 ? scheduled[0] : null;
       }
@@ -2254,6 +2256,8 @@
         previousPerformanceCache.clear();
         submittedPerformanceIndexCache.clear();
         exerciseProgressCache.clear();
+        hypertrophyScoreCache.clear();
+        exerciseRecordCache.clear();
       }
 
       function arrayIdentityChanged(previous, next) {
@@ -2842,7 +2846,7 @@
         const requestedResistanceType = options.resistanceType || "";
         const requestedCanonicalId = options.canonicalExerciseId || canonicalExerciseId(exerciseName);
         const requestedExactName = normalizePrescriptionIdentity(exerciseName);
-        const cacheKey = ["performance", analysisRevision, requestedCanonicalId, requestedExactName, requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0].join("|");
+        const cacheKey = ["performance", analysisRevision, requestedCanonicalId, requestedExactName, requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0, options.includeWarmups ? 1 : 0].join("|");
         if (previousPerformanceCache.has(cacheKey)) return previousPerformanceCache.get(cacheKey);
         const throughDate = String(options.throughDate || options.asOfDate || todayIso()).slice(0, 10);
         const performanceIndex = submittedPerformanceIndex(throughDate);
@@ -2865,7 +2869,7 @@
             return session ? { set, session, exercise } : null;
           })
           .filter(Boolean)
-          .filter((entry) => isWorkingSet(entry.set, "progression"))
+          .filter((entry) => options.includeWarmups ? setTypeSemantics(entry.set).isWarmup || isWorkingSet(entry.set, "progression") : isWorkingSet(entry.set, "progression"))
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
           .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
           .filter((entry) => !requestedResistanceType || resistanceTypeFor(entry.exercise, entry.set) === requestedResistanceType)
@@ -3005,9 +3009,25 @@
 
       function tabUrl(tab) {
         const url = new URL(window.location.href);
-        ["view", "rest", "workout", "set", "exercise", "workoutId", "exerciseId", "completedSetId", "nextSetId", "timerId", "notificationId", "timerVersion"].forEach((key) => url.searchParams.delete(key));
+        ["view", "rest", "workout", "set", "exercise", "workoutId", "exerciseId", "completedSetId", "nextSetId", "timerId", "notificationId", "timerVersion", "progressMode", "progressExerciseId"].forEach((key) => url.searchParams.delete(key));
         url.hash = tab;
         return url.pathname + url.search + url.hash;
+      }
+
+      function progressUrl(mode = progressMode, exerciseId = progressExerciseDetailId) {
+        const url = new URL(window.location.href);
+        ["view", "rest", "workout", "set", "exercise", "workoutId", "exerciseId", "completedSetId", "nextSetId", "timerId", "notificationId", "timerVersion"].forEach((key) => url.searchParams.delete(key));
+        url.searchParams.set("progressMode", mode === "exercises" ? "exercises" : "sessions");
+        if (exerciseId) url.searchParams.set("progressExerciseId", exerciseId);
+        else url.searchParams.delete("progressExerciseId");
+        url.hash = "progress";
+        return url.pathname + url.search + url.hash;
+      }
+
+      function readProgressRoute() {
+        const url = new URL(window.location.href);
+        progressMode = url.searchParams.get("progressMode") === "exercises" ? "exercises" : "sessions";
+        progressExerciseDetailId = String(url.searchParams.get("progressExerciseId") || "");
       }
 
       function normalizedDestination(tab) {
@@ -3070,7 +3090,9 @@
         if (descriptor.kind !== "action" || !focusActionAllowlist.has(descriptor.action)) return null;
         const matching = Array.from(root.querySelectorAll("[data-action]")).filter((element) => {
           if (element.dataset.action !== descriptor.action) return false;
-          if (!element.matches('button, input, select, textarea, a[href], summary, [tabindex]:not([tabindex="-1"])')) return false;
+          if (descriptor.action === "show-chart-point") {
+            if (!element.matches("[tabindex]")) return false;
+          } else if (!element.matches('button, input, select, textarea, a[href], summary, [tabindex]:not([tabindex="-1"])')) return false;
           return Object.entries(descriptor.data || {}).every(([key, value]) => focusDescriptorDataKeys.includes(key) && element.dataset[key] === value);
         });
         return matching[Math.max(0, Number(descriptor.ordinal || 0))] || matching[0] || null;
@@ -3155,8 +3177,9 @@
         if (options.focus !== false && options.renderNow === false) queuePostRenderFocus({ kind: "main" });
         if (options.updateUrl !== false) {
           const state = { ...(window.history.state || {}), tab: next };
-          if (options.replace) window.history.replaceState(state, "", tabUrl(next));
-          else window.history.pushState(state, "", tabUrl(next));
+          const destinationUrl = next === "progress" ? progressUrl() : tabUrl(next);
+          if (options.replace) window.history.replaceState(state, "", destinationUrl);
+          else window.history.pushState(state, "", destinationUrl);
         }
         if (options.renderNow !== false) {
           render();

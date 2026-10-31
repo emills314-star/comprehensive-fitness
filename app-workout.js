@@ -1441,6 +1441,32 @@
         };
       }
 
+      function activeWorkoutHasLoggedProgress(session) {
+        if (!session) return false;
+        const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
+        const sessionSets = data.sets.filter((set) => exerciseIds.has(set.exerciseId));
+        const recovery = cleanRecovery(session.recovery || {});
+        return sessionSets.some((set) => set.completed || set.skipped || set.edited)
+          || data.exercises.some((exercise) => exerciseIds.has(exercise.id) && String(exercise.notes || "").trim())
+          || Boolean(String(session.notes || "").trim() || recovery.illness || recovery.pain || recovery.readinessDeviation || recovery.soreness || recovery.affectedMuscle || recovery.outsideBandNote);
+      }
+
+      function removeEmptyActiveWorkoutForReplacement(session) {
+        const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
+        data = {
+          ...data,
+          sessions: data.sessions.filter((item) => item.id !== session.id),
+          exercises: data.exercises.filter((exercise) => exercise.sessionId !== session.id),
+          sets: data.sets.filter((set) => !exerciseIds.has(set.exerciseId))
+        };
+        activeSessionId = "";
+        activeWorkoutId = "";
+        activeSetId = "";
+        pendingNextSetId = "";
+        clearActiveWorkoutDraft();
+        invalidateCompletedAnalysis();
+      }
+
       function startTemplate(templateId, recovery = defaultRecovery(), readinessMode = "usual", options = {}) {
         const template = data.templates.find((item) => item.id === templateId);
         if (!template) return;
@@ -1452,10 +1478,15 @@
           return;
         }
         if (hasActiveWorkout()) {
+          const running = activeWorkoutSession();
+          if (running?.templateId !== templateId && !activeWorkoutHasLoggedProgress(running)) {
+            removeEmptyActiveWorkoutForReplacement(running);
+          } else {
           captureDialogFocusOrigin("template");
           templateStartFlow = { templateId, step: "active-conflict", draft: cleanRecovery(recovery) };
           render();
           return;
+          }
         }
         const currentSession = activeSession();
         const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong" && !isSessionSubmitted(currentSession);
@@ -1490,14 +1521,19 @@
           const resolvedTypes = stableSetTypesForWorkoutStart(templateExercise, target);
           const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), notes: "", stableTargetSnapshot: { sets: historyTarget.sets, repLow: historyTarget.repLow, repHigh: historyTarget.repHigh, rpe: historyTarget.rpe, restSeconds: historyTarget.restSeconds }, resolvedActionId: resolvedAction?.decisionId || null, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload) };
           exercises.push(exercise);
-          const configuredWarmups = templateExercise.warmups || [];
-          configuredWarmups.forEach((warmup, warmupIndex) => {
-            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardProgression: false }));
-          });
           const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, {
             excludeSessionId: session.id,
             resistanceType: resolvedResistanceType,
-            canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise)
+            canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise),
+            includeWarmups: true
+          });
+          const configuredWarmups = templateExercise.warmups || [];
+          const previousWarmups = previousRoleSets.filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === "warmup");
+          configuredWarmups.forEach((warmup, warmupIndex) => {
+            const previousComparableSet = previousWarmups.find((set) => Number(set.setTypeIndex || 0) === warmupIndex)
+              || previousWarmups[warmupIndex]
+              || null;
+            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardProgression: false, previousComparableSet }));
           });
           let setNumber = 0;
           const factualPrefills = [];

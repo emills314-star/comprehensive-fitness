@@ -1,5 +1,9 @@
 # Decision engine
 
+## Read-only score and record selectors — IMPLEMENTED LOCALLY 2026-08-15
+
+The Quiet Control refresh restores only canonical read-only evaluation selectors. They do not participate in workout generation or the exception resolver. A rolling summary uses the newest ten completed sessions, excludes active/cancelled/abandoned/incomplete sessions, computes the existing 0–100 hypertrophy score per distinct exact lift/resistance variant, drops missing or invalid scores, and averages valid lift scores with equal lift weight. Estimated 1RM remains the existing Epley calculation for completed external-load working sets with 1–12 repetitions. A next target is the smallest practical configured-increment or one-repetition set whose estimate exceeds the retained record; it is a mathematical threshold, not a performance promise.
+
 ## Readiness display ordering — IMPLEMENTED LOCALLY 2026-08-07
 
 Readiness displays low-to-high as **Worse than usual → About usual → Better than usual** while retaining `meaningfully_poor`, `usual`, and `unusually_good`. Display order does not change thresholds or quiet-spotter behavior.
@@ -7,7 +11,7 @@ Readiness displays low-to-high as **Worse than usual → About usual → Better 
 ## Metadata
 
 - **Purpose:** Current decision boundary and historical-compatibility rules
-- **Last verified:** 2026-08-01
+- **Last verified:** 2026-08-15
 - **Status:** **IMPLEMENTED LOCALLY (M8)**
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), and [training-data map](training-prescription-data.md)
 
@@ -15,17 +19,17 @@ Readiness displays low-to-high as **Worse than usual → About usual → Better 
 
 `exception-resolver.js` is the sole current source of exception actions. It may produce one concise, advisory action when directly recorded current pain/injury or illness qualifies. Continuing to log remains possible; a user override is recorded as a workout fact.
 
-There is no live prescription, recommendation, readiness-score, fatigue, plateau, deload, volume, hypertrophy, research, evidence, confidence, PR, or analytics engine in normal workout generation. Those signals cannot create a current action, alter a target, or add a Progress surface.
+There is no live prescription, recommendation, readiness-score, fatigue, plateau, deload, volume, research, evidence, confidence, or analytics input in normal workout generation. The approved read-only hypertrophy score and e1RM/record selectors may render on Today or Progress, but cannot create a current action or alter a target.
 
 Ordinary workout targets are stable routine facts owned by the named exercise variant and its set role: working-set count and roles, rep range, target-RPE band, rest default, and increment. They are not rewritten from prior performance, an exception action, research data, or any analytical calculation.
 
 Normal editable-field prefill is factual and ordered:
 
-1. The comparable prior working set for the exact variant and role/index.
+1. The comparable prior working set for the exact variant and stable set position/role index.
 2. An explicit routine default for that role.
 3. Blank.
 
-Warm-up, top, back-off, straight, and drop sets are not interchangeable. A prior logged RPE is an actual value, not a replacement for the routine target-RPE band. Exact performance identity keeps named, custom, equipment, and resistance variants from being silently merged.
+Warm-up, top, back-off, straight, and drop sets are not interchangeable. Warm-ups can display their same-position prior-session facts but remain excluded from progression, hypertrophy, grade, and e1RM evidence. A prior logged RPE is an actual value, not a replacement for the routine target-RPE band. Exact performance identity keeps named, custom, equipment, and resistance variants from being silently merged.
 
 Optional readiness can be recorded before or during a workout. It is neither a start gate nor a normal-target writer. The current implementation stores readiness deviation, soreness, explicit pain/illness, affected area, and note facts, but only direct explicit pain/injury or illness is converted into a live resolver candidate. `meaningfully_poor` readiness remains a recorded fact and produces no action by itself.
 
@@ -37,7 +41,7 @@ Version 1.1 keeps substitutions, reorder, legitimate set-count changes, and expl
 
 ## Progress and units
 
-Progress is factual submitted-workout history and exact-variant/exact-resistance performance. It does not derive recommendation strength, volume, fatigue, research, personal evidence, or confidence output.
+Progress has Sessions and Exercises modes. Sessions is factual submitted-session history with stored grades. Exercises derives the canonical read-only hypertrophy score, latest exact-variant performance, trend, and external-load e1RM record/next mathematical threshold. It does not derive recommendation strength, weekly volume, fatigue, research, personal evidence, or confidence output.
 
 Display-unit conversion is presentation-only. Raw imported/submitted unit values and their provenance are immutable. A display preference must not rewrite historical records, reinterpret raw values, refresh a historical snapshot checksum, or change the source values used by compatibility validation.
 

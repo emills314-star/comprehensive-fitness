@@ -124,12 +124,12 @@ test("M5 Start opens one full-screen active logger directly and browser Back ret
   test.setTimeout(120_000);
   await installFixture(page, fixtureWithAlternate());
 
-  await page.locator('[data-action="start-next-template"]').click();
+  await page.locator('[data-action="start-template"]').first().click();
   await expect(page).toHaveURL(/#workout$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Public Synthetic Upper Lifecycle", exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
-  await expect(page.locator('[data-action="close-workout-context"]')).toHaveAccessibleName("Back to Today");
+  await expect(page.locator(".active-session-menu > summary")).toHaveAccessibleName("Workout menu");
   expect(await activeDraftIds(page)).toHaveLength(1);
   await page.screenshot({
     path: path.join(ARTIFACT_DIR, "m5-mobile-direct-full-screen-logger.png"),
@@ -151,7 +151,9 @@ test("M5 optional readiness is secondary, single-step, and available during the 
   test.setTimeout(120_000);
   await installFixture(page, fixtureWithAlternate());
 
-  await page.locator('[data-action="log-template-readiness"]').click();
+  await page.locator('[data-action="start-template"]').first().click();
+  await page.locator(".active-session-menu > summary").click();
+  await page.locator('[data-action="log-workout-readiness"]').click();
   const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(readiness).toBeVisible();
   await expect(readiness.locator(".readiness-review-sheet")).toHaveCount(0);
@@ -163,14 +165,14 @@ test("M5 optional readiness is secondary, single-step, and available during the 
     fullPage: true
   });
 
-  await readiness.locator('[data-action="start-workout-with-readiness"]').click();
+  await readiness.locator('[data-action="save-workout-readiness"]').click();
   await expect(page).toHaveURL(/#workout$/);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect.poll(() => activeDraftIds(page)).toHaveLength(1);
   const recovery = await page.evaluate(() => activeWorkoutSession()?.recovery);
   expect(recovery).toMatchObject({ soreness: 3, pain: true, affectedMuscle: "Back" });
 
-  await page.locator('[data-action="session-menu"]').click();
+  await page.locator('.active-session-menu [data-action="session-menu"]').click();
   await expect(page.locator('[data-action="log-workout-readiness"]')).toHaveAccessibleName("Log readiness");
   await page.locator('[data-action="log-workout-readiness"]').click();
   const activeReadiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
@@ -214,7 +216,7 @@ test("M5 Discard keeps the active draft until concise confirmation and never ove
   await expect(confirmation).toBeVisible();
   await expect(confirmation.locator("button")).toHaveCount(2);
   await expect(confirmation.locator('[data-action="keep-workout"]')).toHaveAccessibleName("Keep workout");
-  await expect(confirmation.locator('[data-action="confirm-cancel-workout"]')).toHaveAccessibleName("Discard workout");
+  await expect(confirmation.locator('[data-action="confirm-cancel-workout"]')).toHaveAccessibleName("Replace workout");
   expect(await activeDraftIds(page)).toEqual([IDS.activeSession]);
   await page.screenshot({
     path: path.join(ARTIFACT_DIR, "m5-mobile-discard-confirmation.png"),
@@ -227,11 +229,6 @@ test("M5 Discard keeps the active draft until concise confirmation and never ove
   const reopened = await openAlternateConflict(page);
   await reopened.locator('[data-action="discard-active-workout"]').click();
   await page.locator('[data-action="confirm-cancel-workout"]').click();
-  await expect.poll(() => activeDraftIds(page)).toHaveLength(0);
-  await expect(page).toHaveURL(/#today$/);
-
-  await revealAlternatePicker(page);
-  await page.locator(`[data-action="start-template"][data-template-id="${ALTERNATE_TEMPLATE_ID}"]`).click();
   await expect.poll(() => activeDraftIds(page)).toHaveLength(1);
   expect(await activeDraftIds(page)).not.toContain(IDS.activeSession);
   await expect(page).toHaveURL(/#workout$/);

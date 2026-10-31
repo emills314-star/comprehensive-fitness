@@ -118,7 +118,7 @@ assert.doesNotMatch(completion, /categoryScores|internalScore|confidence|plan|ad
 
 const history = functionSource(analysis, "renderHistory", "normalizeSetTypeCode");
 assert.match(history, /filter\(\(session\) => isSessionSubmitted\(session\)\)[\s\S]*sessionCompletionDate\(right\)\.localeCompare\(sessionCompletionDate\(left\)\)/, "Workout history must be chronological and submitted-only");
-assert.match(history, /Every submitted workout remains available in chronological order/, "Progress must state the full-history contract");
+assert.match(history, /Every submitted session remains available in chronological order/, "Progress must state the full-history contract with current terminology");
 assert.match(history, /storedWorkoutGradeProjection\(session\)/, "History must decode stored grades rather than recalculate them");
 
 const templateCard = functionSource(analysis, "renderTemplateCard", "renderHistory");
@@ -155,7 +155,7 @@ assert.match(progressWindow, /monthIndex\s*=\s*latestYear\s*\*\s*12\s*\+\s*lates
 assert.match(progressWindow, /windowName === "all"[\s\S]*points\.filter\(\(point\) => point\.date >= cutoff\)/, "All-history and recent chart windows must share one ephemeral filter");
 
 const liftProgress = functionSource(analysis, "renderLiftProgress", "restAlertState");
-assert.match(liftProgress, /progressPointsForDateWindow\(progress\.points\)[\s\S]*renderChart\("performance", progress\.title, visiblePoints[\s\S]*renderHistory\(\)/, "The date range must filter only the chart while chronological workout history stays complete");
+assert.match(liftProgress, /function renderProgressSessions[\s\S]*renderHistory\(\)[\s\S]*function renderExerciseProgressDetail[\s\S]*progressPointsForDateWindow\(progress\.points\)[\s\S]*renderChart\('performance', progress\.title, visiblePoints/, "The scoped date range must filter only exercise detail while chronological session history stays complete in Sessions mode");
 
 const catalog = functionSource(foundation, "exerciseCatalog", "selectedExerciseRecord");
 assert.match(catalog, /data\.sessions\.filter\(\(session\) => isSessionSubmitted\(session\)\)/, "Exercise search must derive from every submitted workout");

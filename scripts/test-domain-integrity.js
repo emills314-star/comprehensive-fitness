@@ -130,8 +130,8 @@ assert.doesNotMatch(html, /coachRecommendationForExercise\(templateExercise\.nam
 assert.match(html, /function exercisePerformanceSeries\([\s\S]*data\.sessions\.filter\(\(session\) => isSessionSubmitted\(session\)\)[\s\S]*isWorkingSet\(set, "progression"\)[\s\S]*bestSet: best\.set/, "The factual performance chart must use submitted same-variant working-set history rather than hypertrophy-qualified weeks");
 const progressRenderer = html.match(/function renderLiftProgress\(\)[\s\S]*?(?=\n\s*function restAlertState\()/)?.[0] || "";
 assert.ok(progressRenderer, "The unified Progress renderer must remain available");
-assert.match(progressRenderer, /exercisePerformanceSeries\(selectedName,[\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one factual performance chart together with chronological workout history");
-assert.doesNotMatch(progressRenderer, /qualifyingWeekIds|hypertrophy|fractional|weekly volume/i, "The normal Progress renderer must not restore analytical qualification or volume surfaces");
+assert.match(progressRenderer, /renderProgressSessions[\s\S]*renderHistory\(\)[\s\S]*renderExerciseProgressDetail[\s\S]*renderChart\('performance'/, "Progress must retain chronological sessions and one scoped factual performance chart");
+assert.doesNotMatch(progressRenderer, /qualifyingWeekIds|fractional|weekly volume/i, "The approved Progress refresh must not restore retired volume surfaces");
 assert.match(html, /data-action="set-type-override"/, "History editing must expose manual set-type correction");
 assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, options = \{\}\)/, "All prior workout consumers must use one canonical resolver");
 assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");

@@ -1,5 +1,18 @@
 # Roadmap
 
+## 2026-08-15 Quiet Control progress refresh — IMPLEMENTED LOCALLY; REVIEW-READY
+
+- Added the no-session workout chooser and honest rolling ten-completed-session score with equal distinct-lift weighting.
+- Moved the sole Ready/rest countdown into the centered active-session header and removed the duplicate rendered rest bar.
+- Added persistent completed-row treatment, disabled gray upcoming-set checks, all-required-sets exercise completion, and position-matched prior-session facts for every set row.
+- Added stable-ID exercise detail with trend, exact-source e1RM record, mathematical next target, and active-session return preservation.
+- Redesigned Progress into Sessions and Exercises modes with accessible stored-grade treatments, search, score/trend/latest/e1RM facts, and shared calculations.
+- Kimi K3 completed one consolidated review of the approved screenshot matrix; justified spacing, hierarchy, grade, chart, menu, inactive-set, and Current Focus discrepancies were resolved in one production pass.
+- Final focused screenshots pass 6/6 across mobile and desktop. The complete browser suite passes 297 tests with 33 intentional skips and zero failures across 330 discovered cases.
+- Public validation passes 53/53 selected scripts (54 discovered; one private-only harness), and private validation passes 2/2 with the one preserved invalid-source warning remaining correctly excluded from calculations.
+- Static lint, workflow policy, tracked-file privacy, research validation and determinism, PWA/native packaging parity, and both dependency gates pass. Production dependencies have zero known findings; the full development tree reports three accepted moderate-only findings and zero high/critical findings.
+- Root/`www` are synchronized across 26 public-only assets and service-worker cache v106. The release wrapper's clean-source step remains intentionally inapplicable until the owner authorizes a commit; publication and hosted/device acceptance remain unauthorized or external.
+
 ## 2026-08-07 active-session correctness — IMPLEMENTED LOCALLY
 
 - Fixed stale timer replacement with one absolute-deadline, versioned timer and idempotent completion path.
@@ -11,7 +24,7 @@
 ## Metadata
 
 - **Purpose:** Current implementation status, remaining gates, risks, and explicitly excluded work
-- **Last verified:** 2026-08-04
+- **Last verified:** 2026-08-15
 - **Branch:** `codex/zero-based-redesign`
 - **Status:** **SECOND PRODUCTION PACKAGING REMEDIATION VERIFIED AND INDEPENDENTLY APPROVED; NEEDS OWNER-AUTHORIZED IMMUTABLE COMMIT AND PUBLICATION**
 - **Authority:** [`redesign/final/`](redesign/final/), [`redesign/implementation/IMPLEMENTATION_EXECPLAN.md`](redesign/implementation/IMPLEMENTATION_EXECPLAN.md)
@@ -71,6 +84,8 @@ Do not begin new product work after M8. Do not merge, push, deploy, mutate produ
 - Stored legacy grades and snapshots are immutable.
 - Workout cloud-copy upload is decommissioned; Web Push notifications and bounded legacy remote deletion remain.
 - Top-level retired global planner/evidence collections are discarded at the compatibility boundary; embedded owning-workout snapshots/actions/overrides are preserved.
+- The approved rolling hypertrophy summary is read-only: newest ten completed sessions, honest available count, distinct exact lift/resistance variants, invalid scores excluded, equal weight per valid lift.
+- Progress intentionally owns Sessions/Exercises modes and stable-ID exercise detail; these surfaces do not create workout targets or exception actions.
 
 ## Corrective-candidate local verification
 

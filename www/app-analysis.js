@@ -179,21 +179,34 @@
           .filter((session) => isSessionSubmitted(session))
           .sort((left, right) => sessionCompletionDate(right).localeCompare(sessionCompletionDate(left))
             || String(right.submittedAt || right.updatedAt || "").localeCompare(String(left.submittedAt || left.updatedAt || "")));
-        const rows = sessions.map((session) => {
+        const renderSessionCard = (session) => {
           const facts = sessionWorkoutFacts(session);
-          const storedGrade = storedWorkoutGradeProjection(session)?.grade || "";
-          const details = [
-            formatDate(sessionCompletionDate(session)),
-            facts.exercises.length + " exercise" + (facts.exercises.length === 1 ? "" : "s"),
-            facts.completed.length + " completed set" + (facts.completed.length === 1 ? "" : "s"),
-            facts.durationMinutes ? facts.durationMinutes + " min" : "duration not recorded"
-          ];
-          return '<button class="row-item history-session-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><span class="ri-copy"><b>' + escapeHtml(session.title || "Workout") + '</b><span>' + escapeHtml(details.join(" · ")) + '</span></span>' + (storedGrade ? '<span class="ri-val" aria-label="Stored workout grade ' + escapeHtml(storedGrade) + '">' + escapeHtml(storedGrade) + '</span>' : '') + '</button>';
+          const projection = storedWorkoutGradeProjection(session);
+          const storedGrade = projection?.grade || "";
+          const gradeBand = storedGrade ? storedGrade.charAt(0).toLowerCase() : "unavailable";
+          const details = [formatDate(sessionCompletionDate(session)), facts.durationMinutes ? facts.durationMinutes + " min" : "duration not recorded", facts.exercises.length + " exercise" + (facts.exercises.length === 1 ? "" : "s")];
+          const reason = projection?.gradeReasons?.[0] || "Stored completed-session facts";
+          const notable = Array.isArray(session.prs) && session.prs[0] ? "New PR · " + session.prs[0].exercise + " · " + session.prs[0].value : "";
+          return '<button class="history-session-card" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '" aria-label="Open ' + escapeHtml(session.title || 'completed session') + (storedGrade ? ', grade ' + escapeHtml(storedGrade) : '') + '"><span class="history-session-copy"><strong>' + escapeHtml(session.title || "Workout") + '</strong><span class="history-session-facts">' + escapeHtml(details.join(" · ")) + '</span><small>' + escapeHtml(notable || reason) + '</small></span>' + (storedGrade ? '<span class="history-grade grade-' + gradeBand + '" aria-label="Stored workout grade ' + escapeHtml(storedGrade) + '">' + escapeHtml(storedGrade) + '</span>' : '<span class="history-grade grade-unavailable" aria-label="Grade unavailable">—</span>') + '<span class="progress-chevron" aria-hidden="true">›</span></button>';
+        };
+        const grouped = sessions.reduce((groups, session) => {
+          const date = sessionCompletionDate(session);
+          const key = String(date || "unknown").slice(0, 7);
+          const group = groups.get(key) || { key, date, sessions: [] };
+          group.sessions.push(session);
+          groups.set(key, group);
+          return groups;
+        }, new Map());
+        const rows = Array.from(grouped.values()).map((group) => {
+          const parsed = new Date(String(group.date || todayIso()).slice(0, 10) + "T12:00:00");
+          const label = Number.isFinite(parsed.getTime()) ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(parsed) : "Date unavailable";
+          return '<section class="history-month-group" aria-labelledby="history-month-' + escapeHtml(group.key) + '"><h2 class="history-month-heading" id="history-month-' + escapeHtml(group.key) + '">' + escapeHtml(label) + '</h2><div class="history-month-cards">' + group.sessions.map(renderSessionCard).join("") + '</div></section>';
         }).join("");
         return `
-          <section class="screen-section history-view" aria-labelledby="completed-workouts-heading">
-            <div class="section-heading"><div><h2 id="completed-workouts-heading">Completed workouts</h2><p>Every submitted workout remains available in chronological order.</p></div><span>${sessions.length}</span></div>
-            <div class="history-session-list">${rows || '<div class="empty-state">Completed workouts will appear here.</div>'}</div>
+          <section class="history-view" aria-label="Completed sessions">
+            <p class="history-contract">Every submitted session remains available in chronological order.</p>
+            <div class="history-total"><span>${sessions.length} total</span><span>Chronological order</span></div>
+            <div class="history-session-list">${rows || '<div class="empty-state">Completed sessions will appear here.</div>'}</div>
           </section>
         `;
       }
@@ -271,8 +284,11 @@
       function previousComparableSetForRole(previousSets, setType, setTypeIndex = 0, workingSetIndex = 0) {
         const role = normalizeSetTypeCode(setType);
         const sameRole = (previousSets || []).filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role);
+        const workingSets = (previousSets || []).filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) !== "warmup");
+        const ordinalFallback = role === "warmup" ? null : workingSets[Number(workingSetIndex || 0)];
         return sameRole.find((set) => Number(set.setTypeIndex || 0) === Number(setTypeIndex || 0))
           || sameRole[Number(setTypeIndex || 0)]
+          || ordinalFallback
           || null;
       }
 
@@ -490,6 +506,7 @@
         return `
           <div class="chart-card" data-chart-key="${chartKey}">
             <header><strong>${escapeHtml(title)}</strong><span>${chartPoints.length} session${chartPoints.length === 1 ? "" : "s"}</span></header>
+            ${scope.helperText ? '<p class="chart-helper">' + escapeHtml(scope.helperText) + '</p>' : ""}
             <div class="chart-svg">
               <svg viewBox="0 0 ${width} ${height}" role="group" aria-label="${escapeHtml(title)} chart. Use Left and Right Arrow keys to review sessions.">
                 <defs><clipPath id="chart-clip-${chartKey}"><rect x="${plot.left - 3}" y="${plot.top - 3}" width="${plotWidth + 6}" height="${plotHeight + 6}" rx="3"></rect></clipPath></defs>
@@ -593,6 +610,7 @@
         const best = point.bestSet || point.details?.[0] || null;
         const unitLabel = ["load", "added_load", "assistance_load"].includes(point.metricType)
           ? " " + data.settings.weightUnit
+          : point.metricType === "estimated_one_rep_max" ? " " + data.settings.weightUnit
           : point.metricType.includes("duration") ? " sec"
             : point.metricType.includes("distance") ? " m"
               : " reps";
@@ -610,47 +628,245 @@
           + '<div><div class="m-label"><span>Recorded sets</span><span>source facts</span></div>' + renderChartPointSetGroups(point) + '</div></article>';
       }
 
+      // The restored hypertrophy calculation preserves the app's former six-category
+      // 0–100 formula. The rolling selector changes only the source window: the ten
+      // latest completed sessions, with distinct exact lift variants averaged equally.
+      function rollingCompletedSessions(limit = 10) {
+        return data.sessions
+          .filter((session) => isSessionSubmitted(session))
+          .sort((left, right) => sessionCompletionDate(right).localeCompare(sessionCompletionDate(left))
+            || String(right.submittedAt || right.updatedAt || right.id).localeCompare(String(left.submittedAt || left.updatedAt || left.id)))
+          .slice(0, limit);
+      }
+
+      function calculateCanonicalHypertrophyScore(selection) {
+        const weeks = selection.included || [];
+        if (!weeks.length) return { score: null, categories: [], ...selection };
+        const clamp = (value, low = 0, high = 1) => Math.max(low, Math.min(high, Number.isFinite(value) ? value : low));
+        const average = (values, fallback = 0) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : fallback;
+        const ratio = (value, total, fallback) => total > 0 ? clamp(value / total) : fallback;
+        const repTargetsAvailable = weeks.some((week) => Number(week.repRangeTracked || 0) > 0);
+        const rpeTargetsAvailable = weeks.some((week) => Number(week.rpeTargetTracked || 0) > 0);
+        const progressionQuality = average(weeks.map((week) => {
+          const comparable = Number(week.comparableComparisons || 0);
+          if (!comparable) return 0.6;
+          const wins = Math.min(comparable, Number(week.progressionWins || 0));
+          const regressions = Math.min(comparable - wins, Number(week.regressions || 0));
+          const neutral = Math.max(0, comparable - wins - regressions);
+          return clamp((wins + neutral * 0.62 - regressions * 0.35) / comparable);
+        }), 0.6);
+        const repQuality = average(weeks.filter((week) => Number(week.repRangeTracked || 0) > 0).map((week) => ratio(week.repRangeHits, week.repRangeTracked, 1)), 1);
+        const rpeQuality = average(weeks.filter((week) => Number(week.rpeTargetTracked || 0) > 0).map((week) => ratio(week.rpeOnTarget, week.rpeTargetTracked, 1)), 1);
+        const volumeTargetQuality = average(weeks.map((week) => ratio(week.volumeTargetsHit, week.volumeTargetsTracked, 0.65)), 0.65);
+        const volumeStability = average(weeks.map((week) => clamp(1 - Math.max(0, Number(week.volumeChangeRatio || 0) - 0.15) / 0.55)), 0.75);
+        const completionQuality = average(weeks.map((week) => ratio(week.completedSets, week.plannedSets, 0.7)), 0.7);
+        const fatigueQuality = average(weeks.map((week) => clamp(1 - Math.min(0.72, Number(week.fatigueHigh || 0) * 0.3 + Number(week.fatigueModerate || 0) * 0.12))), 1);
+        const categories = [
+          { key: "progression", max: 25, quality: 0.35 + progressionQuality * 0.65 },
+          { key: "execution", max: 20, excluded: !repTargetsAvailable, quality: 0.25 + repQuality * 0.75 },
+          { key: "rpe", max: 15, excluded: !rpeTargetsAvailable, quality: 0.25 + rpeQuality * 0.75 },
+          { key: "volume", max: 15, quality: 0.3 + (volumeTargetQuality * 0.7 + volumeStability * 0.3) * 0.7 },
+          { key: "consistency", max: 15, quality: completionQuality },
+          { key: "fatigue", max: 10, quality: fatigueQuality }
+        ].map((category) => ({ ...category, points: category.excluded ? null : Math.round(category.max * clamp(category.quality) * 10) / 10 }));
+        const availableMaximum = categories.filter((category) => !category.excluded).reduce((sum, category) => sum + category.max, 0);
+        const availablePoints = categories.filter((category) => !category.excluded).reduce((sum, category) => sum + Number(category.points || 0), 0);
+        return { score: availableMaximum ? Math.round(clamp(availablePoints / availableMaximum) * 100) : null, categories, ...selection };
+      }
+
+      function hypertrophyPerformanceValue(set, exercise, resistanceType) {
+        if (["external", "bodyweight_plus_load"].includes(resistanceType)) return estimatedOneRepMax(set);
+        if (resistanceType === "assisted_bodyweight") return Math.max(0, 10000 - resistanceLoad(set, resistanceType) * 10 + Number(set.reps || 0));
+        if (resistanceType === "duration") return Number(set.durationSeconds || 0);
+        if (resistanceType === "distance") return Number(set.distance || 0);
+        return Number(set.reps || 0);
+      }
+
+      function exerciseHypertrophyScore(catalogExercise, sessions = rollingCompletedSessions()) {
+        if (!catalogExercise || !sessions.length) return null;
+        const sessionIds = new Set(sessions.map((session) => session.id));
+        const cacheKey = ["hypertrophy", analysisRevision, catalogExercise.id, ...sessionIds].join("|");
+        if (hypertrophyScoreCache.has(cacheKey)) return hypertrophyScoreCache.get(cacheKey);
+        const sessionById = new Map(sessions.map((session) => [session.id, session]));
+        const weekMap = new Map();
+        data.exercises.filter((exercise) => sessionIds.has(exercise.sessionId)
+          && canonicalExerciseId(exercise) === catalogExercise.canonicalId
+          && resistanceTypeFor(exercise) === catalogExercise.resistanceType).forEach((exercise) => {
+          const session = sessionById.get(exercise.sessionId);
+          const weekStart = startOfWeekIso(sessionCompletionDate(session));
+          const week = weekMap.get(weekStart) || { weekStart, plannedSets: 0, completedSets: 0, repRangeTracked: 0, repRangeHits: 0, rpeTargetTracked: 0, rpeOnTarget: 0, volumeTotal: 0, bestPerformance: 0, rpeSum: 0, rpeCount: 0, failedSets: 0, isDeload: false, volumeTargetsTracked: 1, volumeTargetsHit: 0, comparableComparisons: 0, progressionWins: 0, regressions: 0, fatigueHigh: 0, fatigueModerate: 0, volumeChangeRatio: 0 };
+          week.isDeload ||= Boolean(session.isDeload || session.sessionType === "deload" || exercise.isDeload);
+          setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
+            week.plannedSets += 1;
+            if (!set.completed || set.skipped) { if (!set.skipped) week.failedSets += 1; return; }
+            week.completedSets += 1;
+            const reps = Number(set.reps || 0);
+            const repMin = Number(set.targetRepMin || set.targetReps || 0);
+            const repMax = Number(set.targetRepMax || set.targetReps || repMin);
+            if (repMin > 0 && repMax > 0 && !["duration", "distance"].includes(catalogExercise.resistanceType)) {
+              week.repRangeTracked += 1;
+              if (reps >= repMin && reps <= repMax) week.repRangeHits += 1;
+            }
+            const rpe = Number(set.rpe || 0);
+            const rpeMin = Number(set.targetRpeMin || 0);
+            const rpeMax = Number(set.targetRpeMax || set.targetRpe || rpeMin);
+            if (rpe > 0) {
+              week.rpeSum += rpe;
+              week.rpeCount += 1;
+              if (rpeMin > 0 || rpeMax > 0) {
+                week.rpeTargetTracked += 1;
+                const low = rpeMin || Math.max(0, rpeMax - Number(set.targetRpeTolerance || 0.5));
+                const high = rpeMin ? rpeMax : rpeMax + Number(set.targetRpeTolerance || 0.5);
+                if (rpe >= low && rpe <= high) week.rpeOnTarget += 1;
+              }
+            }
+            if (catalogExercise.resistanceType === "external") week.volumeTotal += resistanceLoadInUnit(set, catalogExercise.resistanceType) * reps;
+            week.bestPerformance = Math.max(week.bestPerformance, hypertrophyPerformanceValue(set, exercise, catalogExercise.resistanceType));
+          });
+          weekMap.set(weekStart, week);
+        });
+        const weeks = Array.from(weekMap.values()).sort((left, right) => left.weekStart.localeCompare(right.weekStart));
+        let previousPerformance = 0;
+        let previousVolume = 0;
+        weeks.forEach((week) => {
+          const completionRatio = week.plannedSets ? week.completedSets / week.plannedSets : 0;
+          week.qualifies = !week.isDeload && week.completedSets >= 2 && completionRatio >= 0.5;
+          week.volumeTargetsHit = completionRatio >= 0.8 ? 1 : 0;
+          if (previousVolume > 0 && week.volumeTotal > 0) week.volumeChangeRatio = Math.abs(week.volumeTotal - previousVolume) / previousVolume;
+          if (previousPerformance > 0 && week.bestPerformance > 0) {
+            week.comparableComparisons = 1;
+            if (week.bestPerformance >= previousPerformance * 1.015) week.progressionWins = 1;
+            else if (week.bestPerformance < previousPerformance * 0.93) { week.regressions = 1; week.fatigueModerate += 1; }
+          }
+          const averageRpe = week.rpeCount ? week.rpeSum / week.rpeCount : 0;
+          if (week.failedSets >= 2) week.fatigueHigh += 1;
+          else if (averageRpe >= 9.2 && week.completedSets >= 2) week.fatigueModerate += 1;
+          if (week.qualifies) {
+            previousPerformance = week.bestPerformance || previousPerformance;
+            previousVolume = week.volumeTotal || previousVolume;
+          }
+        });
+        const selection = { included: weeks.filter((week) => week.qualifies), skippedDeloadWeeks: weeks.filter((week) => week.isDeload), incompleteWeeks: weeks.filter((week) => !week.isDeload && !week.qualifies), requestedWeeks: weeks.length, provisional: weeks.filter((week) => week.qualifies).length < 6 };
+        const result = calculateCanonicalHypertrophyScore(selection);
+        hypertrophyScoreCache.set(cacheKey, result);
+        return result;
+      }
+
+      function rollingHypertrophySummary(limit = 10) {
+        const sessions = rollingCompletedSessions(limit);
+        const sessionIds = new Set(sessions.map((session) => session.id));
+        const representedIds = new Set(data.exercises.filter((exercise) => sessionIds.has(exercise.sessionId)).map((exercise) => canonicalExerciseId(exercise) + "::resistance::" + resistanceTypeFor(exercise)));
+        const liftScores = exerciseCatalog().filter((exercise) => representedIds.has(exercise.id)).map((exercise) => ({ exercise, score: exerciseHypertrophyScore(exercise, sessions)?.score })).filter((item) => Number.isFinite(item.score));
+        return { score: liftScores.length ? Math.round(liftScores.reduce((sum, item) => sum + item.score, 0) / liftScores.length) : null, sessionCount: sessions.length, liftCount: liftScores.length, liftScores };
+      }
+
+      function exerciseE1rmRecord(catalogExercise) {
+        if (!catalogExercise || catalogExercise.resistanceType !== "external") return { applicable: false };
+        const cacheKey = ["e1rm", analysisRevision, catalogExercise.id].join("|");
+        if (exerciseRecordCache.has(cacheKey)) return exerciseRecordCache.get(cacheKey);
+        const sessionById = new Map(data.sessions.filter((session) => isSessionSubmitted(session)).map((session) => [session.id, session]));
+        const candidates = data.exercises.filter((exercise) => sessionById.has(exercise.sessionId) && canonicalExerciseId(exercise) === catalogExercise.canonicalId && resistanceTypeFor(exercise) === "external").flatMap((exercise) => setsForExercise(exercise.id).filter((set) => set.completed && !set.skipped && isWorkingSet(set, "progression") && estimatedOneRepMax(set) > 0).map((set) => ({ set, exercise, session: sessionById.get(exercise.sessionId), e1rm: estimatedOneRepMax(set) })));
+        candidates.sort((left, right) => right.e1rm - left.e1rm
+          || sessionCompletionDate(right.session).localeCompare(sessionCompletionDate(left.session))
+          || String(right.session.id).localeCompare(String(left.session.id))
+          || canonicalSetSequence(left.set) - canonicalSetSequence(right.set));
+        const best = candidates[0];
+        if (!best) { const empty = { applicable: true, record: null }; exerciseRecordCache.set(cacheKey, empty); return empty; }
+        const configuredIncrement = data.templates.flatMap((template) => template.exercises || []).filter((exercise) => canonicalExerciseId(exercise) === catalogExercise.canonicalId && (exercise.resistanceType || inferResistanceType(exercise.name, exercise)) === "external").map((exercise) => Number(exercise.increment || 0)).filter((value) => value > 0).sort((a, b) => a - b)[0] || progressionProfileForExercise(catalogExercise.name).increment;
+        const load = resistanceLoadInUnit(best.set, "external");
+        const reps = Number(best.set.reps || 0);
+        const repCandidate = reps < 12 ? { weight: load, reps: reps + 1 } : null;
+        const loadCandidate = { weight: roundToIncrement(load + configuredIncrement, configuredIncrement), reps };
+        const nextTarget = repCandidate && repCandidate.weight * (1 + repCandidate.reps / 30) > best.e1rm ? repCandidate : loadCandidate;
+        const result = { applicable: true, record: { ...best, load, reps, increment: configuredIncrement, nextTarget } };
+        exerciseRecordCache.set(cacheKey, result);
+        return result;
+      }
+
+      function exerciseE1rmSeries(catalogExercise) {
+        if (catalogExercise?.resistanceType !== "external") return null;
+        const sessionById = new Map(data.sessions.filter((session) => isSessionSubmitted(session)).map((session) => [session.id, session]));
+        const points = data.exercises.filter((exercise) => sessionById.has(exercise.sessionId) && canonicalExerciseId(exercise) === catalogExercise.canonicalId && resistanceTypeFor(exercise) === "external").flatMap((exercise) => {
+          const session = sessionById.get(exercise.sessionId);
+          const candidates = setsForExercise(exercise.id).filter((set) => set.completed && !set.skipped && isWorkingSet(set, "progression") && estimatedOneRepMax(set) > 0).sort((left, right) => estimatedOneRepMax(right) - estimatedOneRepMax(left) || canonicalSetSequence(left) - canonicalSetSequence(right));
+          const bestSet = candidates[0];
+          return bestSet ? [{ label: formatDate(sessionCompletionDate(session)), date: sessionCompletionDate(session), sessionId: session.id, sessionTitle: session.title || "Workout", sessionNotes: String(session.notes || ""), exerciseNotes: String(exercise.notes || ""), source: String(bestSet.source || exercise.source || session.source || "Source not recorded"), comparisonRole: normalizeSetTypeCode(bestSet.setType, bestSet.isWarmup), value: Math.round(estimatedOneRepMax(bestSet) * 10) / 10, metricType: "estimated_one_rep_max", bestSet, details: candidates.map((set) => ({ ...set, sessionId: session.id, sessionTitle: session.title || "Workout", sessionDate: sessionCompletionDate(session), exerciseName: exercise.name })) }] : [];
+        }).sort((left, right) => left.date.localeCompare(right.date) || String(left.sessionId).localeCompare(String(right.sessionId)));
+        return { title: "Estimated 1RM trend", unit: data.settings.weightUnit, resistanceType: "external", points };
+      }
+
       function renderLiftProgress() {
         resetChartPointActivations();
         const catalog = exerciseCatalog();
-        if ((!selectedExerciseId || !catalog.some((item) => item.id === selectedExerciseId)) && catalog[0]) {
-          selectedExerciseId = catalog[0].id;
-          chartExerciseDraft = catalog[0].name;
+        if (progressExerciseDetailId) {
+          const routedExercise = catalog.find((item) => item.id === progressExerciseDetailId);
+          if (routedExercise) {
+            selectedExerciseId = routedExercise.id;
+            chartExerciseDraft = routedExercise.name;
+            return renderExerciseProgressDetail(routedExercise);
+          }
+          progressExerciseDetailId = "";
         }
-        const exercise = selectedExerciseRecord();
-        const selectedName = exercise?.name || "";
-        const progress = selectedName
-          ? measurePerformance("charts:exercisePerformanceSeries", () => exercisePerformanceSeries(selectedName, { canonicalExerciseId: exercise?.canonicalId, resistanceType: exercise?.resistanceType }), { exerciseId: selectedExerciseId })
-          : { points: [], title: "Performance", unit: "", resistanceType: "external" };
-        if (catalog.length === 0) {
-          return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div></div><div class="empty-state">Complete a workout to add exercise history.</div>' + renderHistory() + '</section>';
-        }
+        return progressMode === "exercises" ? renderProgressExercises() : renderProgressSessions();
+      }
+
+      function renderProgressModeSwitch(activeMode) {
+        return '<div class="progress-mode-switch" role="tablist" aria-label="Progress view"><button type="button" role="tab" data-action="set-progress-mode" data-mode="sessions" aria-selected="' + (activeMode === 'sessions') + '" class="' + (activeMode === 'sessions' ? 'active' : '') + '">Sessions</button><button type="button" role="tab" data-action="set-progress-mode" data-mode="exercises" aria-selected="' + (activeMode === 'exercises') + '" class="' + (activeMode === 'exercises' ? 'active' : '') + '">Exercises</button></div>';
+      }
+
+      function renderProgressSessions() {
+        return '<section class="view progress-sessions-view"><div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Completed sessions</h1><p>Grades and notable performance at a glance.</p></div></div>' + renderProgressModeSwitch('sessions') + renderHistory() + '</section>';
+      }
+
+      function progressExerciseSparkline(exercise) {
+        const series = exerciseE1rmSeries(exercise) || exercisePerformanceSeries(exercise.name, { canonicalExerciseId: exercise.canonicalId, resistanceType: exercise.resistanceType });
+        const values = series.points.slice(-6).map((point) => Number(point.value)).filter((value) => Number.isFinite(value));
+        if (!values.length) return '<span class="progress-sparkline-empty" aria-label="No recent trend">—</span>';
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const spread = Math.max(1, max - min);
+        const points = values.map((value, index) => (4 + index * (82 / Math.max(1, values.length - 1))).toFixed(1) + ',' + (27 - (value - min) / spread * 22).toFixed(1)).join(' ');
+        return '<svg class="progress-sparkline" viewBox="0 0 90 32" role="img" aria-label="Recent ' + escapeHtml(values.at(-1) >= values[0] ? 'rising or stable' : 'declining') + ' trend"><path d="M3 28H87"></path><polyline points="' + points + '"></polyline><circle cx="' + (4 + (values.length - 1) * (82 / Math.max(1, values.length - 1))).toFixed(1) + '" cy="' + (27 - (values.at(-1) - min) / spread * 22).toFixed(1) + '" r="3"></circle></svg>';
+      }
+
+      function renderProgressExerciseRows() {
+        const sessions = rollingCompletedSessions();
+        const query = normalizeChartSearch(progressExerciseSearchQuery);
+        const rows = exerciseCatalog().filter((exercise) => !query || normalizeChartSearch(exercise.name).includes(query) || normalizeChartSearch(exercise.canonicalId).includes(query)).map((exercise) => {
+          const score = exerciseHypertrophyScore(exercise, sessions)?.score;
+          const series = exercisePerformanceSeries(exercise.name, { canonicalExerciseId: exercise.canonicalId, resistanceType: exercise.resistanceType });
+          const latest = series.points.at(-1);
+          const record = exerciseE1rmRecord(exercise);
+          const facts = [Number.isFinite(score) ? '<span class="exercise-score-chip">Hypertrophy ' + score + '</span>' : '', latest?.bestSet ? '<span>Latest ' + escapeHtml(formatSetPerformance(latest.bestSet, exercise)) + '</span>' : '<span>No completed performance</span>', record.record ? '<span>Best ' + escapeHtml(formatLoadNumber(record.record.e1rm)) + ' ' + data.settings.weightUnit + ' e1RM</span>' : record.applicable ? '<span>No qualifying e1RM</span>' : '<span>e1RM not applicable</span>'].filter(Boolean).join('');
+          return '<button class="progress-exercise-row" type="button" data-action="open-progress-exercise" data-exercise-id="' + escapeHtml(exercise.id) + '"><span class="progress-exercise-facts"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + facts + '</span></span>' + progressExerciseSparkline(exercise) + '<span class="progress-chevron" aria-hidden="true">›</span></button>';
+        }).join('');
+        return rows || '<div class="empty-state">No exercises match this search.</div>';
+      }
+
+      function renderProgressExercises() {
+        const count = exerciseCatalog().length;
+        return '<section class="view progress-exercises-view"><div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Exercises</h1><p>Compare exact exercise variants.</p></div></div>' + renderProgressModeSwitch('exercises') + '<label class="progress-exercise-search"><span class="visually-hidden">Search exercises</span><input type="search" data-action="filter-progress-exercises" value="' + escapeHtml(progressExerciseSearchQuery) + '" placeholder="Search exercises" aria-label="Search exercises"><span aria-hidden="true">⌕</span></label><p class="progress-index-caption">' + count + ' exercise' + (count === 1 ? '' : 's') + ' in retained history</p><div class="progress-exercise-list" data-progress-exercise-list>' + renderProgressExerciseRows() + '</div></section>';
+      }
+
+      function renderExerciseRecordCard(exercise, recordResult) {
+        if (!recordResult.applicable) return '<section class="exercise-record-card record-not-applicable"><div class="section-kicker">Estimated 1RM</div><h2>Not applicable</h2><p>This exercise uses ' + escapeHtml(resistanceTypeLabel(exercise.resistanceType).toLowerCase()) + ', so the app does not invent a load-based e1RM or PR target.</p></section>';
+        const record = recordResult.record;
+        if (!record) return '<section class="exercise-record-card record-not-applicable"><div class="section-kicker">Estimated 1RM</div><h2>No qualifying record</h2><p>A completed external-load set of 1–12 repetitions is required.</p></section>';
+        const source = formatLoadNumber(record.load) + ' ' + data.settings.weightUnit + ' × ' + record.reps;
+        const target = formatLoadNumber(record.nextTarget.weight) + ' ' + data.settings.weightUnit + ' × ' + record.nextTarget.reps;
+        return '<section class="exercise-record-card" aria-labelledby="exercise-record-heading"><div class="section-kicker">Best e1RM</div><div class="exercise-record-value"><h2 id="exercise-record-heading">' + escapeHtml(formatLoadNumber(record.e1rm)) + '</h2><span>' + escapeHtml(data.settings.weightUnit) + ' est. 1RM</span></div><p class="exercise-record-source">' + escapeHtml(source) + ' · ' + escapeHtml(formatDate(sessionCompletionDate(record.session))) + '<br>' + escapeHtml(record.session.title || 'Completed session') + '</p><button class="record-source-action" type="button" data-action="open-session" data-session-id="' + escapeHtml(record.session.id) + '"><span>Open exact source set</span><span aria-hidden="true">›</span></button><hr><div class="exercise-next-target"><span><span class="section-kicker">Next mathematical target</span><strong>' + escapeHtml(target) + '</strong></span><span class="rolling-info" aria-hidden="true">i</span></div><p class="record-helper">The next practical set whose Epley estimate exceeds this record—not a promise of performance.</p></section>';
+      }
+
+      function renderExerciseProgressDetail(exercise) {
+        const e1rmSeries = exerciseE1rmSeries(exercise);
+        const progress = e1rmSeries?.points?.length
+          ? e1rmSeries
+          : exercisePerformanceSeries(exercise.name, { canonicalExerciseId: exercise.canonicalId, resistanceType: exercise.resistanceType });
         const visiblePoints = progressPointsForDateWindow(progress.points);
         const latestPoint = visiblePoints.at(-1);
-        const latestFact = latestPoint?.bestSet
-          ? formatSetPerformance(latestPoint.bestSet, exercise) + " · " + formatDate(latestPoint.date)
-          : "No comparable completed working set yet.";
-        const chartPointScope = {
-          exerciseId: selectedExerciseId,
-          resistanceType: exercise?.resistanceType || progress.resistanceType
-        };
-        const comparisonRoleLabel = progress.comparisonRole ? setTypeLabels[progress.comparisonRole] || "Comparable working set" : "Comparable working set";
-        return `
-          <section class="view charts-view">
-            <div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div>${exerciseHistoryReturnState ? '<button class="secondary-action" type="button" data-action="return-to-active-exercise">Back to workout</button>' : ''}</div>
-            <div class="chart-control-panel" aria-label="Selected lift controls">
-              <div class="chart-viewing-summary"><div><span>Exercise or variant</span><strong>${escapeHtml(selectedName)}</strong><span>${escapeHtml(latestFact)}</span></div><span class="status-pill inside">${visiblePoints.length} ${progressDateWindow === "all" ? "" : "recent "}session${visiblePoints.length === 1 ? "" : "s"}</span></div>
-              <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
-              <div class="segmented chart-date-window" role="radiogroup" aria-label="Performance chart date range"><label><input type="radio" name="progress-date-window" value="recent" data-action="set-progress-date-window" data-window="recent" ${progressDateWindow === "recent" ? "checked" : ""} /><span>Recent six months</span></label><label><input type="radio" name="progress-date-window" value="all" data-action="set-progress-date-window" data-window="all" ${progressDateWindow === "all" ? "checked" : ""} /><span>All history</span></label></div>
-              <p class="chart-control-context">The chart uses ${escapeHtml(comparisonRoleLabel.toLowerCase())} observations from submitted workouts. Named variants and resistance types remain separate.</p>
-            </div>
-            <section class="screen-section primary-analysis-chart">
-              <div class="section-heading"><div><h2>Performance trend</h2><p>Tap a point for its date, load, reps, RPE, role, and workout.</p></div></div>
-              ${renderChart("performance", progress.title, visiblePoints, "No comparable completed sets in this date range.", chartPointScope)}
-            </section>
-            ${renderHistory()}
-          </section>
-        `;
+        const latestFact = latestPoint?.bestSet ? formatSetPerformance(latestPoint.bestSet, exercise) : 'No comparable completed working set yet.';
+        const backAction = exerciseHistoryReturnState ? '<button class="exercise-detail-back" type="button" data-action="return-to-active-exercise">← Back to workout</button>' : '<button class="exercise-detail-back" type="button" data-action="close-progress-exercise">← Back to Exercises</button>';
+        return '<section class="view charts-view exercise-detail-view"><div class="exercise-detail-toolbar">' + backAction + '<span>Read-only history</span></div><div class="exercise-detail-hero"><div class="section-kicker">Performance · exercise history</div><h1>' + escapeHtml(exercise.name) + '</h1><strong>Latest qualifying set · ' + escapeHtml(latestFact) + '</strong><span>' + visiblePoints.length + ' comparable session' + (visiblePoints.length === 1 ? '' : 's') + ' · exact exercise variant</span></div><div class="exercise-detail-grid"><div class="primary-analysis-chart">' + renderChart('performance', progress.title, visiblePoints, 'No comparable completed sets in this date range.', { exerciseId: exercise.id, resistanceType: exercise.resistanceType, helperText: 'Tap a point for its source load, reps, RPE, role, and session.' }) + '</div>' + renderExerciseRecordCard(exercise, exerciseE1rmRecord(exercise)) + '</div><details class="exercise-detail-method"><summary>Method and retained-history notes</summary><p>Named variants and resistance types remain separate. Estimated 1RM uses the existing Epley formula and only completed external-load sets of 1–12 repetitions.</p></details></section>';
       }
 
       function restAlertState() {

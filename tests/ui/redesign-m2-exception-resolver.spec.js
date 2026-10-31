@@ -207,7 +207,7 @@ async function installFixture(page) {
 }
 
 async function beginTemplate(page) {
-  const start = page.locator(`[data-action="start-next-template"][data-template-id="${TEMPLATE_ID}"]`);
+  const start = page.locator(`[data-action="start-template"][data-template-id="${TEMPLATE_ID}"]`);
   await expect(start).toBeVisible();
   await start.click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -291,14 +291,15 @@ test("pain or injury entry yields one canonical continued-action card without re
   await page.setViewportSize({ width: 390, height: 844 });
   const browserErrors = collectBrowserErrors(page);
   await installFixture(page);
-
-  await page.locator(`[data-action="log-template-readiness"][data-template-id="${TEMPLATE_ID}"]`).click();
+  await beginTemplate(page);
+  await page.locator(".active-session-menu > summary").click();
+  await page.locator('[data-action="log-workout-readiness"]').click();
   const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(readiness).toBeVisible();
   await readiness.getByRole("checkbox", { name: "Pain or injury", exact: true }).check();
   await readiness.getByLabel("Affected area", { exact: true }).selectOption({ label: "Back" });
   await readiness.getByLabel("Optional context", { exact: true }).fill("Synthetic non-diagnostic test context.");
-  await readiness.locator('[data-action="start-workout-with-readiness"]').click();
+  await readiness.locator('[data-action="save-workout-readiness"]').click();
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const workout = page.locator(".workout-view");
@@ -322,8 +323,8 @@ test("pain or injury entry yields one canonical continued-action card without re
     const actions = session?.resolvedActions || [];
     return {
       actionCount: actions.length,
-      action: actions[0],
-      valid: actions[0] ? FitnessExceptionResolver.validateResolvedAction(actions[0]) : null,
+      action: actions.find((item) => item.category === "pain_or_illness") || null,
+      valid: actions.find((item) => item.category === "pain_or_illness") ? FitnessExceptionResolver.validateResolvedAction(actions.find((item) => item.category === "pain_or_illness")) : null,
       stableTargetSnapshot: exercise?.stableTargetSnapshot,
       templateRepRange: {
         min: template?.exercises?.[0]?.repMin,
@@ -331,7 +332,7 @@ test("pain or injury entry yields one canonical continued-action card without re
       }
     };
   }, { templateId: TEMPLATE_ID });
-  expect(canonical.actionCount).toBe(1);
+  expect(canonical.actionCount).toBe(2);
   expect(canonical.valid?.valid).toBe(true);
   expect(canonical.action).toMatchObject({
     contractVersion: "comprehensive-fitness-resolved-action/1.0.0",
@@ -359,7 +360,7 @@ test("pain or injury entry yields one canonical continued-action card without re
   await expect(page.locator(".workout-view .resolved-action-card")).toHaveCount(1);
   const restored = await page.evaluate(() => {
     const session = data.sessions.find((item) => item.workoutState === "active" && item.submitted !== true);
-    const action = session?.resolvedActions?.[0] || null;
+    const action = session?.resolvedActions?.find((item) => item.category === "pain_or_illness") || null;
     return {
       action,
       valid: action ? FitnessExceptionResolver.validateResolvedAction(action) : null

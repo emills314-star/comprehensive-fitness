@@ -162,7 +162,7 @@ async function installFixture(page, fixture = m1Fixture()) {
 }
 
 async function startExpectedWorkout(page) {
-  const start = page.locator(`[data-action="start-next-template"][data-template-id="${TEMPLATE_ID}"]`);
+  const start = page.locator(`[data-action="start-template"][data-template-id="${TEMPLATE_ID}"]`);
   await expect(start).toBeVisible();
   await start.click();
   await expect(page.getByRole("dialog")).toHaveCount(0);

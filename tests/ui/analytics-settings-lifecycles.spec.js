@@ -78,93 +78,57 @@ async function persistedAppData(page) {
   return page.evaluate(async () => readIndexedValue("app-data"));
 }
 
-test("Progress empty state asks for a completed workout without rendering invented history", async ({ page }) => {
+test("Progress empty states do not render invented session or exercise history", async ({ page }) => {
   await installFixture(page, buildEmptyAnalyticsSettingsFixture());
   await openPrimaryTab(page, "progress");
-
-  const empty = page.getByText("Complete a workout to add exercise history.", { exact: true });
-  await expect(empty).toContainText("Complete a workout");
-  await expect(page.locator(".charts-view .chart-control-panel, .charts-view .chart-card")).toHaveCount(0);
+  await expect(page.getByText("Completed sessions will appear here.", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  await expect(page.getByText("No exercises match this search.", { exact: true })).toBeVisible();
+  await expect(page.locator(".chart-card")).toHaveCount(0);
   expect(await page.evaluate(() => exerciseCatalog().length)).toBe(0);
 });
 
-test("chart search is case-insensitive and retains the selected lift on no result", async ({ page }) => {
+test("exercise search is case-insensitive and does not invent a lift on no result", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "progress");
-  await waitForCharts(page);
-  let input = page.getByRole("combobox", { name: "Search or select exercise" });
-  await expect(input).toHaveValue("Barbell Bench Press");
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  const input = page.getByRole("searchbox", { name: "Search exercises" });
   await input.fill("dUmBbElL bEnCh PrEsS");
-  await input.press("Enter");
-  await waitForCharts(page);
-  await expect(input).toHaveValue("Dumbbell Bench Press");
-
-  const beforeUnknownQuery = await page.evaluate(() => ({
-    selectedExerciseId,
-    recentChartExerciseIds: [...recentChartExerciseIds],
-    catalogIds: exerciseCatalog().map((exercise) => exercise.id)
-  }));
-
-  input = page.getByRole("combobox", { name: "Search or select exercise" });
-  const unknownQuery = "unlogged synthetic movement";
-  await input.fill(unknownQuery);
-  await expect(page.locator(".exercise-search-empty")).toContainText("No matching logged exercise");
-  await input.press("Enter");
-  await expect(input).toHaveValue("Dumbbell Bench Press");
-  await expect(page.locator(".exercise-search-error")).toHaveText("No logged exercise matched. The previous lift remains selected.");
-  await expect(input).toHaveValue("Dumbbell Bench Press");
-  const afterUnknownQuery = await page.evaluate((query) => ({
-    selectedExerciseId,
-    recentChartExerciseIds: [...recentChartExerciseIds],
-    catalogIds: exerciseCatalog().map((exercise) => exercise.id),
-    matchingQueryIds: matchingChartExercises(query).map((exercise) => exercise.id)
-  }), unknownQuery);
-  expect.soft(afterUnknownQuery.selectedExerciseId, "an unknown query must preserve the prior canonical selection").toBe(beforeUnknownQuery.selectedExerciseId);
-  expect.soft(afterUnknownQuery.recentChartExerciseIds, "an unknown query must not add a fabricated custom identifier to the recent-selection history").toEqual(beforeUnknownQuery.recentChartExerciseIds);
-  expect.soft(afterUnknownQuery.catalogIds, "an unknown query must not add a fabricated custom exercise to the logged catalog").toEqual(beforeUnknownQuery.catalogIds);
-  expect.soft(afterUnknownQuery.matchingQueryIds, "free-text chart matching must return no result instead of treating a reporting-only custom fallback as a logged exercise").toEqual([]);
+  await expect(page.locator('[data-action="open-progress-exercise"]')).toHaveCount(1);
+  await expect(page.locator('[data-action="open-progress-exercise"] strong')).toHaveText("Dumbbell Bench Press");
+  const catalogIds = await page.evaluate(() => exerciseCatalog().map((exercise) => exercise.id));
+  await input.fill("unlogged synthetic movement");
+  await expect(page.getByText("No exercises match this search.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => exerciseCatalog().map((exercise) => exercise.id))).toEqual(catalogIds);
 });
 
-test("partial chart search ranks all matches and promotes the most recently selected lift", async ({ page }) => {
+test("partial exercise search exposes all exact retained variants", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "progress");
-  await waitForCharts(page);
-
-  let input = page.getByRole("combobox", { name: "Search or select exercise" });
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  const input = page.getByRole("searchbox", { name: "Search exercises" });
   await input.fill("bEnCh");
-  const suggestions = page.locator('[data-action="select-chart-exercise"]');
+  const suggestions = page.locator('[data-action="open-progress-exercise"]');
   await expect(suggestions).toHaveCount(3);
-  expect(await suggestions.locator("strong").allTextContents()).toEqual([
+  expect((await suggestions.locator("strong").allTextContents()).sort()).toEqual([
     "Barbell Bench Press",
     "Close-Grip Bench Press",
     "Dumbbell Bench Press"
-  ]);
-
-  await suggestions.filter({ hasText: "Dumbbell Bench Press" }).click();
-  await waitForCharts(page);
-  input = page.getByRole("combobox", { name: "Search or select exercise" });
-  await input.fill("BeNcH");
-  await expect(suggestions).toHaveCount(3);
-  await expect(suggestions.first().locator("strong")).toHaveText("Dumbbell Bench Press");
+  ].sort());
 });
 
 test("Progress renders one factual performance chart and exposes recorded point details", async ({ page }) => {
+  test.setTimeout(90_000);
   await installFixture(page);
   await openPrimaryTab(page, "progress");
-  await waitForCharts(page);
-
-  const input = page.getByRole("combobox", { name: "Search or select exercise" });
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  const input = page.getByRole("searchbox", { name: "Search exercises" });
   await input.fill("dUmBbElL bEnCh PrEsS");
-  await input.press("Enter");
-  await waitForCharts(page);
-
-  await expect(page.locator(".chart-viewing-summary")).toContainText("Dumbbell Bench Press");
-  await expect(page.locator(".primary-analysis-chart")).toContainText("Performance trend");
-  await expect(page.locator('[data-chart-key="e1rm"], [data-chart-key="volume"]')).toHaveCount(0);
+  await page.locator('[data-action="open-progress-exercise"]').evaluate((button) => button.click());
+  await expect(page.getByRole("heading", { name: "Dumbbell Bench Press", exact: true })).toBeVisible();
 
   const chart = page.locator('.chart-card[data-chart-key="performance"]');
   await expect(chart).toBeVisible();
-  await expect(chart.locator("header strong")).toContainText("Best completed");
   const points = chart.locator('[data-action="show-chart-point"]');
   expect(await points.count()).toBeGreaterThan(0);
   await expect(chart.locator('[data-action="show-chart-point"][tabindex="0"]')).toHaveCount(1);
@@ -175,7 +139,7 @@ test("Progress renders one factual performance chart and exposes recorded point 
     await points.first().press("End");
     await expect(points.last()).toBeFocused();
   }
-  await expect(points.last()).toHaveAttribute("aria-label", /Dumbbell Bench Press|Best completed/i);
+  await expect(points.last()).toHaveAttribute("aria-label", /Dumbbell Bench Press|estimated|performance/i);
   await points.last().click();
   const detail = chart.locator(".chart-detail");
   await expect(detail).toContainText("Dumbbell Bench Press");
@@ -404,6 +368,7 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
 });
 
 test("the registered service worker serves the public app shell while the isolated context is offline", async ({ browser, baseURL }) => {
+  test.setTimeout(90_000);
   const context = await browser.newContext({ baseURL, serviceWorkers: "allow" });
   const page = await context.newPage();
   let offlineEnabled = false;

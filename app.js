@@ -152,6 +152,41 @@
         if (action === "open-settings") setActiveTab("settings");
         if (action === "close-secondary-context" || action === "close-workout-context") setActiveTab("today");
         if (action === "open-progress") setActiveTab("progress");
+        if (action === "set-progress-mode") {
+          progressMode = target.dataset.mode === "exercises" ? "exercises" : "sessions";
+          progressExerciseDetailId = "";
+          chartDetailPoint = null;
+          window.history.pushState({ ...(window.history.state || {}), tab: "progress" }, "", progressUrl());
+          activeTab = "progress";
+          render();
+        }
+        if (action === "open-rolling-hypertrophy") {
+          progressMode = "exercises";
+          progressExerciseDetailId = "";
+          chartDetailPoint = null;
+          activeTab = "progress";
+          window.history.pushState({ ...(window.history.state || {}), tab: "progress" }, "", progressUrl());
+          render();
+        }
+        if (action === "open-progress-exercise") {
+          const exercise = exerciseCatalog().find((item) => item.id === target.dataset.exerciseId);
+          if (!exercise) return;
+          selectedExerciseId = exercise.id;
+          chartExerciseDraft = exercise.name;
+          progressMode = "exercises";
+          progressExerciseDetailId = exercise.id;
+          chartDetailPoint = null;
+          activeTab = "progress";
+          window.history.pushState({ ...(window.history.state || {}), tab: "progress" }, "", progressUrl());
+          render();
+        }
+        if (action === "close-progress-exercise") {
+          progressMode = "exercises";
+          progressExerciseDetailId = "";
+          chartDetailPoint = null;
+          window.history.pushState({ ...(window.history.state || {}), tab: "progress" }, "", progressUrl());
+          render();
+        }
         if (action === "open-exercise-history") {
           event.preventDefault();
           event.stopPropagation();
@@ -162,7 +197,9 @@
           if (catalogExercise) {
             selectedExerciseId = catalogExercise.id;
             chartExerciseDraft = catalogExercise.name;
+            progressExerciseDetailId = catalogExercise.id;
           }
+          progressMode = "exercises";
           setActiveTab("progress");
         }
         if (action === "return-to-active-exercise") {
@@ -183,12 +220,6 @@
           focusWorkoutExercise(workoutFocusExerciseId);
         }
         if (action === "open-history") setActiveTab("progress");
-        if (action === "select-today-template") {
-          if (data.templates.some((template) => template.id === target.dataset.templateId)) {
-            todaySelectedTemplateId = target.dataset.templateId;
-            render();
-          }
-        }
         if (action === "toggle-unit") commit(setAppWeightUnitPreference(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
         if (action === "toggle-rest-notifications") {
@@ -416,7 +447,9 @@
           if (exercise) {
             selectedExerciseId = exercise.id;
             chartExerciseDraft = exercise.name;
+            progressExerciseDetailId = exercise.id;
           }
+          progressMode = "exercises";
           setActiveTab("progress");
         }
         if (action === "begin-history-edit") await beginHistoryEdit();
@@ -815,6 +848,12 @@
         if (action === "add-exercise-rep-max") addExerciseRepMax = target.value;
         if (action === "add-exercise-target-rpe") addExerciseTargetRpe = target.value;
         if (action === "add-exercise-rest-seconds") addExerciseRestSeconds = target.value;
+        if (action === "filter-progress-exercises") {
+          progressExerciseSearchQuery = target.value;
+          const list = root.querySelector("[data-progress-exercise-list]");
+          if (list) list.innerHTML = renderProgressExerciseRows();
+          return;
+        }
         if (action === "review-exercise-input") {
           chartExerciseDraft = target.value;
           chartExerciseSearchOpen = true;
@@ -975,6 +1014,7 @@
       async function boot() {
         await loadData();
         await initializeExerciseIdentityCompatibility();
+        if (window.location.hash.replace(/^#/, "").toLowerCase() === "progress") readProgressRoute();
         storagePersistenceStatus = await readStoragePersistenceStatus();
         installDevelopmentPerformanceFixture();
         await applyWorkoutDeepLink();
@@ -1007,6 +1047,7 @@
       window.addEventListener("popstate", () => {
         const rawHash = window.location.hash.replace(/^#/, "").toLowerCase();
         const nextTab = tabFromLocation();
+        if (nextTab === "progress") readProgressRoute();
         if (!currentDestinationIds.includes(rawHash)) {
           window.history.replaceState({ ...(window.history.state || {}), tab: nextTab }, "", tabUrl(nextTab));
         }

@@ -163,7 +163,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await templateCard.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+  await expect(page.locator(".active-session-ready")).toHaveText("Ready");
   await expect(page.locator(".exercise-card")).toHaveCount(1);
 
   const active = await waitForPersisted(page, (stored) => stored?.sessions?.some((session) => session.templateId === templateId && session.workoutStarted && !session.submitted), "template start must persist one active workout");
@@ -181,19 +181,18 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(completion).toHaveAttribute("aria-pressed", "true");
   await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(0);
   await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
-  await expect(completion).toBeFocused();
+  await expect(firstWorkingSet).toHaveClass(/completed/);
   await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 2 sets");
-  const timer = page.locator(".workout-timer-slot > .timer-bar");
+  const timer = page.locator(".active-session-header .timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await expect(firstWorkingSet.locator(".timer-bar"), "the M1 rest strip must not be nested inside a logged set").toHaveCount(0);
-  await timer.locator("summary").click();
-  await timer.getByRole("button", { name: "Pause timer" }).click();
-  await expect(timer.getByRole("button", { name: "Resume timer" })).toBeVisible();
-  await timer.getByRole("button", { name: "Resume timer" }).click();
-  await timer.getByRole("button", { name: "Add 15 seconds" }).click();
-  if (!await timer.evaluate((element) => element.open)) await timer.locator("summary").click();
-  await timer.getByRole("button", { name: "Skip rest", exact: true }).click();
-  await expect(page.locator(".workout-timer-slot > .timer-bar")).toHaveCount(0);
+  await page.locator('[data-action="toggle-timer"]').click();
+  await expect(page.locator('[data-action="toggle-timer"]')).toHaveText("Resume");
+  await page.locator('[data-action="toggle-timer"]').click();
+  await page.locator('[data-action="adjust-timer"][data-seconds="15"]').click();
+  await page.locator('[data-action="skip-timer"]').click();
+  await expect(page.locator(".active-session-header .timer-bar")).toHaveCount(0);
+  await expect(page.locator(".active-session-ready")).toHaveText("Ready");
 
   await page.locator('[data-action="request-submit-workout"]').click();
   await expect(page.getByText("Log this workout as completed?", { exact: true })).toBeVisible();
@@ -218,14 +217,19 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(submittedCard).toHaveCount(1);
   await expect(submittedCard).toContainText(TEMPLATE_NAME);
 
-  await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(EXERCISE_NAME, { timeout: 45_000 });
-  await expect(page.locator(".charts-view h1")).toHaveText("Training history");
+  await page.getByRole("tab", { name: "Exercises", exact: true }).click();
+  const search = page.getByRole("searchbox", { name: "Search exercises" });
+  await search.fill(EXERCISE_NAME);
+  await page.locator('[data-action="open-progress-exercise"]').click();
+  await expect(page.locator(".exercise-detail-hero h1")).toHaveText(EXERCISE_NAME);
   await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
-  await expect(page.locator(".progress-switcher, .dashboard-view")).toHaveCount(0);
+  await expect(page.getByText("Completed workouts", { exact: true })).toHaveCount(0);
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
   await openProgress(page);
+  if (await page.locator(".exercise-detail-view").count()) await page.locator('[data-action="close-progress-exercise"]').click();
+  await page.getByRole("tab", { name: "Sessions", exact: true }).click();
   await expect(page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`), "the submitted session must survive reload").toHaveCount(1);
 
   const beforeUnitChange = await persistedData(page);

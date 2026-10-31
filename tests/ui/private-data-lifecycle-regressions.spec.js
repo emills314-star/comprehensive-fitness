@@ -282,6 +282,11 @@ test("failed identity persistence survives a null IndexedDB recovery and resumes
   await page.reload();
   await page.waitForLoadState("load");
 
+  await expect.poll(() => page.evaluate(async () => {
+    const indexed = await readIndexedValue("push-identity");
+    return { runtime: pushIdentity?.installationId || "", indexed: indexed?.installationId || "" };
+  }), { timeout: 15_000 }).toEqual({ runtime: pending.installationId, indexed: pending.installationId });
+
   const recovered = await page.evaluate(async (identityKey) => ({
     runtime: structuredClone(pushIdentity),
     indexed: await readIndexedValue("push-identity"),

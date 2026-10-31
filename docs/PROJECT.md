@@ -1,5 +1,9 @@
 # Project
 
+## Quiet Control progress refresh — IMPLEMENTED LOCALLY 2026-08-15
+
+The approved Quiet Control refresh keeps Today and Progress as the only persistent destinations while adding a narrowly scoped read-only analytics layer. An empty Today screen says **Choose your workout** and shows an equally weighted rolling score across distinct valid lifts represented in the ten most recent completed sessions. Progress now has Sessions and Exercises modes; exercise identity routes to a read-only scoped detail with trend, exact estimated-1RM source set, and a mathematical next target. The active-session header owns the sole rest countdown, set completion is explicit, and every set row shows position-matched prior-session load, repetitions, and RPE when available. None of these analytics creates a workout target, exception action, or normal-progression recommendation.
+
 ## Active-session correctness update — IMPLEMENTED LOCALLY 2026-08-07
 
 Today resolves multi-day routine assignments against the local weekday: one match is recommended, while zero or multiple matches require selection. Active workouts own one pinned absolute-deadline rest timer; completing another set replaces prior rest and uses that set's optional rest target. Stable-identity history links return without recreating the active draft. These are targeted functional changes, not a broad redesign.
@@ -7,7 +11,7 @@ Today resolves multi-day routine assignments against the local weekday: one matc
 ## Metadata
 
 - **Purpose:** Current product scope and verified implementation boundary
-- **Last verified:** 2026-08-02
+- **Last verified:** 2026-08-15
 - **Branch:** `codex/zero-based-redesign`
 - **Status:** **CORRECTED CANDIDATE VERIFIED LOCALLY; IMMUTABLE/PINNED/CLAUDE GATES OPEN**
 - **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md), [`redesign/final/FINAL_FEATURE_DISPOSITION.md`](redesign/final/FINAL_FEATURE_DISPOSITION.md)
@@ -31,8 +35,8 @@ Ordinary training is quiet. The product is not a program-design system, research
 
 The only persistent destinations are **Today** and **Progress**.
 
-- Today owns expected-workout identity, compact preview, direct Start, alternate-workout choice, optional readiness, Resume, and any current canonical exception.
-- Progress owns chronological submitted-workout history and exact exercise-variant performance detail.
+- Today owns the no-session workout chooser, rolling ten-completed-session score, active-session Resume/replacement entry, optional readiness, and any current canonical exception.
+- Progress owns Sessions and Exercises modes, chronological submitted-session history, and stable-ID exact exercise-variant detail.
 - Active workout, workout detail, exercise detail, Routines, Settings, privacy, support, import, export, and clear-data are contextual or secondary.
 - A running workout owns the screen and hides persistent navigation.
 - Retired route hashes fall back to Today; they do not reopen Dashboard, Plan, More, Insights, Advanced, or old Progress subviews.
@@ -43,15 +47,16 @@ The UI is fixed light presentation. Theme and color-package selectors are not cu
 
 | Capability | Verified implementation |
 | --- | --- |
-| Expected workout and Start | Today identifies an explicit expected routine when configured. Start opens the logger directly; readiness is not a gate. |
-| One active draft | A competing start offers Resume, Finish, or confirmed Discard. It never silently replaces the current draft. |
+| Workout chooser and Start | With no loaded session, Today says **Choose your workout** and starts the selected routine directly; readiness is not a gate. |
+| One active draft | A clean, unlogged session may be replaced directly. Logged, skipped, edited, readiness, recovery, or note progress requires explicit replacement/abandonment confirmation. |
 | Stable targets | Named exercise variants own set count/roles, rep range, target RPE, rest, and independent identity/history. |
-| Factual prefill and prior work | Comparable same-variant, same-resistance, same-role prior work is preferred, then an explicit routine default, then blank. |
+| Factual prefill and prior work | Every set row exposes the same-position/same-role set from the most recent comparable completed session, including warm-ups when recorded; working-set prefill then uses the explicit routine default or blank. |
 | Active logging | Load, repetitions, and decimal RPE are directly editable. Add, remove, skip, reorder, notes, substitution, custom variants, and role correction remain available. |
-| Rest | One shared timer starts from completed work, supports adjustment and Skip/Finish, displays overtime, and restores from the active draft. |
+| Rest | One shared timer lives in the compact centered session header, supports adjustment and Skip/Finish, displays overtime, and restores from the active draft. The same header says **Ready** when no rest is active. |
 | Workout-only adaptation | Actual-work changes remain on the workout unless the user separately saves a suitable exercise change to the routine. |
 | Completion and grade | New submissions store one A-F `comprehensive-fitness-workout-grade/2.0.0` result. The current prospective algorithm is `actual-work-rubric/1.1.0`; stored earlier grades and versions are unchanged. |
-| Progress | One factual exact-variant/exact-resistance trend with inspectable points plus all chronological submitted history. |
+| Progress | Sessions presents chronological submitted-session cards with immutable stored grades. Exercises provides search, shared hypertrophy scores, latest performance, retained e1RM where applicable, and stable-ID detail. |
+| Rolling hypertrophy score | The ten most recent completed sessions (or the honest available count) supply distinct exact lift/resistance variants. Missing/invalid lift scores are excluded; every remaining lift score has equal weight. |
 | Routines | Contextual routine management supports names, order, variants, sets, rep range, target RPE, rest, and duplication. |
 | Data | Versioned export/import, Strong import, atomic validation, active-draft recovery, and explicit clear-local-data remain. |
 | Notifications | Foreground rest behavior and optional permission-aware Web Push notifications remain. |
@@ -73,7 +78,7 @@ The current product has no:
 
 - mesocycle builder, lifecycle, candidate pool, program validation, or equipment gating;
 - Dashboard, Plan, More, Insights, Advanced, or persistent Routines destination;
-- hypertrophy, volume, fractional-set, readiness, confidence, evidence, research-status, adherence, or program score;
+- weekly-volume, fractional-set, readiness, confidence, evidence, research-status, adherence, or program-score dashboards; the only current hypertrophy presentation is the approved read-only per-lift score and equally weighted rolling summary;
 - normal exact add-load/add-rep/add-set/hold recommendation;
 - plate calculator or execution-quality questionnaire;
 - React/Vite concept application or parallel product runtime;

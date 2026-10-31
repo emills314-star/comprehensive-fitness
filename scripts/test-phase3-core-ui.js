@@ -24,19 +24,18 @@ const templates = section(analysis, "function renderTemplates()", "function temp
 const templateCard = section(analysis, "function renderTemplateCard(", "function renderHistory()");
 const summary = section(history, "function renderCompletedWorkoutSummary(", "\n      }");
 
-assert.match(today, /<h1>Today<\/h1>[\s\S]*Expected workout[\s\S]*data-action="start-next-template"/, "Today must identify and start the expected workout");
-assert.match(today, /previewNames[\s\S]*nextTemplate\?\.exercises/, "Today may show only a concise factual exercise-name preview");
-assert.doesNotMatch(today, /todayPlanPreview|renderTodayPlanPreview|Stable target|Last time|weeklyMuscleVolume|hypertrophy|open-progress/i, "Today must not retain plan comparisons or analytical review links");
-assert.strictEqual((views.match(/data-action="start-next-template"/g) || []).length, 1, "Today must render exactly one primary expected-workout action");
+assert.match(today, /<h1>Today<\/h1>[\s\S]*Choose your workout[\s\S]*data-action="start-template"/, "Empty Today must identify and directly start the chosen workout");
+assert.match(today, /rollingHypertrophySummary\(\)[\s\S]*renderRollingHypertrophyCard/, "Today must render the shared rolling score summary");
+assert.doesNotMatch(today, /todayPlanPreview|renderTodayPlanPreview|Stable target|Last time|weeklyMuscleVolume|open-progress/i, "Today must not retain plan comparisons or retired volume links");
 assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Alternate routines must remain secondary to the expected workout");
-assert.match(quickStarts, /"resume-active-workout" : "select-today-template"/, "Alternate routines must require selection without replacing Resume");
+assert.match(quickStarts, /"resume-active-workout" : "start-template"/, "Alternate workouts must route through the safe direct-or-confirmed replacement path");
 
-assert.match(progress, /exercisePerformanceSeries\([\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual exercise chart with chronological workout history");
-assert.match(progress, /Exercise or variant[\s\S]*Named variants and resistance types remain separate/, "Progress must retain exact exercise-variant and resistance-type selection");
-assert.match(progress, /Tap a point for its date, load, reps, RPE, role, and workout/, "The factual chart must disclose its recorded point details");
-assert.doesNotMatch(progress, /hypertrophy|weekly volume|fractional|reps at weight|confidence|evidence|dashboard/i, "Progress must not restore deleted analytical products");
-assert.match(completedHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Completed workouts will appear here/, "Progress history must be chronological, submitted, and empty-state safe");
-assert.match(completedHistory, /storedWorkoutGradeProjection\(session\)\?\.grade[\s\S]*Stored workout grade/, "Stored historical and current grades must remain factual history");
+assert.match(progress, /renderProgressSessions[\s\S]*renderHistory\(\)[\s\S]*renderExerciseProgressDetail[\s\S]*renderChart\('performance'/, "Progress must combine chronological sessions with scoped exercise detail");
+assert.match(progress, /Named variants and resistance types remain separate/, "Progress must retain exact exercise-variant and resistance-type separation");
+assert.match(progress, /Tap a point for its source load, reps, RPE, role, and session/, "The factual chart must disclose its recorded point details");
+assert.doesNotMatch(progress, /weekly volume|fractional|reps at weight|confidence|evidence|dashboard/i, "Progress must not restore deleted dashboard products");
+assert.match(completedHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Completed sessions will appear here/, "Progress session history must be chronological, submitted, and empty-state safe");
+assert.match(completedHistory, /const projection = storedWorkoutGradeProjection\(session\)[\s\S]*const storedGrade = projection\?\.grade[\s\S]*Stored workout grade/, "Stored historical and current grades must remain factual history");
 
 assert.match(templates, /<h1>Routines<\/h1>[\s\S]*Edit the workouts you return to[\s\S]*Starting one never replaces an existing draft/, "Contextual routine management must use product-facing guidance and state the draft-safety boundary");
 assert.doesNotMatch(templates, /canonical historical completion contract|completion rate is intentionally absent/i, "Routine management must not expose implementation rationale");

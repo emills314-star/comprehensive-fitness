@@ -24,14 +24,13 @@
         const shellWorkoutVisible = activeTab === "workout" && hasActiveWorkout() && activeWorkoutId === session.id && !viewingHistorySessionId && !completedSummarySessionId;
         const shellWorkoutDockVisible = shellWorkoutVisible;
         const shellTitle = ({ today: "Today", progress: "Progress", routines: "Routines", settings: "Settings", workout: "Workout" })[activeTab] || "Today";
-        const shellCurrentContext = shellWorkoutDockVisible ? workoutProgress().current : "";
         const shellActions = activeTab === "routines" || activeTab === "settings"
           ? '<button class="shell-context-action" type="button" data-action="close-secondary-context">Back to Today</button>'
           : activeTab === "workout"
             ? '<button class="shell-context-action" type="button" data-action="close-workout-context">Back to Today</button>'
             : '<div class="shell-context-actions"><button type="button" data-action="open-routines">Routines</button><button type="button" data-action="open-settings">Settings</button></div>';
         const shellContext = shellWorkoutDockVisible
-          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">In progress</span><small>' + escapeHtml(shellCurrentContext) + '</small></div>' + shellActions
+          ? renderActiveSessionHeader(session)
           : '<div class="shell-context"><strong>' + escapeHtml(shellTitle) + '</strong></div>' + shellActions;
         const domStartedAt = performanceNow();
         root.innerHTML = `
@@ -40,7 +39,6 @@
             <header class="brand-bar ${shellWorkoutDockVisible ? "active-session-bar" : ""}" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${shellContext}
             </header>
-            ${shellWorkoutVisible && timer ? '<div class="active-rest-dock" aria-live="polite">' + renderTimer(timer.setId) + '</div>' : ''}
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
@@ -146,11 +144,12 @@
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         return {
           restSeconds,
-          previousSets: exerciseSets.some((set) => isWorkingSet(set, "progression"))
+          previousSets: exerciseSets.length
             ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, {
                 excludeSessionId: exercise.sessionId,
                 resistanceType: resistanceTypeFor(exercise),
-                canonicalExerciseId: exercise.performanceExerciseId || canonicalExerciseId(exercise)
+                canonicalExerciseId: exercise.performanceExerciseId || canonicalExerciseId(exercise),
+                includeWarmups: true
               }), { exerciseId: exercise.id })
             : [],
           warmupIds: exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => set.id),
@@ -196,19 +195,19 @@
 
       function syncTimerDom() {
         if (!timer) return;
-        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".workout-timer-slot > .timer-bar");
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".active-session-timer-status > .timer-bar");
         if (!bar) return;
         bar.dataset.timerId = timer.id;
         const stateLabel = bar.querySelector(".timer-rest-copy > span");
         const nextLabel = bar.querySelector(".timer-rest-copy > small");
         const context = bar.querySelector(".timer-context");
-        const pause = bar.querySelector('[data-action="toggle-timer"]');
+        const pause = bar.querySelector('[data-action="toggle-timer"]') || root.querySelector('.active-session-timer-controls [data-action="toggle-timer"]');
         if (stateLabel) stateLabel.textContent = timer.isPaused ? "Paused" : "Rest";
         if (nextLabel) nextLabel.textContent = timerNextContextLabel(timer);
         bar.toggleAttribute("data-paused", timer.isPaused);
         if (context) context.textContent = timerNextContextLabel(timer) + " · " + timerNotificationStatusLabel(timer);
         if (pause) {
-          pause.innerHTML = timer.isPaused ? icon.play : icon.pause;
+          pause.innerHTML = pause.closest(".active-session-timer-controls") ? (timer.isPaused ? "Resume" : "Pause") : (timer.isPaused ? icon.play : icon.pause);
           pause.setAttribute("title", timer.isPaused ? "Resume timer" : "Pause timer");
           pause.setAttribute("aria-label", timer.isPaused ? "Resume timer" : "Pause timer");
         }
@@ -217,7 +216,7 @@
 
       function removeTimerDom(timerSnapshot) {
         const block = document.getElementById("set-" + (timerSnapshot?.setId || ""));
-        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timerSnapshot?.id || "") + '"]') || root.querySelector(".workout-timer-slot > .timer-bar");
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timerSnapshot?.id || "") + '"]') || root.querySelector(".active-session-timer-status > .timer-bar");
         bar?.remove();
         block?.classList.remove("resting-set");
       }
@@ -285,16 +284,41 @@
           <span class="session-dock-progress"><strong data-session-dock-progress>${progress.completed} of ${progress.total} sets</strong><span class="track" data-session-dock-track aria-label="${progress.completed} of ${progress.total} sets completed">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < Math.round((progress.completed / Math.max(1, progress.total)) * 10) ? 'filled' : '') + '"></i>').join("")}</span><small data-session-dock-elapsed>${escapeHtml(progress.elapsed)}</small><i class="session-dock-elapsed-rule" aria-hidden="true"></i></span>
           <button class="secondary-action session-dock-pause" type="button" data-action="toggle-workout-pause" aria-pressed="${durationPaused ? "true" : "false"}">${durationPaused ? "Resume time" : "Pause time"}</button>
           <button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>
-          <details class="session-overflow session-dock-overflow"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">${icon.more}</summary><div class="session-overflow-menu">
-            <button type="button" data-action="log-workout-readiness">${icon.info}<span>Log readiness</span></button>
-            <button type="button" data-action="save-template">${icon.templates}<span>Save as template</span></button>
-            ${sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : ''}
-          </div></details>
         </aside>`;
       }
 
       function renderProgress() {
         return renderLiftProgress();
+      }
+
+      function renderActiveSessionHeader(session) {
+        const activeTimer = timer?.workoutId === session.id ? timer : null;
+        const overtimeSeconds = activeTimer?.isOvertime
+          ? Math.max(0, Number(activeTimer.overtimeSeconds || Math.floor((Date.now() - Number(activeTimer.endsAt || Date.now())) / 1000)))
+          : 0;
+        const elapsed = activeTimer
+          ? activeTimer.isOvertime
+            ? Number(activeTimer.durationSeconds || 0) + overtimeSeconds
+            : Math.max(0, Number(activeTimer.durationSeconds || 0) - Number(activeTimer.remainingSeconds || 0))
+          : 0;
+        const progress = activeTimer && Number(activeTimer.durationSeconds || 0) > 0
+          ? Math.min(100, Math.round((elapsed / Number(activeTimer.durationSeconds)) * 100))
+          : 0;
+        const timerLabel = activeTimer
+          ? activeTimer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(activeTimer.remainingSeconds)
+          : "";
+        const restStatus = activeTimer
+          ? '<div class="active-session-timer-status"><div class="timer-bar" data-timer-id="' + escapeHtml(activeTimer.id) + '" data-phase="' + (activeTimer.isOvertime ? 'overtime' : activeTimer.remainingSeconds <= 10 ? 'final' : 'resting') + '" ' + (activeTimer.isPaused ? 'data-paused="true"' : '') + '><span class="timer-summary" aria-label="' + escapeHtml(activeTimer.isOvertime ? 'Rest target passed by ' + formatOvertime(overtimeSeconds) : (activeTimer.isPaused ? 'Paused rest timer' : 'Rest timer') + ', ' + formatTimer(activeTimer.remainingSeconds) + ' remaining') + '"><span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '" style="--timer-progress:' + progress + '%"><span></span></span><span class="timer-rest-copy"><span>' + (activeTimer.isOvertime ? 'Done' : activeTimer.isPaused ? 'Paused' : 'Rest') + '</span></span><strong data-timer-progress-label>' + timerLabel + '</strong></span></div></div>'
+          : '<span class="active-session-ready"><i aria-hidden="true"></i>Ready</span>';
+        const controls = activeTimer
+          ? '<div class="active-session-timer-controls" aria-label="Rest timer controls">' + (activeTimer.isOvertime
+              ? '<button type="button" data-action="clear-timer">Finish rest</button>'
+              : '<button type="button" data-action="toggle-timer">' + (activeTimer.isPaused ? 'Resume' : 'Pause') + '</button><button type="button" data-action="adjust-timer" data-seconds="-15" aria-label="Reduce rest by 15 seconds">−15s</button><button type="button" data-action="adjust-timer" data-seconds="15" aria-label="Add 15 seconds">+15s</button><button type="button" data-action="skip-timer">Skip</button>') + '</div>'
+          : '';
+        return '<div class="active-session-header">' + restStatus
+          + '<h1 title="' + escapeHtml(session.title || 'Workout') + '">' + escapeHtml(session.title || 'Workout') + '</h1>'
+          + '<details class="session-overflow active-session-menu"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">' + icon.more + '</summary><div class="session-overflow-menu"><button type="button" data-action="close-workout-context">' + icon.left + '<span>Back to Today</span></button><button type="button" data-action="log-workout-readiness">' + icon.info + '<span>Log readiness</span></button><button type="button" data-action="save-template">' + icon.templates + '<span>Save as routine</span></button>' + (sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : '') + '</div></details>'
+          + controls + '</div>';
       }
 
       function liftHomeIsVisible() {
@@ -387,6 +411,7 @@
               <textarea data-action="session-notes" maxlength="4096" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
               </div>
             </details>
+            ${activeExecution ? renderQuickStartTemplates(session.templateId || "") : ""}
             ${editingHistory ? '<section class="history-edit-bar"><div><strong>Editing logged workout</strong><span>Changes remain temporary until you confirm Save Edits. The stored historical grade and algorithm version remain unchanged.</span></div><div class="history-edit-actions"><button class="primary-action" type="button" data-action="request-save-history-edits">Save Edits</button><button class="secondary-action" type="button" data-action="request-cancel-history-edits">Cancel Edits</button></div></section>' : ''}
             ${historyReadOnly && completedSummarySessionId !== session.id ? renderCompletedWorkoutSummary(session, { history: true }) : ''}
             ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-to-today">Return to Today</button></div>' : ''}
@@ -493,7 +518,6 @@
 
       function renderLiftHome() {
         const nextTemplate = expectedWorkoutTemplate();
-        const scheduledToday = scheduledTemplatesForToday();
         const running = activeWorkoutSession();
         if (running) {
           const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === running.id).map((exercise) => exercise.id));
@@ -512,23 +536,26 @@
               ${renderQuickStartTemplates(running.templateId || "")}
             </section>`;
         }
-        const previewNames = nextTemplate?.exercises?.map((exercise) => String(exercise.name || "").trim()).filter(Boolean) || [];
-        const previewText = previewNames.length
-          ? previewNames.slice(0, 4).join(" · ") + (previewNames.length > 4 ? " · +" + (previewNames.length - 4) + " more" : "")
-          : "No exercises have been added yet.";
+        const rolling = rollingHypertrophySummary();
+        const orderedTemplates = [nextTemplate, ...data.templates.filter((template) => template.id !== nextTemplate?.id)].filter(Boolean);
         return `
           <section class="view lift-home-view">
-            <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}${nextTemplate ? " · " + escapeHtml(nextTemplate.name) : ""}</div><h1>Today</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
-            <section class="coach-lead today-coach">
-              <div class="section-kicker">${nextTemplate ? "Expected workout" : "Next action"}</div>
-              <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : data.templates.length ? scheduledToday.length > 1 ? "Choose today’s workout" : "Choose a workout" : "Create your first reusable workout"}</h2>
-              <p>${nextTemplate ? escapeHtml(previewText) : data.templates.length ? scheduledToday.length > 1 ? "More than one routine is scheduled today. Select the one you intend to train." : "No routine is assigned to today. Select one before starting." : "Once a routine exists, assign its scheduled days."}</p>
-              <div class="module-action-row">${nextTemplate
-                ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start</button><button class="secondary-action" type="button" data-action="log-template-readiness" data-template-id="' + escapeHtml(nextTemplate.id) + '">Log readiness</button>'
-                : data.templates.length ? '' : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}</div>
+            <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}</div><h1>Today</h1></div></div>
+            ${renderRollingHypertrophyCard(rolling)}
+            <section class="today-workout-chooser" aria-labelledby="choose-workout-heading">
+              <div><h2 id="choose-workout-heading">Choose your workout</h2><p>Select a workout to load today’s session.</p></div>
+              ${orderedTemplates.length ? '<div class="today-workout-list">' + orderedTemplates.map((template) => '<button class="today-workout-option" type="button" data-action="start-template" data-template-id="' + escapeHtml(template.id) + '"><span><strong>' + escapeHtml(template.name) + '</strong><small>' + template.exercises.length + ' lift' + (template.exercises.length === 1 ? '' : 's') + ' · ' + templateExerciseCount(template) + ' working sets</small></span><b>' + (template.id === nextTemplate?.id ? 'Start' : 'Choose') + ' ›</b></button>').join('') + '</div>' : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}
             </section>
-            ${renderQuickStartTemplates(nextTemplate?.id || "")}
           </section>`;
+      }
+
+      function renderRollingHypertrophyCard(summary) {
+        const score = summary.score == null ? "—" : summary.score;
+        const countLabel = summary.sessionCount === 10 ? "Across your last 10 completed sessions" : "Across your " + summary.sessionCount + " available completed session" + (summary.sessionCount === 1 ? "" : "s");
+        const aria = summary.score == null
+          ? "Rolling hypertrophy score unavailable. Open exercise progress."
+          : "Rolling hypertrophy score " + summary.score + " out of 100 across " + summary.sessionCount + " completed sessions. Open exercise progress.";
+        return '<button class="rolling-hypertrophy-card" type="button" data-action="open-rolling-hypertrophy" aria-label="' + escapeHtml(aria) + '"><span class="section-kicker">Rolling hypertrophy</span><strong class="rolling-score">' + score + '<small>/100</small></strong><span class="rolling-window">' + escapeHtml(countLabel) + '</span><span class="rolling-info" aria-hidden="true">i</span></button><p class="rolling-helper">Each distinct lift with a valid canonical score counts once. Incomplete sessions and missing scores are excluded.</p>';
       }
 
       function workoutProgress() {
@@ -599,10 +626,10 @@
               ${templates.map((template) => {
                 const isActiveTemplate = running?.templateId === template.id;
                 return `
-                  <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : ""}" type="button" data-action="${isActiveTemplate ? "resume-active-workout" : "select-today-template"}" data-template-id="${template.id}">
+                  <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : ""}" type="button" data-action="${isActiveTemplate ? "resume-active-workout" : "start-template"}" data-template-id="${template.id}">
                     <strong>${escapeHtml(template.name)}</strong>
-                    <small>${template.exercises.length} lifts · ${templateExerciseCount(template)} working sets</small>
-                    <span>${isActiveTemplate ? "Resume workout" : "Select workout"}</span>
+                    <small>${template.exercises.length} lift${template.exercises.length === 1 ? "" : "s"} · ${templateExerciseCount(template)} working sets</small>
+                    <span>${isActiveTemplate ? "Resume workout" : "Choose workout"}</span>
                   </button>
                 `;
               }).join("")}
@@ -716,7 +743,8 @@
           ? dialogFocusOrigins.template || focusDescriptorForElement(document.activeElement) || { kind: "main" }
           : focusDescriptorForElement(root.querySelector('[data-action="session-menu"]')) || focusDescriptorForElement(document.activeElement) || { kind: "main" };
         if (source === "template") dialogFocusOrigins.template = null;
-        cancelWorkoutFlow = { sessionId: session.id, source };
+        const replacementTemplateId = source === "template" ? String(templateStartFlow?.templateId || "") : "";
+        cancelWorkoutFlow = { sessionId: session.id, source, replacementTemplateId };
         templateStartFlow = null;
         render();
       }
@@ -728,13 +756,17 @@
         const exerciseIds = new Set(data.exercises.filter((item) => item.sessionId === session.id).map((item) => item.id));
         const draftSets = data.sets.filter((item) => exerciseIds.has(item.exerciseId));
         const completedSets = draftSets.filter((item) => item.completed && !item.skipped).length;
+        const replacement = data.templates.find((template) => template.id === cancelWorkoutFlow.replacementTemplateId);
+        const replacementCopy = replacement
+          ? ' Replace it with ' + escapeHtml(replacement.name) + '.'
+          : '';
         return `
           <div class="scrim sheet-backdrop" data-action="keep-workout" role="presentation">
-            <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-label="Cancel this workout?" data-sheet-content>
-              <div><div class="section-kicker destructive-kicker">Discard workout?</div><h2 id="cancel-workout-title">${escapeHtml(session.title || "Current workout")}</h2><p>${completedSets ? completedSets + " logged set" + (completedSets === 1 ? "" : "s") + " and " : "The "}unsubmitted draft will be permanently removed. Submitted history and routines stay intact.</p></div>
+            <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-label="${replacement ? "Replace this workout?" : "Cancel this workout?"}" data-sheet-content>
+              <div><div class="section-kicker destructive-kicker">${replacement ? "Replace workout?" : "Discard workout?"}</div><h2 id="cancel-workout-title">${escapeHtml(session.title || "Current workout")}</h2><p>${completedSets ? completedSets + " logged set" + (completedSets === 1 ? "" : "s") + " and " : "The "}unsubmitted session will be permanently removed.${replacementCopy} Submitted history and routines stay intact.</p></div>
               <div class="sheet-actions cancel-sheet-actions">
                 <button class="primary-action" type="button" data-action="keep-workout">Keep workout</button>
-                <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">Discard workout</button>
+                <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">${replacement ? "Replace workout" : "Discard workout"}</button>
               </div>
             </section>
           </div>`;
@@ -900,6 +932,7 @@
       async function discardActiveWorkout() {
         const session = data.sessions.find((item) => item.id === cancelWorkoutFlow?.sessionId);
         if (!sessionCanBeDiscarded(session)) return;
+        const replacementTemplateId = String(cancelWorkoutFlow?.replacementTemplateId || "");
         window.clearTimeout(saveTimer);
         const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
         if (timer && (timer.workoutId === session.id || exerciseIds.has(timer.exerciseId))) {
@@ -942,8 +975,9 @@
         }
         activeSessionId = nextSession.id;
         setActiveTab("today", { replace: true, renderNow: false });
-        showAppToast("Workout canceled.");
+        showAppToast(replacementTemplateId ? "Workout replaced." : "Workout canceled.");
         commit({ ...data, sessions: remainingSessions, exercises: data.exercises.filter((exercise) => exercise.sessionId !== session.id), sets: data.sets.filter((set) => !exerciseIds.has(set.exerciseId)) });
+        if (replacementTemplateId) window.setTimeout(() => startTemplate(replacementTemplateId), 0);
       }
 
       function renderStandardWorkloadControls(exercise) {
@@ -1085,6 +1119,8 @@
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderStandardWorkloadControls(exercise) + renderMuscleSelectors(exercise), { exerciseId: exercise.id });
         const chipSet = exerciseSets.find((set) => isWorkingSet(set) && !set.completed && !set.skipped) || firstWorkSet;
         const plannedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set)).length;
+        const completedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set) && set.completed && !set.skipped).length;
+        const exerciseComplete = plannedWorkingSets > 0 && completedWorkingSets === plannedWorkingSets;
         const chipRestSeconds = Number(chipSet?.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const chipTarget = chipSet
           ? plannedWorkingSets + " set" + (plannedWorkingSets === 1 ? "" : "s")
@@ -1097,11 +1133,11 @@
           : "";
         const owningSession = sessionById(exercise.sessionId);
         return `
-          <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""} ${workoutFocusExerciseId === exercise.id ? "context-exercise" : ""}" tabindex="-1" aria-label="Exercise: ${escapeHtml(exercise.name)}">
+          <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""} ${exerciseComplete ? "exercise-complete" : ""} ${workoutFocusExerciseId === exercise.id ? "context-exercise" : ""}" tabindex="-1" aria-label="Exercise: ${escapeHtml(exercise.name)}">
             <div class="exercise-header">
               <span class="exercise-grip" aria-hidden="true">${icon.grip}</span>
               <h2 class="exercise-name exercise-name-full" title="${escapeHtml(exercise.name)}"><a href="#progress" class="exercise-history-link" data-action="open-exercise-history" data-exercise-id="${escapeHtml(exercise.id)}" data-performance-exercise-id="${escapeHtml(exercise.performanceExerciseId || canonicalExerciseId(exercise))}">${escapeHtml(exercise.name)}</a></h2>
-              ${targetChip}
+              ${targetChip}<span class="exercise-set-progress">${completedWorkingSets} / ${plannedWorkingSets} logged</span>
               <details class="exercise-overflow"><summary class="icon-button" aria-label="Exercise menu">${icon.more}</summary><div class="exercise-overflow-menu">
                 <button type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} up">${icon.up}<span>Move up</span></button>
                 <button type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} down">${icon.down}<span>Move down</span></button>
@@ -1155,11 +1191,11 @@
         const isResting = Boolean(timer?.isActive && timer.setId === set.id);
         const executionLabel = setExecutionLabel(set);
         const warmupIndex = setTypeSemantics(set).isWarmup ? (context.warmupIds || []).indexOf(set.id) : -1;
-        const previousSets = !isWorkingSet(set, "progression") ? [] : (context.previousSets || []);
+        const previousSets = context.previousSets || [];
         const role = normalizeSetTypeCode(set.setType, set.isWarmup);
         const workingSetIndex = Math.max(0, (context.workingSetIds || []).indexOf(set.id));
         const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex);
-        const previousDateLabel = previous?.priorSessionDate ? formatDate(previous.priorSessionDate) : "No history";
+        const previousDateLabel = previous?.priorSessionDate ? formatDate(previous.priorSessionDate) : previous ? "Previous session" : "No history";
         const previousPerformanceText = !previous
           ? "—"
           : resistanceType === "duration"
@@ -1174,11 +1210,11 @@
           : resistanceType === "duration" || resistanceType === "distance"
             ? previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "")
             : previousLoadText + " × " + previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "");
-        const previousField = setTypeSemantics(set).isWarmup
-          ? '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No comparable warm-up") + '</strong><small>Warm-up</small></div>'
-          : previous?.priorSessionId
+        const previousField = previous?.priorSessionId
             ? '<a class="set-field set-previous set-previous-link" href="#progress" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
-            : '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No previous workout found") + '</strong><small>No history</small></div>';
+            : previous
+              ? '<div class="set-field set-previous"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></div>'
+              : '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No previous workout found") + '</strong><small>No history</small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1214,16 +1250,17 @@
         const repTone = Number(set.reps || 0) < Number(set.targetRepMin || set.targetReps || 0) ? "under" : Number(set.reps || 0) > Number(set.targetRepMax || set.targetReps || 0) ? "over" : "on";
         const repRangeSignal = rangeBar({ low: Number(set.targetRepMin || set.targetReps || 0), high: Number(set.targetRepMax || set.targetReps || 0), actual: isLoggedMode ? Number(set.reps || 0) : Number(set.targetReps || set.targetRepMin || 0), tone: isLoggedMode ? repTone : "none" });
         const statusButton = '<button class="check-button ' + (set.completed ? "checked" : "") + '" type="button" data-action="toggle-set" data-set-id="' + set.id + '" title="' + (set.completed ? "Completed" : "Mark set complete") + '" aria-label="' + (set.completed ? "Set completed" : "Mark set complete") + '" aria-pressed="' + (set.completed ? "true" : "false") + '"' + workoutSafetyDisabledAttributes(completionSafety) + '>' + icon.done + '</button>';
+        const upcomingStatus = '<button class="check-button inactive-check" type="button" disabled aria-disabled="true" title="Complete the current set first" aria-label="Upcoming set; completion becomes available when this is the current set">' + icon.done + '</button>';
         const loadField = resistanceType === "bodyweight"
           ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
           : resistanceType === "duration" || resistanceType === "distance"
             ? '<div class="set-field"><span>Load</span><div class="resistance-readout">' + noData("External load does not apply") + '</div></div>'
             : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + roundLoadForUnit(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         const setBody = isLoggedMode
-          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</span><span class="act"><span class="lbl">' + escapeHtml(setCompletionClock(set)) + '</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
+          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong><small class="set-previous-inline">Previous · ' + escapeHtml(previousSummaryText) + '</small>' + repRangeSignal + '</span><span class="act"><span class="lbl">' + escapeHtml(setCompletionClock(set)) + '</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
           : isNext || isEditingHistorySession()
             ? '<div class="set-current-editor claim-card" data-set-mode="current"><div class="set-current-heading"><div><span class="eyebrow">' + escapeHtml(setLabel + ' · now') + '</span><strong>' + escapeHtml(resistanceType === "duration" || resistanceType === "distance" ? targetSummary : targetLoadText + " × " + targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + " @ RPE " + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe)) + '</strong></div><span class="current-set-count">' + (context.workingSetIds || []).length + ' sets planned</span>' + statusButton + '</div><div class="current-set-inputs">' + previousField + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + (Number(set.rpe || 0) > 0 ? set.rpe : "") + '" placeholder="—" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label></div></div>'
-            : '<div class="set-pending-line" data-set-mode="pending"><span class="pending-set-label">' + escapeHtml(setLabel) + '</span><span class="pending-exercise-name">' + escapeHtml(exercise.name) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</div>';
+            : '<div class="set-pending-line" data-set-mode="pending"><span class="pending-set-label">' + escapeHtml(setLabel) + '</span><span class="pending-exercise-name">' + escapeHtml(executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong><small class="pending-previous">Previous · ' + escapeHtml(previousSummaryText) + (previous?.priorSessionDate ? ' · ' + escapeHtml(previousDateLabel) : '') + '</small>' + repRangeSignal + upcomingStatus + '</div>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             ${isLoggedMode ? "" : `<div class="set-heading">
@@ -1246,43 +1283,6 @@
               </div>
             </details>`}
           </div>
-        `;
-      }
-
-      function renderTimer(setId) {
-        if (!timer || timer.setId !== setId) return "";
-        const overtimeSeconds = timer.isOvertime
-          ? Math.max(0, Number(timer.overtimeSeconds || Math.floor((Date.now() - Number(timer.endsAt || Date.now())) / 1000)))
-          : 0;
-        const elapsed = timer.isOvertime
-          ? Number(timer.durationSeconds || 0) + overtimeSeconds
-          : Math.max(0, timer.durationSeconds - timer.remainingSeconds);
-        const progress = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
-        const nextContext = timerNextContextLabel(timer);
-        const notificationStatus = timerNotificationStatusLabel(timer);
-        const timerLabel = timer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(timer.remainingSeconds);
-        const ariaState = timer.isOvertime
-          ? "Rest target passed by " + formatOvertime(overtimeSeconds)
-          : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining";
-        return `
-          <details class="timer-bar" data-timer-id="${timer.id}" data-disclosure-id="rest-timer" data-phase="${timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""} ${timer.isOvertime ? "open" : ""}>
-            <summary class="timer-summary" aria-label="${ariaState}. Open timer controls.">
-              <span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></span>
-              <span class="timer-rest-copy"><span>${timer.isOvertime ? "Rest complete" : timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(nextContext)}</small></span>
-              <strong data-timer-progress-label>${timerLabel}</strong>
-            </summary>
-            <div class="timer-controls-panel">
-              ${timer.isOvertime
-                ? '<button class="timer-skip" type="button" data-action="clear-timer">Finish rest</button>'
-                : `<div class="timer-primary-controls" aria-label="Rest timer adjustments">
-                    <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">− 15 sec</button>
-                    <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+ 15 sec</button>
-                    <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip rest</button>
-                  </div>
-                  <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>`}
-              <div class="timer-context">${escapeHtml(nextContext + " · " + notificationStatus)}</div>
-            </div>
-          </details>
         `;
       }
 
