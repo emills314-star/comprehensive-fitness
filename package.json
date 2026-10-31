@@ -54,7 +54,7 @@
     "cap:open:android": "npx cap open android"
   },
   "dependencies": {
-    "@capacitor/core": "^7.4.3",
+    "@capacitor/core": "^7.6.10",
     "@upstash/qstash": "^2.11.1",
     "web-push": "^3.6.7"
   },
