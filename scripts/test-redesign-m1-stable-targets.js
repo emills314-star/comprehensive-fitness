@@ -50,7 +50,6 @@ const runtime = new Function(`
   function recommendedRestSeconds() { return 90; }
   function formatLoadNumber(value) { return String(Number(value)); }
   function roundLoadForUnit(value, unit, increment) { const step = Math.max(0.5, Number(increment || 0.5)); return Math.round(Number(value || 0) / step) * step; }
-  function resistanceLoad(value) { return Number(value?.weight || value?.targetWeight || 0); }
   function roundToIncrement(value, increment) { return Math.max(increment, Math.round(value / increment) * increment); }
   function targetRangeText(low, high) { return Number(low) === Number(high) ? String(Number(high)) : Number(low) + "-" + Number(high); }
   ${extractFunction("progressionProfileForExercise")}
@@ -58,6 +57,8 @@ const runtime = new Function(`
   ${extractFunction("normalizeTargetSetType")}
   ${extractFunction("normalizeStableTemplateExercise")}
   ${extractFunction("previousComparableSetForRole")}
+  ${extractFunction("convertWeightValue")}
+  ${extractFunction("storedResistanceLoad")}
   ${extractFunction("factualSetPrefillForWorkoutStart")}
   ${extractFunction("workoutMutationSafetyDecision")}
   ${extractFunction("exerciseMatches")}
@@ -94,6 +95,68 @@ assert.deepEqual(stableLight.setTypes.map((type) => [type.type, type.setCount, t
 ]);
 assert.equal("standardRoleWorkload" in stableLight, false, "Legacy role storage must migrate into the active set-type target");
 
+const explicitRoles = runtime.normalizeStableTemplateExercise({
+  id: "explicit-role-targets", name: "Synthetic Press", sets: 2, reps: 8, targetRpe: 8, restSeconds: 180,
+  setTypes: [
+    { type: "top", setCount: 1, repMin: 6, repMax: 8, restSeconds: 210, increment: 2.5, incrementUnit: "kg", defaultLoad: { value: 60, unit: "kg" }, defaultReps: 7 },
+    { type: "backoff", setCount: 1, repMin: 8, repMax: 12, restSeconds: 75, increment: 5, incrementUnit: "lb", targetLoad: 110, defaultReps: 10 }
+  ]
+});
+assert.deepEqual(explicitRoles.setTypes.map((role) => [role.restSeconds, role.incrementUnit, role.defaultLoad ?? role.targetLoad, role.defaultReps]),
+  [[210, "kg", { value: 60, unit: "kg" }, 7], [75, "lb", 110, 10]], "Role projection and template normalization preserve explicit rest, increment units and factual defaults");
+const nullRole = runtime.normalizeStableTemplateExercise({ id: "null-role", name: "Synthetic Press", sets: 1, reps: 8, restSeconds: 90,
+  setTypes: [{ type: "straight", setCount: 1, repMin: 8, repMax: 12, defaultLoad: null, defaultReps: null }] }).setTypes[0];
+assert.equal(nullRole.defaultLoad, null);
+assert.equal(nullRole.defaultReps, null);
+assert.equal("incrementUnit" in nullRole, false, "Missing role increment units remain unknown");
+
+const routineRuntime = new Function(`
+  let appliedPatch;
+  let activeSetNotice = "";
+  const setTypeLabels = {};
+  const data = {
+    sessions: [{ id: "session", templateId: "routine" }],
+    exercises: [{ id: "exercise", sessionId: "session", name: "Synthetic Press", performanceExerciseId: "synthetic_press", restSeconds: 180 }],
+    templates: [{ id: "routine", exercises: [{ id: "template-exercise", name: "Synthetic Press", performanceExerciseId: "synthetic_press", setTypes: [
+      { id: "top-role", type: "top", increment: 2.5, incrementUnit: "kg", defaultLoad: { value: 60, unit: "kg" }, defaultReps: 7, weight: 60, weightUnit: "kg", reps: 7 },
+      { id: "backoff-role", type: "backoff", increment: 5, incrementUnit: "lb", targetLoad: 100, defaultReps: 10 },
+      { id: "straight-a", type: "straight", incrementUnit: "lb", defaultLoad: { value: 90, unit: "lb" } },
+      { id: "straight-b", type: "straight", incrementUnit: "kg", defaultLoad: { value: 40, unit: "kg" } }
+    ] }] }],
+    sets: [
+      { id: "top", exerciseId: "exercise", sourceTemplateSetId: "top-role", setType: "top", targetReps: 7, targetRpe: 8, targetRestSeconds: 210, sequenceIndex: 0 },
+      { id: "backoff", exerciseId: "exercise", setType: "backoff", targetReps: 10, targetRpe: 8, targetRestSeconds: 75, sequenceIndex: 1 },
+      { id: "drop", exerciseId: "exercise", setType: "drop", targetReps: 10, targetRpe: 8, targetRestSeconds: 45, sequenceIndex: 2 },
+      { id: "ambiguous", exerciseId: "exercise", setType: "straight", targetReps: 10, targetRpe: 8, targetRestSeconds: 90, sequenceIndex: 3 }
+    ]
+  };
+  function activeSession() { return data.sessions[0]; }
+  function normalizeSetTypeCode(type) { return type || "straight"; }
+  function canonicalExerciseId(exercise) { return exercise.performanceExerciseId; }
+  function exerciseMatches(left, right) { return left === right; }
+  function exerciseIdentityFields(exercise) { return { performanceExerciseId: exercise.performanceExerciseId }; }
+  function showAppToast() {}
+  function isWorkingSet(set) { return set.setType !== "warmup"; }
+  function setTypeSemantics(set) { return { isWarmup: set.setType === "warmup" }; }
+  function patchTemplateExercise(templateId, exerciseId, patch) { appliedPatch = patch; }
+  ${extractFunction("resolveProgrammedRepRange")}
+  ${extractFunction("normalizeTargetSetType")}
+  ${extractFunction("templateSetTypesFromHistory")}
+  ${extractFunction("updateTemplateFromExercise")}
+  updateTemplateFromExercise("exercise");
+  return appliedPatch;
+`)();
+const [savedTop, savedBackoff, savedDrop, savedAmbiguous] = routineRuntime.setTypes;
+assert.deepEqual([savedTop.increment, savedTop.incrementUnit, savedTop.defaultLoad, savedTop.defaultReps, savedTop.weight, savedTop.weightUnit, savedTop.reps],
+  [2.5, "kg", { value: 60, unit: "kg" }, 7, 60, "kg", 7], "Saving session targets preserves explicit metadata on the uniquely identified routine role");
+assert.deepEqual([savedBackoff.increment, savedBackoff.incrementUnit, savedBackoff.targetLoad, savedBackoff.defaultReps], [5, "lb", 100, 10],
+  "A unique same-type role preserves its explicit metadata when no source role ID exists");
+assert.deepEqual([savedTop.restSeconds, savedBackoff.restSeconds, savedDrop.restSeconds], [210, 75, 45], "Saving targets preserves per-set role rest");
+for (const role of [savedDrop, savedAmbiguous]) {
+  assert.equal("incrementUnit" in role, false, "Unmatched or ambiguous roles never acquire an inferred increment unit");
+  assert.equal("defaultLoad" in role, false, "Unmatched or ambiguous roles never borrow explicit defaults");
+}
+
 const prior = [
   { id: "prior-top", setType: "top", setTypeIndex: 0, reps: 8, weight: 100, rpe: 8 },
   { id: "prior-backoff", setType: "backoff", setTypeIndex: 0, reps: 11, weight: 90, rpe: 7.5 }
@@ -110,7 +173,7 @@ const normal = runtime.factualSetPrefillForWorkoutStart(
   0,
   prior
 );
-assert.deepEqual([normal.weight, normal.reps, normal.rpe, normal.previousComparableSet.id], [100, 8, 8, "prior-top"], "Stable role rows must prefill only from the factual same-role set");
+assert.deepEqual([normal.weight, normal.reps, normal.rpe, normal.previousComparableSet.id], [100, 8, "", "prior-top"], "Stable role rows retain factual load/reps while actual RPE starts empty");
 
 const routineDefault = runtime.factualSetPrefillForWorkoutStart(
   { name: "Synthetic Press — Light", reps: 10, targetRpe: 7, restSeconds: 90, increment: 5 },
@@ -120,7 +183,20 @@ const routineDefault = runtime.factualSetPrefillForWorkoutStart(
   0,
   []
 );
-assert.deepEqual([routineDefault.weight, routineDefault.reps, routineDefault.rpe], [0, 10, 7], "Routine defaults may prefill reps and RPE while absent load defaults remain blank");
+assert.deepEqual([routineDefault.weight, routineDefault.reps, routineDefault.rpe], ["", 10, ""], "Routine defaults seed rep placeholders while actual RPE and absent load defaults remain blank");
+
+const canonicalDefault = runtime.factualSetPrefillForWorkoutStart(
+  { name: "Synthetic Press", reps: 10, defaultLoad: 50 },
+  { resistanceType: "external" },
+  { type: "straight", defaultLoad: { value: 20, unit: "kg" }, defaultReps: 9, repMin: 8, repMax: 12 }, 0, 0, []
+);
+assert.equal(canonicalDefault.weight, 44, "A canonical kilogram default is explicitly converted to the app's pound display unit");
+assert.equal(canonicalDefault.reps, 9);
+const nullableDefault = runtime.factualSetPrefillForWorkoutStart(
+  { name: "Synthetic Press", reps: 10, defaultLoad: 50 }, { resistanceType: "external" },
+  { type: "straight", defaultLoad: null, defaultReps: null, repMin: 8, repMax: 12 }, 0, 0, []
+);
+assert.deepEqual([nullableDefault.weight, nullableDefault.reps], [50, 10], "Null role defaults retain existing legacy exercise default behavior");
 
 const exception = runtime.factualSetPrefillForWorkoutStart(
   { name: "Synthetic Press — Heavy", reps: 6, targetRpe: 8.5, restSeconds: 180, increment: 5 },
@@ -130,7 +206,7 @@ const exception = runtime.factualSetPrefillForWorkoutStart(
   0,
   prior
 );
-assert.deepEqual([exception.weight, exception.reps, exception.rpe], [80, 8, 6.5], "A temporary exception may lower load and effort without rewriting factual reps");
+assert.deepEqual([exception.weight, exception.reps, exception.rpe], [80, 8, ""], "A temporary exception may lower target load without inventing actual RPE or rewriting factual reps");
 
 const equipmentSnapshot = {
   executionBlocked: true,

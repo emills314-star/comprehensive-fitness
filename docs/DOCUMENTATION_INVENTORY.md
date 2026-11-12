@@ -9,7 +9,7 @@
 ## Authority order
 
 1. `AGENTS.md` — repository working agreement.
-2. `docs/redesign/final/` — final redesign product, feature, recommendation, migration, and acceptance authority.
+2. `docs/redesign/final/` - final redesign authority, except where D-028 and the coach contract supersede it.
 3. `docs/redesign/DECISION_LOG.md` — implementation-era successor decisions and factual clarifications.
 4. Current living documents in `docs/` — verified implemented state.
 5. Code/tests — evidence of current behavior, not authority to change settled product scope.
@@ -24,8 +24,10 @@ When these disagree, do not silently revive the older behavior. Record a concret
 | `docs/PROJECT.md` | Current product scope and product/data boundaries. |
 | `docs/ARCHITECTURE.md` | Current runtime, persistence, packaging, API, privacy, and compatibility architecture. |
 | `docs/DECISION_ENGINE.md` | Current stable-target, exception, grade, and historical-decision boundary. |
-| `docs/UI_UX.md` | Current two-destination screen and interaction contract. |
+| `docs/UI_UX.md` | Current two-destination screen and interaction contract, including locally implemented Loaded Bar Today, workout and Settings flows. |
 | `docs/ROADMAP.md` | Current milestone status, next gates, risks, and exclusions. |
+| `docs/redesign/coach/COACH_V1_CONTRACT.md` | Governing per-session coach intent under D-028; D-029 records integration deviations awaiting review. |
+| `coach-concepts/LOADED_BAR_SPEC.md` | Loaded Bar UI direction and equipment rules; status is qualified in the spec. |
 | `docs/redesign/STATUS.md` | Redesign-specific implementation and acceptance status. |
 | `docs/redesign/implementation/IMPLEMENTATION_EXECPLAN.md` | Sequential milestone execution plan and temporary-structure ledger. |
 | `docs/redesign/implementation/MILESTONE_LOG.md` | Detailed milestone evidence and recoverable checkpoints. |

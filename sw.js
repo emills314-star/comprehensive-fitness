@@ -1,9 +1,10 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v106";
+const CACHE_NAME = "comprehensive-fitness-pwa-v107";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
   "/index.html",
   "/app-foundation.js",
+  "/app-coach.js",
   "/app-views.js",
   "/app-analysis.js",
   "/app-workout.js",
@@ -17,6 +18,8 @@ const APP_SHELL = Object.freeze([
   "/prescription-engine.js",
   "/exception-resolver.js",
   "/rest-completion-controller.js",
+  "/coach-engine.js",
+  "/loaded-bar.js",
   "/backup-contract.js",
   "/resources/exercise_database.json",
   "/resources/exercise_muscle_map.json",

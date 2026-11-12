@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
+const { closeLoadedBarSheet, openExerciseOptions } = require("./fixtures/loaded-bar.helpers");
 const {
   FIXED_NOW,
   STORAGE_KEY,
@@ -172,23 +173,32 @@ test.beforeAll(() => {
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 });
 
-test("M1 starts stable variant targets with factual same-role prefills at 390 by 844", async ({ page }) => {
+test("M1 starts stable variant targets with blank actuals and factual same-role placeholders at 390 by 844", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page);
   await startExpectedWorkout(page);
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
 
-  const exercise = page.locator(".exercise-card").filter({ hasText: EXERCISE_NAME });
+  const exercise = page.locator(".loaded-bar-focus").filter({ hasText: EXERCISE_NAME });
   await expect(exercise).toHaveCount(1);
   await expect(exercise.locator(".program-warning.blocking")).toHaveCount(0);
-  await expect(exercise.locator(".set-current-editor")).toContainText("3 sets planned");
-  await expect(exercise).toContainText("Top Set is ready");
-  await expect(exercise).toContainText("5-7 reps");
-  await expect(exercise).toContainText(/RPE 7\.5-8\.5/);
-  await expect(exercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("1234.5");
-  await expect(exercise.getByRole("spinbutton", { name: "Set 1 reps" })).toHaveValue("6");
-  await expect(exercise.getByRole("spinbutton", { name: "Set 1 RPE" })).toHaveValue("8.5");
+  await expect(exercise.locator(".loaded-bar-row")).toHaveCount(3);
+  await expect(exercise.locator('[data-action="set-type-sheet"]').first()).toHaveAccessibleName(/Set 1 type: Top Set/i);
+  await expect(exercise.locator(".loaded-bar-rpe-hint").first()).toHaveText("7.5–8.5");
+  const load = exercise.locator('[data-action="set-weight"]').first();
+  const reps = exercise.locator('[data-action="set-reps"]').first();
+  await expect(load).toHaveValue("");
+  await expect(load).toHaveAttribute("placeholder", "1234.5");
+  await expect(reps).toHaveValue("");
+  await expect(reps).toHaveAttribute("placeholder", "6");
+  await expect(exercise.locator('[data-action="set-rpe"]').first()).toHaveValue("");
+  await expect(exercise.locator('[data-action="set-rpe"]').first()).not.toHaveAttribute("placeholder");
+  const exerciseId = (await exercise.getAttribute("id")).slice("exercise-".length);
+  const options = await openExerciseOptions(page, exerciseId);
+  await expect(options.getByRole("spinbutton", { name: "Working set 1 minimum reps", exact: true })).toHaveValue("5");
+  await expect(options.getByRole("spinbutton", { name: "Working set 1 maximum reps", exact: true })).toHaveValue("7");
+  await closeLoadedBarSheet(page);
 
   const normalized = await page.evaluate(() => ({
     template: data.templates.find((item) => item.id === "public-synthetic-control-template")
@@ -198,28 +208,44 @@ test("M1 starts stable variant targets with factual same-role prefills at 390 by
   expect(normalized.template.exercises[0].setTypes.map((item) => item.type)).toEqual(["top", "backoff"]);
 
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m1-mobile-stable-target-prefill.png"), fullPage: true });
-  await exercise.getByRole("button", { name: "Mark set complete", exact: true }).click();
-  await expect(exercise.getByRole("button", { name: "Set completed", exact: true })).toBeVisible();
+  const setId = await load.getAttribute("data-set-id");
+  await exercise.getByRole("button", { name: "Complete set 1", exact: true }).click();
+  await expect(exercise.getByRole("button", { name: "Reopen set 1", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate((id) => {
+    const set = data.sets.find((item) => item.id === id);
+    return { weight: set.weight, reps: set.reps, rpe: set.rpe, loadSource: set.loadSource, repsSource: set.repsSource };
+  }, setId)).toEqual({ weight: 1234.5, reps: 6, rpe: "", loadSource: "prefill_previous", repsSource: "prefill_previous" });
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m1-mobile-stable-target-completed.png"), fullPage: true });
 });
 
-test("M1 replaces a prefilled RPE 7 with 7.5 in one focused edit", async ({ page }) => {
+test("M1 keeps RPE blank despite prior 7 and replaces typed 7 with 7.5 in one focused edit", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
   const fixture = m1Fixture();
   fixture.sets.find((set) => set.id === "public-synthetic-m1-history-top").rpe = 7;
   await installFixture(page, fixture);
   await startExpectedWorkout(page);
-  const exercise = page.locator(".exercise-card").filter({ hasText: EXERCISE_NAME });
+  const exercise = page.locator(".loaded-bar-focus").filter({ hasText: EXERCISE_NAME });
   const rpe = exercise.getByRole("spinbutton", { name: "Set 1 RPE" });
   const setId = await rpe.getAttribute("data-set-id");
-  await expect(rpe).toHaveValue("7");
-
+  await expect(rpe).toHaveValue("");
+  await expect(rpe).not.toHaveAttribute("placeholder");
   await rpe.click();
-  await rpe.pressSequentially("7.5");
+  let sheetInput = page.locator('.loaded-bar-sheet [data-action="set-rpe"]');
+  await sheetInput.fill("7");
+  await sheetInput.press("Tab");
+  await closeLoadedBarSheet(page);
+  await expect(rpe).toHaveValue("7");
+  await rpe.click();
+  sheetInput = page.locator('.loaded-bar-sheet [data-action="set-rpe"]');
+  await sheetInput.click();
+  await sheetInput.pressSequentially("7.5");
+  await expect(sheetInput).toHaveValue("7.5");
+  await closeLoadedBarSheet(page);
   await expect(rpe).toHaveValue("7.5");
-  await exercise.getByRole("button", { name: "Mark set complete", exact: true }).click();
-  await expect(exercise.getByRole("button", { name: "Set completed", exact: true })).toBeVisible();
+  await exercise.getByRole("button", { name: "Complete set 1", exact: true }).click();
+  await expect(exercise.getByRole("button", { name: "Reopen set 1", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate((id) => data.sets.find((set) => set.id === id)?.rpe, setId)).toBe(7.5);
+  await expect.poll(() => page.evaluate((id) => data.sets.find((set) => set.id === id)?.rpeSource, setId)).toBe("typed");
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m1-mobile-rpe-7-to-7-5.png"), fullPage: true });
 });

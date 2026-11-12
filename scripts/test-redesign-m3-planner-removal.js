@@ -50,6 +50,7 @@ function importValidator() {
           maxTemplates: 100000
         },
         validateBackupJsonShape: () => true,
+        window: { FitnessBackupContract: backupContract },
         TextEncoder
       },
       { filename: "app-import.js#validateImportedAppData" }

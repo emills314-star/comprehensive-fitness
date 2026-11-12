@@ -237,10 +237,10 @@ test("M7 completes an adapted mobile workout with one concise actual-work result
   await installFixture(page, fixture);
   await page.evaluate(() => setActiveTab("workout"));
 
-  const adaptedExercise = page.locator(".exercise-card").filter({ has: page.getByRole("heading", { name: LONG_VARIANT, exact: true }) });
+  const adaptedExercise = page.locator(".loaded-bar-focus").filter({ has: page.getByRole("heading", { name: LONG_VARIANT, exact: true }) });
   await expect(adaptedExercise).toBeVisible();
-  await expect(adaptedExercise).toContainText(/1,?234\.5/);
-  await expect(adaptedExercise).toContainText("8.5");
+  await expect(adaptedExercise.locator('[data-action="set-weight"]').first()).toHaveValue("1234.5");
+  await expect(adaptedExercise.locator('[data-action="set-rpe"]').first()).toHaveValue("8.5");
 
   await page.locator('[data-action="request-submit-workout"]').click();
   const confirmation = page.locator(".submit-confirmation");

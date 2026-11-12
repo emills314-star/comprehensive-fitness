@@ -24,8 +24,9 @@ const templates = section(analysis, "function renderTemplates()", "function temp
 const templateCard = section(analysis, "function renderTemplateCard(", "function renderHistory()");
 const summary = section(history, "function renderCompletedWorkoutSummary(", "\n      }");
 
-assert.match(today, /<h1>Today<\/h1>[\s\S]*Choose your workout[\s\S]*data-action="start-template"/, "Empty Today must identify and directly start the chosen workout");
-assert.match(today, /rollingHypertrophySummary\(\)[\s\S]*renderRollingHypertrophyCard/, "Today must render the shared rolling score summary");
+assert.match(today, /<h1>Today<\/h1>[\s\S]*renderTodayWorkoutChooser\(\)/, "Empty Today must identify itself and delegate to the direct workout chooser");
+assert.match(section(views, "function renderTodayWorkoutChooser(", "function renderPlannedWorkoutPreview("), /Choose your workout[\s\S]*data-action="start-template"/, "The chooser must keep direct Start for each routine");
+assert.match(today, /renderRollingHypertrophyCard\(rollingHypertrophySummary\(\)\)/, "Today must render the shared rolling score summary");
 assert.doesNotMatch(today, /todayPlanPreview|renderTodayPlanPreview|Stable target|Last time|weeklyMuscleVolume|open-progress/i, "Today must not retain plan comparisons or retired volume links");
 assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Alternate routines must remain secondary to the expected workout");
 assert.match(quickStarts, /"resume-active-workout" : "start-template"/, "Alternate workouts must route through the safe direct-or-confirmed replacement path");

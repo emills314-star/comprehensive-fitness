@@ -281,7 +281,7 @@ assert.equal(JSON.stringify(stableTarget), stableBytes, "A readiness action must
 
 assert.match(foundation, /expectedTemplateId:\s*""/);
 assert.match(foundation, /model\.settings\.expectedTemplateId\s*=\s*""/, "Migration must clear an invalid legacy pointer instead of selecting an unrelated routine");
-assert.match(views, /const nextTemplate = expectedWorkoutTemplate\(\)/);
+assert.match(views, /const nextTemplate = expectedWorkoutTemplate\(data, new Date\(todayIso\(\) \+ "T12:00:00"\)\)/, "Today must use the canonical expected routine for its local date");
 assert.doesNotMatch(functionSource(views, "renderLiftHome"), /data\.templates\[0\]/, "Today must not relabel array position zero as expected");
 assert.match(functionSource(views, "renderLiftHome"), /if \(running\)[\s\S]*renderResolvedAction\(resolvedActionForScope\(running, "session"\)/, "Today must present an active session exception before Resume");
 assert.match(analysis, /data-action="template-scheduled-weekday"/);

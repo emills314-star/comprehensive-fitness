@@ -550,6 +550,116 @@
     }
   }
 
+  function differsFromPreviousCoachStart(prescription, exercise, previousPrescriptions) {
+    const stable = prescription.stableTargets.find((item) => item.exerciseId === exercise.exerciseId);
+    if (!stable || !Array.isArray(previousPrescriptions)) return false;
+    const before = Date.parse(prescription.createdAt);
+    const matches = previousPrescriptions.flatMap((prior) => {
+      const time = Date.parse(prior?.createdAt);
+      if (!Number.isFinite(time) || time >= before || !Array.isArray(prior?.stableTargets)
+        || !Array.isArray(prior?.exercises) || !Array.isArray(prior?.sets)) return [];
+      const targets = prior.stableTargets.filter((item) => item.variantIdentity === stable.variantIdentity
+        && item.targetVersion === stable.targetVersion && item.resistanceType === stable.resistanceType);
+      if (targets.length !== 1) return [];
+      const priorExercise = prior.exercises.find((item) => item.exerciseId === targets[0].exerciseId);
+      if (!priorExercise || priorExercise.codes.some((code) => ["factual_only", "exception_suppressed"].includes(code))) return [];
+      return [{ prior, exerciseId: priorExercise.exerciseId, time }];
+    }).sort((left, right) => right.time - left.time);
+    const previous = matches[0];
+    if (!previous) return false;
+    const working = (row) => !["warmup", "drop", "deload", "unknown"].includes(row.role);
+    const currentRows = prescription.sets.filter((row) => row.exerciseId === exercise.exerciseId && working(row));
+    const priorRows = previous.prior.sets.filter((row) => row.exerciseId === previous.exerciseId && working(row));
+    if (currentRows.length !== priorRows.length) return true;
+    const key = (row) => row.role + ":" + row.position;
+    const priorByPosition = new Map(priorRows.map((row) => [key(row), row.anchor]));
+    const physicalLoad = (target) => target.load === null ? null
+      : target.unit === "kg" ? target.load * 2.2046226218 : target.load;
+    return currentRows.some((row) => {
+      const prior = priorByPosition.get(key(row));
+      if (!prior || row.anchor.reps !== prior.reps) return true;
+      const currentLoad = physicalLoad(row.anchor);
+      const previousLoad = physicalLoad(prior);
+      // Match the engine's physical-load identity tolerance, without changing
+      // either stored unit or target. This is comparison only, not prescription.
+      return currentLoad === null || previousLoad === null ? currentLoad !== previousLoad
+        : Math.abs(currentLoad - previousLoad) > 1e-8 * Math.max(1, currentLoad, previousLoad);
+    });
+  }
+
+  // A separate display channel: normal targets never enter exception candidates,
+  // actions or their validator. The app supplies the coach trust-boundary check.
+  function resolvePrescriptionChannel({ prescription, effectiveMode, exceptionDecisions,
+    suspensions, revisionEnabled, actualSetIds, previousPrescriptions } = {}, validatePrescription) {
+    const hidden = (reason) => ({ visible: false, reason });
+    if (effectiveMode !== "show") return hidden("mode_hidden");
+    try {
+      if (typeof validatePrescription !== "function") return hidden("invalid_prescription");
+      const validation = validatePrescription(prescription);
+      if (validation !== true && validation?.ok !== true) return hidden("invalid_prescription");
+      // The adapter validates prior stored prescriptions against their own
+      // sessions; the current-session ownership callback cannot validate them.
+      const previous = previousPrescriptions ?? validation?.previousPrescriptions;
+      const decisions = Array.isArray(exceptionDecisions) ? exceptionDecisions : [];
+      // Decision history is newest first. A no-action record closes the preceding
+      // explicit-input segment; archived pending decisions must not block forever.
+      const cleared = decisions.findIndex((decision) => decision?.outcome === "no_action");
+      const current = decisions.slice(0, cleared < 0 ? decisions.length : cleared);
+      const seenScopes = new Set();
+      const unresolved = current.some((decision) => {
+        const key = scopeKey(decision?.scope);
+        if (seenScopes.has(key)) return false;
+        seenScopes.add(key);
+        return decision?.outcome === "action" && decision.category === "pain_or_illness"
+          && decision.action?.code === "stop_or_skip_work" && decision.handling !== "overridden";
+      });
+      if (unresolved) return hidden("exception_unresolved");
+      const suspended = Array.isArray(suspensions) ? suspensions : [];
+      if (suspended.some((entry) => entry?.scope === "session")) return hidden("suspended");
+      const actualIds = Array.isArray(actualSetIds) ? new Set(actualSetIds) : null;
+      const revisionOn = revisionEnabled !== false;
+      const bookkeeping = new Set(["event_evaluated", "completed_target", "skipped_target", "edit_lock"]);
+      const exercises = prescription.exercises.flatMap((exercise) => {
+        if (suspended.some((entry) => entry?.scope === "exercise" && entry.exerciseId === exercise.exerciseId)
+          || exercise.codes.includes("factual_only") || exercise.codes.includes("exception_suppressed")) return [];
+        const rows = prescription.sets.filter((row) => row.exerciseId === exercise.exerciseId && row.target !== null);
+        if (!rows.length) return [];
+        const sets = rows.map((row) => {
+          const revision = revisionOn ? row.revisions.findLast((entry) => !entry.superseded && !entry.undone
+            && !bookkeeping.has(entry.code)) : null;
+          return {
+            setId: row.setId, role: row.role, position: row.position, sequenceIndex: row.sequenceIndex,
+            target: cloneJson(revisionOn ? row.target : row.anchor), anchor: cloneJson(row.anchor),
+            revision: revision ? cloneJson({ revisionId: revision.revisionId, from: revision.from,
+              to: revision.to, code: revision.code, locked: revision.locked }) : null,
+            optional: revisionOn && exercise.optionalSetIds.includes(row.setId),
+            // Actual ownership is supplied by the app; a missing row is virtual.
+            virtual: actualIds ? !actualIds.has(row.setId) : false
+          };
+        });
+        const startCodes = exercise.sessionStart.codes;
+        // Progression codes prove a load/rep change from prior actual results.
+        // Other codes, including count changes, require a compatible previous
+        // stored prescription: comparing only to routine S invents differences
+        // for consecutive reduced sessions or previously owner-added rows.
+        const startChanged = startCodes.some((code) => ["add_load", "add_reps", "reduce_load"].includes(code))
+          || differsFromPreviousCoachStart(prescription, exercise, previous);
+        const revisedReason = revisionOn && exercise.reasonText !== exercise.sessionStart.reasonText
+          && sets.some((row) => row.revision);
+        return [{
+          exerciseId: exercise.exerciseId,
+          codes: [...(revisionOn ? exercise.codes : startCodes)],
+          reasonText: revisedReason ? exercise.reasonText : startChanged ? exercise.sessionStart.reasonText : null,
+          sets
+        }];
+      });
+      if (!exercises.length) return hidden(suspended.length ? "suspended" : "no_targets");
+      return { visible: true, exercises };
+    } catch (_error) {
+      return hidden("invalid_prescription");
+    }
+  }
+
   return Object.freeze({
     CANDIDATE_VERSION,
     CONTRACT_VERSION,
@@ -560,6 +670,7 @@
     normalizeCandidate,
     resolveExceptionCandidates,
     applyDecisionHandling,
-    validateResolvedAction
+    validateResolvedAction,
+    resolvePrescriptionChannel
   });
 });

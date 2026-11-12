@@ -6,7 +6,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
-const runtime = ["app-foundation.js", "app-views.js", "app-analysis.js", "app-workout.js", "app.js"]
+const runtime = ["app-foundation.js", "app-coach.js", "app-views.js", "app-analysis.js", "app-workout.js", "app.js"]
   .map(read)
   .join("\n");
 const views = read("app-views.js");
@@ -26,7 +26,12 @@ assert.match(workout, /resolvedActionId/, "The canonical exception result must r
 
 const today = views.match(/function renderLiftHome\(\)[\s\S]*?(?=\n\s*function )/)?.[0] || "";
 assert.ok(today, "Today renderer must remain inspectable");
-assert.match(today, /Start workout|start-next-template|start-template/, "Today must retain a direct workout start action");
+for (const helper of ["renderPlannedWorkoutCard", "renderTodayWorkoutChooser"]) {
+  assert.match(today, new RegExp(helper + "\\("), "Today must render both its planned and chooser start surfaces");
+  const surface = views.match(new RegExp("function " + helper + "\\([^]*?(?=\\n\\s*function )"))?.[0] || "";
+  assert.match(surface, /data-action="start-template"/, `${helper} must retain a direct workout start action`);
+  assert.doesNotMatch(surface, /weekly volume|dashboard|research status|confidence|evidence/i, `${helper} must not restore retired analytical controls`);
+}
 assert.match(today, /rollingHypertrophySummary\(\)/, "Today must use the shared rolling ten-session hypertrophy selector");
 assert.doesNotMatch(today, /weekly volume|dashboard|research status|confidence|evidence/i, "Today must remain quiet outside the requested rolling score");
 

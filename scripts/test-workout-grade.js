@@ -1,7 +1,20 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { buildGradeHarness, engineSource, historySource } = require("./workout-grade-test-harness");
+const { buildGradeHarness: originalBuildGradeHarness, engineSource, historySource } = require("./workout-grade-test-harness");
+
+// The focused grade harness loads history separately; load the real shared
+// foundation predicate as the browser does before invoking grade functions.
+function buildGradeHarness(seed) {
+  const harness = originalBuildGradeHarness(seed);
+  const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "app-foundation.js"), "utf8");
+  const start = source.indexOf("function isDeloadExposure(");
+  const end = source.indexOf("\n      function getMostRecentWorkoutPerformance(", start);
+  require("node:assert/strict").ok(start >= 0 && end > start);
+  require("node:vm").runInContext(source.slice(start, end), harness.context);
+  return harness;
+}
+
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
 function set(id, exerciseId, overrides = {}) {

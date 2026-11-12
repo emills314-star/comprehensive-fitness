@@ -1,7 +1,8 @@
 # Comprehensive Fitness Final Redesign PRD
 
-**Status:** FINAL PRODUCT AUTHORITY  
+**Status:** FINAL PRODUCT AUTHORITY, partly superseded by D-028 (2026-10-31)  
 **Date:** 2026-07-30  
+**Superseded clauses:** [D-028](../DECISION_LOG.md) makes the app a per-session coach (load, reps, and working-set count, revised after each set) with Google Health recovery shown as information. Its normal-coaching, prefill, reason-text, and wearable-integration prohibitions no longer apply; see [`../coach/COACH_V1_CONTRACT.md`](../coach/COACH_V1_CONTRACT.md). All other clauses stand.  
 **Implementation status:** Not started or authorized by this document  
 **Adjudication evidence:** [`../audits/ADJUDICATION_MATRIX.md`](../audits/ADJUDICATION_MATRIX.md)  
 **Companion contracts:** [`FINAL_FEATURE_DISPOSITION.md`](FINAL_FEATURE_DISPOSITION.md), [`RECOMMENDATION_ENGINE_CONTRACT.md`](RECOMMENDATION_ENGINE_CONTRACT.md), [`MIGRATION_AND_ACCEPTANCE_PLAN.md`](MIGRATION_AND_ACCEPTANCE_PLAN.md)

@@ -10,7 +10,15 @@ const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const externalScripts = [...html.matchAll(/<script\s+src="\.\/([^"]+)"><\/script>/g)].map((match) => match[1]);
 
+assert.deepEqual(APPLICATION_RUNTIME_FILES, [
+  "app-foundation.js", "app-coach.js", "app-views.js", "app-analysis.js",
+  "app-workout.js", "app-sync.js", "app-history.js", "app-import.js", "app.js"
+], "The coach adapter belongs after foundation and before every view");
 assert.equal(new Set(APPLICATION_RUNTIME_FILES).size, APPLICATION_RUNTIME_FILES.length, "Runtime segment names must be unique");
+assert.deepEqual(externalScripts.slice(0, -APPLICATION_RUNTIME_FILES.length), [
+  "prescription-engine.js", "exception-resolver.js", "rest-completion-controller.js",
+  "coach-engine.js", "loaded-bar.js", "backup-contract.js"
+], "Pure engines and backup validation must load as ordered classic scripts before the app");
 assert.deepEqual(
   externalScripts.slice(-APPLICATION_RUNTIME_FILES.length),
   APPLICATION_RUNTIME_FILES,

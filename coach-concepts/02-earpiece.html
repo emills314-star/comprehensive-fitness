@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Earpiece — coach concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&amp;family=Archivo+Narrow:wght@400..700&amp;display=swap">
+<link rel="stylesheet" href="palette.css">
+<style>
+/* ==========================================================================
+   02 · EARPIECE
+   The coach talks; the screen is what it says.
+   Sections: 0 tokens · 1 page · 2 phone shell · 3 caption system · 4 voice ·
+             5 tiles and chips · 6 giant controls · 7 frames · 8 motion
+   Words are WIDE and heavy. Numbers are TALL and condensed. Colour is only
+   palette tokens.
+   ========================================================================== */
+
+/* ---------- 0 tokens ---------- */
+:root {
+  --e-display: "Archivo", "Bahnschrift", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --e-narrow: "Archivo Narrow", "Arial Narrow", "Bahnschrift", "Segoe UI", system-ui, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--panel-2);
+  color: var(--text);
+  font: 400 16px/1.4 var(--e-narrow);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+p, h1, h2, h3, ul, dl, dd, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+svg { display: block; }
+
+/* numerals: tall, condensed, heavy */
+.n {
+  font-family: var(--e-display);
+  font-weight: 850;
+  font-stretch: 70%;
+  letter-spacing: -0.02em;
+  line-height: 0.82;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 1 page ---------- */
+.hero { background: var(--text); color: var(--on-action); position: relative; overflow: hidden; }
+.hero::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
+  background: var(--panel-3);
+}
+.hero-in {
+  max-width: 1720px; margin: 0 auto; padding: 56px 56px 62px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 520px);
+  gap: 24px 56px; align-items: end;
+}
+.hero .num { font: 900 300px/0.74 var(--e-display); font-stretch: 68%; letter-spacing: -0.03em; color: var(--panel-3); }
+.hero .eyebrow { font: 700 14px/1 var(--e-narrow); letter-spacing: 0.24em; text-transform: uppercase; color: var(--panel-3); margin-bottom: 18px; display: flex; align-items: center; gap: 12px; }
+.hero h1 { font: 900 96px/0.86 var(--e-display); font-stretch: 124%; letter-spacing: -0.03em; text-transform: uppercase; }
+.thesis { text-wrap: balance; margin-top: 26px; font: 850 34px/1.12 var(--e-display); font-stretch: 112%; letter-spacing: -0.012em; max-width: 960px; }
+.thesis .w { white-space: nowrap; padding: 0 0.12em; margin: 0 -0.12em; border-radius: 6px; animation: say 12s linear infinite backwards; animation-delay: calc(var(--k) * 0.55s); }
+.notes { display: grid; gap: 16px; }
+.notes div { border-top: 2px solid color-mix(in srgb, var(--on-action) 30%, transparent); padding-top: 10px; }
+.notes dt { font: 700 13px/1 var(--e-narrow); letter-spacing: 0.22em; text-transform: uppercase; color: var(--panel-3); margin-bottom: 6px; }
+.notes dd { font: 400 19px/1.36 var(--e-narrow); }
+.hero .wave { color: var(--panel-3); }
+.legend { background: var(--text); color: var(--on-action); }
+.legend-in { max-width: 1720px; margin: 0 auto; padding: 16px 56px 18px; display: flex; flex-wrap: wrap; gap: 8px 30px; font: 400 15px/1.3 var(--e-narrow); color: color-mix(in srgb, var(--on-action) 78%, transparent); }
+.legend b { font-weight: 700; color: var(--on-action); }
+
+.stage { max-width: 2680px; margin: 0 auto; padding: 44px 24px 90px; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 52px 28px; }
+.stage figure { width: 390px; }
+.stage .note { margin-top: 14px; padding: 0 6px; font: 400 15px/1.35 var(--e-narrow); color: var(--muted); }
+.stage .note b { color: var(--text); font-weight: 700; }
+figcaption { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font: 700 15px/1 var(--e-narrow); letter-spacing: 0.14em; text-transform: uppercase; }
+figcaption b { background: var(--text); color: var(--on-action); padding: 6px 9px 5px; border-radius: 5px; letter-spacing: 0.06em; }
+
+/* ---------- 2 phone shell ---------- */
+.phone {
+  position: relative; width: 390px; height: 844px; overflow: hidden;
+  border-radius: 44px; background: var(--bg); color: var(--text);
+  box-shadow: var(--el-3), 0 0 0 1px var(--line-strong);
+  isolation: isolate; font-family: var(--e-narrow);
+}
+.sb {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px; z-index: 6;
+  padding: 4px 28px 0 34px; display: flex; align-items: center; justify-content: space-between;
+  font: 700 16px/1 var(--e-display); letter-spacing: 0;
+}
+.sb .r { display: flex; align-items: center; gap: 7px; }
+.sb svg { fill: currentColor; height: 12px; width: auto; }
+.sb svg.bud { height: 15px; }
+.home { position: absolute; left: 50%; bottom: 8px; width: 136px; height: 5px; margin-left: -68px; border-radius: 3px; background: currentColor; opacity: 0.9; z-index: 6; }
+.scr {
+  position: absolute; left: 0; right: 0; top: 44px; bottom: 0;
+  padding: 0 24px 30px; display: flex; flex-direction: column;
+}
+.scr > * { flex-shrink: 0; }
+.mast {
+  height: 30px; display: flex; align-items: center; justify-content: space-between;
+  font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.mast .live { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--action); animation: blink 1.4s ease-in-out infinite; }
+
+/* ---------- 3 caption system ---------- */
+.ghost {
+  margin-top: 6px; font: 700 17px/1.24 var(--e-display); letter-spacing: -0.005em; color: var(--muted-2);
+  -webkit-mask-image: linear-gradient(to top, var(--text) 45%, transparent);
+  mask-image: linear-gradient(to top, var(--text) 45%, transparent);
+}
+.cap {
+  margin-top: 8px; font-family: var(--e-display); font-weight: 850; font-stretch: 112%;
+  font-size: 37px; line-height: 1.04; letter-spacing: -0.014em; color: var(--muted-2); word-spacing: 0.06em;
+}
+.cap .w { white-space: nowrap; }
+.cap .said { color: var(--text); }
+.cap .now {
+  color: var(--on-action); background: var(--action); border-radius: 7px;
+  padding: 0 0.12em; margin: 0 -0.03em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.cap b { font-weight: 900; }
+
+/* ---------- 4 voice ---------- */
+.wave { --wh: 56px; height: var(--wh); display: flex; align-items: center; justify-content: space-between; color: var(--action); }
+.wave i { display: block; flex: 0 0 5px; height: calc(var(--h) * 100%); border-radius: 3px; background: currentColor; animation: wob 1.1s ease-in-out infinite alternate; animation-delay: var(--d); }
+.wave.mini { --wh: 18px; width: 54px; }
+.wave.mini i { flex-basis: 4px; }
+.rings { position: absolute; pointer-events: none; }
+.rp { fill: none; stroke: currentColor; stroke-width: 2.5; transform-box: fill-box; transform-origin: center; animation: ripple 2.8s ease-out infinite; }
+.rp.b { animation-delay: -0.93s; }
+.rp.c { animation-delay: -1.86s; }
+
+/* ---------- 5 tiles and chips ---------- */
+.tiles { display: grid; gap: 8px; }
+.tiles.c4 { grid-template-columns: 1.3fr 1.1fr 0.8fr 0.8fr; }
+.tiles.f4t { grid-template-columns: 1.15fr 0.7fr 0.7fr 1.5fr; }
+.tiles.f4t .tile:last-child > b { font-size: 24px; }
+.mt8 { margin-top: 8px; } .mt10 { margin-top: 10px; } .mt12 { margin-top: 12px; } .mt14 { margin-top: 14px; }
+.mtauto { margin-top: auto; }
+.tile {
+  border: 2px solid var(--text); border-radius: 10px; padding: 7px 9px 7px; min-height: 62px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 5px;
+}
+.tile > span { font: 700 11.5px/1 var(--e-narrow); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.tile > span.nc { text-transform: none; letter-spacing: 0.04em; font-size: 12.5px; }
+.tile > b { font: 700 28px/1 var(--e-narrow); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tile > b small { font: 700 13px/1 var(--e-narrow); color: var(--muted); margin-left: 3px; letter-spacing: 0; }
+.logged {
+  display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 12px; border-radius: 10px;
+  background: var(--success-dark); color: var(--success); font: 700 14px/1 var(--e-narrow); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.logged svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.logged b { font-size: 19px; letter-spacing: 0; color: var(--text); text-transform: none; }
+.logged q { quotes: none; font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 15px; color: var(--success); margin-left: auto; }
+.arr { width: 18px; height: 12px; display: inline-block; vertical-align: -1px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- 6 giant controls ---------- */
+.giant {
+  position: relative; display: grid; grid-template-columns: 1fr auto; grid-template-rows: 1fr auto;
+  width: 100%; height: 218px; border: 0; border-radius: 34px; background: var(--action); color: var(--on-action);
+  padding: 18px 20px 18px 22px; text-align: left; overflow: hidden; font-family: var(--e-display);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--action) 20%, transparent);
+}
+.giant .ask { grid-column: 1; grid-row: 1; margin-top: 38px; max-width: 190px; }
+.giant .ask b { display: block; font-weight: 900; font-stretch: 116%; font-size: 33px; line-height: 1; letter-spacing: -0.03em; }
+.giant .ask i { display: block; margin-top: 7px; font: 400 15px/1.2 var(--e-narrow); font-style: normal; color: color-mix(in srgb, var(--on-action) 92%, transparent); }
+.giant .numwrap { grid-column: 2; grid-row: 1 / span 2; align-self: end; position: relative; margin: 0 8px -10px 0; }
+.giant .num { display: block; font-size: 226px; position: relative; }
+.giant .nudge { grid-column: 1; grid-row: 2; display: flex; gap: 10px; align-self: end; position: relative; }
+.giant .nudge span { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font: 700 30px/1 var(--e-narrow); border: 2px solid color-mix(in srgb, var(--on-action) 55%, transparent); }
+.giant .rings { left: 50%; top: 50%; width: 200px; height: 200px; margin: -100px 0 0 -100px; color: var(--on-action); opacity: 0.5; }
+.giant .listen { position: absolute; left: 20px; top: 16px; display: flex; align-items: center; gap: 9px; font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.14em; text-transform: uppercase; }
+.giant .chk { width: 30px; height: 30px; border-radius: 50%; background: var(--on-action); color: var(--action); display: grid; place-items: center; flex: none; }
+.giant .chk svg { width: 18px; height: 18px; }
+.rirrow { display: grid; grid-template-columns: 1fr 232px; align-items: center; gap: 10px; }
+.rirrow p { font: 700 13px/1.15 var(--e-narrow); letter-spacing: 0.1em; text-transform: uppercase; }
+.rirrow p em { font-style: normal; font-weight: 400; letter-spacing: 0.02em; text-transform: none; font-size: 13.5px; color: var(--muted); margin-left: 7px; }
+.rirrow p span { display: block; margin-top: 3px; font: 400 14px/1.15 var(--e-narrow); letter-spacing: 0.01em; text-transform: none; color: var(--muted); }
+.seg { display: grid; grid-template-columns: repeat(5, 1fr); height: 50px; border: 2px solid var(--text); border-radius: 14px; overflow: hidden; }
+.seg span { display: grid; place-items: center; align-content: center; font: 700 23px/1 var(--e-narrow); border-left: 2px solid var(--text); }
+.seg span:first-child { border-left: 0; }
+.seg .tg { background: var(--current-dark); color: var(--green-2); gap: 2px; }
+.seg .tg i { font: 700 11px/1 var(--e-narrow); font-style: normal; letter-spacing: 0.02em; text-transform: uppercase; }
+
+/* ---------- 7 frames ---------- */
+
+/* F2 · the call: the call, the caption and the waveform dominate; evidence is a quiet strip */
+.phone.dark { background: var(--text); color: var(--on-action); }
+.dark .mast { color: color-mix(in srgb, var(--on-action) 72%, transparent); }
+.dark .mast .live { color: var(--on-action); }
+.dark .dot { background: var(--panel-3); }
+.dark .wave { color: var(--panel-3); }
+.call::before {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(90% 34% at 50% 25%, color-mix(in srgb, var(--amber) 52%, transparent), transparent 72%),
+    radial-gradient(120% 26% at 50% 100%, color-mix(in srgb, var(--amber) 18%, transparent), transparent 70%);
+}
+.call .scr { z-index: 1; top: 44px; padding-bottom: 30px; }
+.callhead { text-align: center; padding-top: 8px; }
+.callhead .who { display: inline-flex; align-items: baseline; gap: 12px; font: 900 34px/1 var(--e-display); font-stretch: 118%; letter-spacing: -0.02em; text-transform: uppercase; }
+.callhead .who time { color: var(--panel-3); font-family: var(--e-display); font-stretch: 80%; font-variant-numeric: tabular-nums; letter-spacing: 0; font-size: 34px; }
+.callhead .sub { margin-top: 9px; display: inline-flex; align-items: center; gap: 8px; font: 700 13px/1 var(--e-narrow); letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--on-action) 84%, transparent); }
+.callhead .sub i { width: 9px; height: 9px; border-radius: 50%; background: var(--rest-accent); animation: blink 1s ease-in-out infinite; }
+.callhead .sub b { font-weight: 700; color: var(--rest-accent); font-variant-numeric: tabular-nums; }
+.ring { position: relative; height: 178px; margin: 8px -24px 0; }
+.ring svg { width: 390px; height: 178px; }
+.ring .rp { stroke: var(--panel-3); stroke-width: 3; }
+.ring .core { fill: color-mix(in srgb, var(--amber) 26%, var(--text)); }
+.ring .edge { fill: none; stroke: var(--panel-3); stroke-width: 6; }
+.ring .rb { fill: var(--panel-3); transform-box: fill-box; transform-origin: 50% 100%; animation: burst 0.9s ease-in-out infinite alternate; animation-delay: var(--d); }
+.ring .rb.a { fill: var(--amber); }
+.ring .digit { position: absolute; left: 0; right: 0; top: 42px; text-align: center; font-size: 104px; line-height: 0.9; color: var(--panel-3); }
+.dark .ghost { color: color-mix(in srgb, var(--on-action) 52%, transparent); }
+.dark .cap { color: color-mix(in srgb, var(--on-action) 52%, transparent); }
+.dark .cap .said { color: var(--on-action); }
+.dark .cap .now { background: var(--panel-3); color: var(--text); }
+.dark .cap b { color: var(--panel-3); }
+.call .cap { font-size: 27px; font-stretch: 100%; margin-top: 6px; }
+.call .ghost { margin-top: 2px; font-size: 15px; }
+.rk { flex: none; width: 20px; height: 20px; border-radius: 50%; background: color-mix(in srgb, var(--on-action) 16%, transparent); color: var(--on-action); display: inline-grid; place-items: center; font: 800 12px/1 var(--e-display); letter-spacing: 0; }
+.evid { margin-top: 12px; display: grid; gap: 8px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.facts li { height: 26px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 13px; border: 1.5px solid color-mix(in srgb, var(--on-action) 34%, transparent); font: 700 13.5px/1 var(--e-narrow); color: color-mix(in srgb, var(--on-action) 92%, transparent); white-space: nowrap; }
+.sigma { display: flex; align-items: center; gap: 12px; background: var(--panel-3); color: var(--text); border-radius: 14px; padding: 7px 14px 7px 12px; }
+.sigma b { font: 850 36px/0.9 var(--e-display); font-stretch: 78%; letter-spacing: -0.01em; white-space: nowrap; }
+.sigma span { font: 700 15px/1.15 var(--e-narrow); }
+.sigma small { display: block; margin-top: 2px; font: 400 13px/1.15 var(--e-narrow); color: var(--muted); }
+.why { display: grid; gap: 6px; margin-top: 2px; }
+.why li { display: grid; grid-template-columns: 20px 1fr; column-gap: 10px; align-items: start; font: 400 14.5px/1.22 var(--e-narrow); color: color-mix(in srgb, var(--on-action) 86%, transparent); }
+.why li b { color: var(--on-action); font-weight: 700; }
+.why li em { font-style: normal; font-weight: 400; color: color-mix(in srgb, var(--on-action) 82%, transparent); }
+.acts { margin-top: auto; display: grid; gap: 10px; }
+.btn { display: flex; flex-direction: column; justify-content: center; border: 0; text-align: left; font-family: var(--e-display); }
+.btn b { font-weight: 900; line-height: 1.02; letter-spacing: -0.02em; }
+.btn span { font: 400 14.5px/1.1 var(--e-narrow); }
+.btn.go { height: 88px; padding: 0 22px; border-radius: 24px; gap: 6px; background: var(--action); color: var(--on-action); box-shadow: 0 0 0 4px color-mix(in srgb, var(--action) 38%, transparent); animation: accept 1.6s ease-in-out infinite; }
+.btn.go b { font-size: 37px; font-stretch: 112%; }
+.btn.go span { color: color-mix(in srgb, var(--on-action) 92%, transparent); }
+.actrow { display: grid; grid-template-columns: 1fr; gap: 10px; align-items: center; }
+.btn.talk { height: 54px; padding: 0 16px; border-radius: 18px; border: 2.5px solid color-mix(in srgb, var(--on-action) 62%, transparent); color: var(--on-action); }
+.btn.talk b { font-size: 20px; font-stretch: 108%; }
+.hurt {
+  height: 46px; padding: 0 16px 0 12px; border: 0; border-radius: 23px; background: var(--red); color: var(--on-action);
+  display: inline-flex; align-items: center; gap: 7px; font: 700 13px/1 var(--e-narrow); letter-spacing: 0.1em; text-transform: uppercase;
+}
+.hurt svg { width: 17px; height: 17px; }
+
+/* F3 · say it: one highlighted line, two quiet alternatives, a quiet escape */
+.f3 .cap { font-size: 29px; font-stretch: 104%; }
+.sayhint { margin-top: 12px; display: flex; align-items: center; gap: 9px; font: 700 13px/1 var(--e-narrow); letter-spacing: 0.12em; text-transform: uppercase; }
+.sayhint > svg { width: 28px; height: 28px; padding: 5px; border-radius: 50%; background: var(--text); color: var(--on-action); flex: none; }
+.sayhint span { margin-left: auto; font-weight: 400; letter-spacing: 0.02em; text-transform: none; font-size: 14px; color: var(--muted); }
+.opt { display: grid; grid-template-columns: 54px 1fr; column-gap: 14px; align-items: start; text-align: left; width: 100%; }
+.opt .key { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.opt .key b { width: 52px; height: 52px; border-radius: 50%; border: 2.5px solid var(--text); display: grid; place-items: center; font: 900 28px/1 var(--e-display); }
+.opt .key i { display: flex; align-items: center; gap: 3px; font: 700 11.5px/1 var(--e-narrow); font-style: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.opt .key i svg { width: 12px; height: 12px; }
+.opt h3 { font: 850 20px/1.1 var(--e-display); font-stretch: 100%; letter-spacing: -0.01em; }
+.opt .say { margin-top: 4px; font: 400 15px/1.26 var(--e-narrow); color: var(--muted); }
+.opt.alt { grid-template-columns: 54px 1fr 18px; padding: 12px 0 12px; border-top: 1.5px solid var(--line-strong); }
+.opt.alt .go { align-self: center; width: 18px; height: 18px; color: var(--muted-2); }
+.orcho { margin-top: 14px; display: flex; align-items: center; gap: 10px; font: 700 12px/1 var(--e-narrow); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.orcho::after { content: ""; flex: 1; height: 1.5px; background: var(--line-strong); }
+.orcho + .opt { border-top: 0; padding-top: 8px; }
+.opt.rec { width: auto; margin: 10px -24px 0; padding: 16px 24px 16px; background: var(--action); color: var(--on-action); }
+.opt.rec .key b { background: var(--on-action); border-color: var(--on-action); color: var(--action); }
+.opt.rec .key i { color: color-mix(in srgb, var(--on-action) 88%, transparent); }
+.opt.rec .tag { font: 700 12px/1 var(--e-narrow); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 6px; color: color-mix(in srgb, var(--on-action) 88%, transparent); }
+.opt.rec h3 { font-size: 28px; font-stretch: 110%; }
+.opt.rec .say { margin-top: 6px; font-size: 16px; color: color-mix(in srgb, var(--on-action) 94%, transparent); }
+.opt.rec .info { margin-top: 8px; font: 400 14px/1.25 var(--e-narrow); color: color-mix(in srgb, var(--on-action) 86%, transparent); }
+.accept { grid-column: 1 / -1; margin-top: 12px; height: 52px; border-radius: 14px; background: var(--on-action); color: var(--green-2); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font: 900 25px/1 var(--e-display); font-stretch: 114%; letter-spacing: -0.02em; }
+.accept svg { width: 26px; height: 26px; }
+.foot3 { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
+.quiet { white-space: nowrap; height: 44px; padding: 0 2px; border: 0; background: transparent; font: 700 14px/1 var(--e-narrow); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); display: inline-flex; align-items: center; gap: 7px; }
+.quiet.pain { color: var(--red); }
+.quiet svg { width: 16px; height: 16px; }
+
+/* F4 · rest running, coach change with undo */
+.f4 .cap { font-size: 28px; font-stretch: 106%; margin-top: 6px; }
+.rest {
+  margin-top: 10px; background: var(--rest-accent); color: var(--rest-text); border-radius: 26px; padding: 8px 14px 12px 18px; position: relative; overflow: hidden;
+}
+.rest .rt { display: flex; justify-content: space-between; align-items: center; white-space: nowrap; height: 44px; }
+.rest .rl b { display: flex; align-items: center; gap: 7px; font: 700 13px/1 var(--e-narrow); letter-spacing: 0.12em; text-transform: uppercase; }
+.rest .rl span { display: block; margin-top: 4px; font: 400 13.5px/1 var(--e-narrow); }
+.rest .rdot { background: var(--rest-text); }
+.rest .rt > span { display: inline-flex; align-items: center; gap: 7px; }
+.rest .rt svg { width: 18px; height: 18px; }
+.rest .big { display: block; text-align: center; font-size: 98px; font-stretch: 62%; margin: 2px 0 6px; letter-spacing: -0.02em; }
+.rail { position: relative; height: 22px; border-radius: 11px; background: color-mix(in srgb, var(--rest-text) 20%, transparent); margin-top: 6px; margin-right: 4px; }
+.rail .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 55.3%; border-radius: 11px; background: var(--rest-text); }
+.rail .lab { position: absolute; left: calc(61.3% + 9px); top: 0; bottom: 0; display: flex; align-items: center; font: 700 11.5px/1 var(--e-narrow); letter-spacing: 0.04em; text-transform: uppercase; color: var(--rest-text); white-space: nowrap; }
+.rail .mark { position: absolute; left: 61.3%; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; background: var(--rest-text); }
+.railkey { position: relative; height: 16px; margin: 8px 4px 0 0; font: 700 12.5px/1.1 var(--e-narrow); letter-spacing: 0.06em; text-transform: uppercase; }
+.railkey span { position: absolute; top: 0; white-space: nowrap; }
+.railkey .k0 { left: 0; }
+.railkey .k1 { left: 61.3%; transform: translateX(-62%); text-align: center; }
+.railkey .k2 { right: 0; text-align: right; }
+.rest .rb3 button { border-color: color-mix(in srgb, var(--rest-text) 48%, transparent); color: var(--rest-text); background: color-mix(in srgb, var(--rest-text) 8%, transparent); }
+.chg { margin-top: 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 400 15px/1.1 var(--e-narrow); }
+.chg b { font-weight: 700; }
+.chg .arr { width: 16px; height: 11px; margin: 0 3px; }
+.chg > span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.chg i.cdot { width: 9px; height: 9px; border-radius: 50%; background: var(--action); flex: none; }
+.chg s { color: var(--muted-2); }
+.undo { height: 44px; min-width: 64px; padding: 0 14px; border-radius: 12px; border: 2px solid var(--action); background: transparent; color: var(--green-2); font: 700 14px/1 var(--e-narrow); letter-spacing: 0.1em; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.undo svg { width: 15px; height: 15px; }
+.why1 { margin-top: -2px; font: 400 14px/1.25 var(--e-narrow); color: var(--muted); }
+.upc { margin-top: 6px; border-top: 1.5px solid var(--line-strong); }
+.upc li { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; padding: 0; border-bottom: 1.5px solid var(--line); min-height: 44px; }
+.upc li b { display: block; font: 700 15.5px/1.15 var(--e-narrow); }
+.upc li b .arr { width: 16px; height: 11px; margin: 0 2px; }
+.upc li > b + button { grid-column: 2; }
+.upc li span { display: block; margin-top: 1px; font: 400 13.5px/1.2 var(--e-narrow); color: var(--muted); }
+.armed {
+  margin-top: auto; height: 64px; border-radius: 24px; background: var(--current-dark); color: var(--green-2); border: 2px solid var(--line);
+  display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 14px; padding: 0 18px 0 14px; text-align: left; width: 100%;
+}
+.armed .chk { width: 44px; height: 44px; border-radius: 50%; border: 2.5px solid var(--green-2); display: grid; place-items: center; }
+.armed .chk svg { width: 24px; height: 24px; }
+.armed b { display: block; font: 850 23px/1.05 var(--e-display); font-stretch: 112%; letter-spacing: -0.01em; }
+.armed span { display: block; margin-top: 4px; font: 400 14.5px/1.15 var(--e-narrow); color: var(--muted); }
+
+/* F5 · Thursday: one current caption, a playback line, three if/then rules */
+.f5 .cap { font-size: 30px; font-stretch: 106%; margin-top: 6px; }
+.play { margin-top: 16px; }
+.play .now { display: flex; align-items: center; justify-content: space-between; font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.play .now span { display: inline-flex; align-items: center; gap: 7px; color: var(--text); }
+.play .now svg { width: 17px; height: 17px; }
+.play .now time { font-variant-numeric: tabular-nums; }
+.segs, .seglab { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+.segs { margin-top: 9px; }
+.segs i { display: block; height: 8px; border-radius: 4px; background: var(--line); position: relative; overflow: hidden; }
+.segs i.cur::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 38%; background: var(--action); border-radius: 4px; }
+.seglab { margin-top: 7px; font: 700 11.5px/1 var(--e-narrow); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-2); }
+.seglab .cur { color: var(--text); }
+.rules { margin-top: 14px; border-top: 3px solid var(--text); }
+.rule { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: center; padding: 8px 0 9px; border-bottom: 1.5px solid var(--line-strong); }
+.rule .if { font: 400 15px/1.24 var(--e-narrow); }
+.rule .if i { font-style: normal; font-weight: 700; font-size: 11.5px; letter-spacing: 0.18em; color: var(--muted); margin-right: 7px; }
+.rule .then { margin-top: 5px; font: 700 15.5px/1.2 var(--e-narrow); color: var(--green-2); }
+.rule .out { font-size: 50px; text-align: right; min-width: 82px; color: var(--green-2); }
+.rule.watch { margin: 0 -24px; padding: 8px 24px 9px; background: var(--panel-3); border-bottom: 0; }
+.rule.watch .if i, .rule.watch .then, .rule.watch .out { color: var(--amber); }
+.replay {
+  margin-top: auto; height: 92px; border-radius: 28px; border: 0; background: var(--action); color: var(--on-action); width: 100%; position: relative; overflow: hidden;
+  display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 16px; padding: 0 22px 0 20px; text-align: left; font-family: var(--e-display);
+}
+.replay > svg { width: 58px; height: 58px; }
+.replay b { display: block; font-weight: 900; font-stretch: 120%; font-size: 27px; line-height: 1; letter-spacing: -0.025em; }
+.replay span { display: block; margin-top: 6px; font: 400 15px/1.2 var(--e-narrow); color: color-mix(in srgb, var(--on-action) 88%, transparent); }
+.replay .wave { position: absolute; right: 18px; top: 14px; --wh: 18px; width: 58px; color: var(--on-action); opacity: 0.8; }
+
+/* F6 · eyes-free */
+.f6 .cap { font-size: 30px; font-stretch: 108%; }
+.bud-art { position: relative; height: 172px; margin: 6px -24px 0; }
+.bud-art svg { width: 390px; height: 172px; }
+.bud-art .rp { stroke: var(--panel-3); stroke-width: 3; }
+.bud-art .arc { fill: none; stroke: var(--panel-3); stroke-width: 6; stroke-linecap: round; animation: blink 1.6s ease-in-out infinite; }
+.bud-art .arc.b { animation-delay: -0.4s; opacity: 0.7; }
+.bud-art .arc.c { animation-delay: -0.8s; opacity: 0.45; }
+.bud-art .shell { fill: var(--on-action); }
+.bud-art .tip { fill: color-mix(in srgb, var(--on-action) 52%, var(--text)); }
+.bud-art .mesh { fill: var(--text); }
+.bud-art .dotgrid { fill: color-mix(in srgb, var(--on-action) 70%, var(--text)); }
+.bud-art .touch { fill: var(--action); }
+.bud-art .tag { font: 700 12px/1 var(--e-narrow); letter-spacing: 0.18em; text-transform: uppercase; fill: var(--panel-3); }
+.gests { display: grid; gap: 8px; margin-top: 12px; }
+.gest { display: grid; grid-template-columns: 78px 1fr; align-items: center; column-gap: 14px; min-height: 72px; padding: 8px 14px 8px 12px; border-radius: 16px; border: 2px solid color-mix(in srgb, var(--on-action) 38%, transparent); }
+.gest .gl { display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; }
+.gest .gl i { display: block; width: 18px; height: 18px; border-radius: 50%; background: currentColor; }
+.gest .gl i.long { width: 56px; height: 18px; border-radius: 9px; }
+.gest b { display: block; font: 900 22px/1 var(--e-display); font-stretch: 104%; letter-spacing: -0.02em; white-space: nowrap; }
+.gest span { display: block; margin-top: 3px; font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.16em; text-transform: uppercase; color: color-mix(in srgb, var(--on-action) 76%, transparent); }
+.gest.yes { background: var(--action); border-color: var(--action); color: var(--on-action); }
+.gest.yes span { color: color-mix(in srgb, var(--on-action) 88%, transparent); }
+.gest.pain { background: color-mix(in srgb, var(--red) 24%, transparent); border-color: var(--red); }
+.gest.pain .gl { color: var(--on-action); }
+.tagline { font: 900 27px/1.02 var(--e-display); font-stretch: 112%; letter-spacing: -0.03em; text-transform: uppercase; white-space: nowrap; color: color-mix(in srgb, var(--on-action) 24%, transparent); }
+.said-row { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.said-row > span { font: 700 12px/1 var(--e-narrow); letter-spacing: 0.18em; text-transform: uppercase; color: var(--panel-3); margin-right: 2px; }
+.said-row q { quotes: none; padding: 9px 12px 8px; border-radius: 999px; background: color-mix(in srgb, var(--on-action) 14%, transparent); color: var(--on-action); font: 700 15px/1 var(--e-narrow); }
+
+/* ---------- 7b logging contract bits: session header, quiet marks, set row ---------- */
+.sess { height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.sess .live { display: flex; align-items: center; gap: 8px; color: var(--text); white-space: nowrap; }
+.qbtn { position: relative; height: 44px; padding: 0 2px 0 4px; border: 0; background: transparent; color: var(--muted); font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.1em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.sw { position: relative; display: inline-block; flex: none; width: 36px; height: 22px; border-radius: 11px; background: var(--line); box-shadow: inset 0 0 0 2px var(--line-strong); }
+.sw::after { content: ""; position: absolute; left: 4px; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted-2); }
+.sw.on { background: var(--action); box-shadow: none; }
+.sw.on::after { left: 18px; background: var(--on-action); }
+.qbtn.two { text-align: left; letter-spacing: 0; text-transform: none; }
+.qbtn.two > span { display: block; text-align: left; }
+.qbtn.two b { display: block; font: 700 14px/1.1 var(--e-narrow); color: var(--text); }
+.qbtn.two em { display: block; margin-top: 2px; font: 400 11.5px/1.1 var(--e-narrow); font-style: normal; color: var(--muted); }
+.night { margin-top: 0; font: 400 12.5px/1.25 var(--e-narrow); color: var(--muted); }
+.night b { font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 11.5px; color: var(--muted); margin-right: 5px; }
+.f1 .ghost { margin-top: 4px; font-size: 16px; }
+.f1 .cap { font-size: 33px; margin-top: 6px; }
+.exbar { margin-top: 6px; height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1.5px solid var(--line-strong); font: 700 12.5px/1 var(--e-narrow); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); }
+.nums { margin-top: 4px; display: grid; grid-template-columns: 100px 1fr 1fr 0.8fr; gap: 6px; }
+.nums.f4n { grid-template-columns: 100px 1fr 1fr 0.7fr; gap: 5px; }
+.nums .cell { min-height: 52px; border-radius: 10px; border: 2px solid var(--text); padding: 6px 8px 6px; display: flex; flex-direction: column; justify-content: space-between; background: transparent; text-align: left; }
+.nums .cell > span { font: 700 11px/1 var(--e-narrow); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.nums .cell > b { font: 700 23px/1 var(--e-narrow); font-variant-numeric: tabular-nums; white-space: nowrap; letter-spacing: -0.01em; }
+.nums .cell > b small { font: 700 12px/1 var(--e-narrow); color: var(--muted); margin-left: 3px; letter-spacing: 0; }
+.nums .cell > b small.dim { font-weight: 400; }
+.nums .cell.coach { background: var(--current-dark); border-color: var(--action); }
+.nums .cell.coach > span { color: var(--green-2); }
+.nums .cell.coach > b s { color: var(--muted-2); font-size: 14px; font-weight: 400; margin-left: 4px; }
+.nums .cell.empty { border-color: var(--line-strong); }
+.nums .cell.empty > b { color: var(--muted-2); }
+.fl { display: flex !important; gap: 3px; align-items: center; }
+.fl i { flex: 1; height: 22px; display: grid; place-items: center; border-radius: 6px; border: 1.5px solid var(--line-strong); font: 700 13px/1 var(--e-narrow); font-style: normal; color: var(--muted); }
+.fl i.on { background: var(--text); border-color: var(--text); color: var(--on-action); }
+.logged { gap: 7px; }
+.logged .pv { font: 400 12.5px/1 var(--e-narrow); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.logged .wu { height: 22px; padding: 0 8px; display: inline-flex; align-items: center; border-radius: 11px; background: var(--bg); color: var(--muted); font-size: 12px; letter-spacing: 0.06em; }
+.logged em { margin-left: auto; font-style: normal; font-weight: 700; font-size: 13px; letter-spacing: 0.08em; color: var(--success); }
+.restrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; }
+.restrow p b { display: flex; align-items: center; gap: 7px; font: 700 16px/1.1 var(--e-narrow); color: var(--text); font-variant-numeric: tabular-nums; }
+.restrow p span { display: block; margin-top: 3px; font: 400 13.5px/1.1 var(--e-narrow); color: var(--muted); }
+.rdot { width: 9px; height: 9px; border-radius: 50%; background: var(--rest-accent); flex: none; animation: blink 1s ease-in-out infinite; }
+.rb3 { display: inline-flex; gap: 5px; }
+.rb3 button { height: 44px; min-width: 50px; padding: 0 8px; border-radius: 12px; border: 1.5px solid var(--line-strong); background: transparent; color: var(--text); font: 700 14px/1 var(--e-narrow); }
+.skip { margin: 12px 0 14px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.skip p { font: 400 14px/1.28 var(--e-narrow); color: var(--muted); }
+.skip p b { color: var(--text); font-weight: 700; }
+.skipbtn { min-width: 138px; height: 56px; padding: 0 14px; border-radius: 16px; border: 2px solid var(--red); background: transparent; color: var(--red); text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.skipbtn b { font: 700 15px/1 var(--e-narrow); letter-spacing: 0.08em; text-transform: uppercase; }
+.skipbtn i { font: 400 12px/1 var(--e-narrow); font-style: normal; letter-spacing: 0; color: var(--muted); }
+.saynote { font: 400 14px/1.2 var(--e-narrow); color: var(--muted); }
+
+/* ---------- 8 motion ---------- */
+@keyframes accept { 0%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--action) 38%, transparent); } 50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--action) 16%, transparent); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes wob { from { transform: scaleY(0.6); } to { transform: scaleY(1); } }
+@keyframes burst { from { transform: scaleY(0.55); } to { transform: scaleY(1.08); } }
+@keyframes ripple { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.29); opacity: 0; } }
+@keyframes say {
+  0%, 2% { color: color-mix(in srgb, var(--on-action) 52%, transparent); background: transparent; }
+  4%, 8% { color: var(--text); background: var(--panel-3); }
+  11%, 86% { color: var(--on-action); background: transparent; }
+  94%, 100% { color: color-mix(in srgb, var(--on-action) 52%, transparent); background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+  /* static equivalents so the frozen frame still reads as a pulse */
+  .rp { opacity: 0.7; }
+  .rp.b { transform: scale(1.14); opacity: 0.4; }
+  .rp.c { transform: scale(1.28); opacity: 0.2; }
+  .bud-art .rp.tp.b { transform: scale(1.9); opacity: 0.35; }
+}
+@media (max-width: 1500px) {
+  .hero-in { grid-template-columns: 1fr; }
+  .hero .num { font-size: 190px; }
+  .hero h1 { font-size: 64px; }
+  .thesis { font-size: 28px; }
+}
+.bud-art .rp.tp { animation-name: ripple2; }
+@keyframes ripple2 { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(2.4); opacity: 0; } }
+.why li em::before { content: "\2014\00a0"; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-in">
+    <div class="num" aria-hidden="true">02</div>
+    <div>
+      <p class="eyebrow"><div class="wave mini" aria-hidden="true"><i style="--h:0.92;--d:-0.27s"></i><i style="--h:0.47;--d:-0.90s"></i><i style="--h:0.95;--d:-0.48s"></i><i style="--h:0.75;--d:-0.12s"></i><i style="--h:0.95;--d:-0.18s"></i><i style="--h:0.47;--d:-0.59s"></i><i style="--h:0.36;--d:-0.04s"></i></div> Coach concept 02 of 10</p>
+      <h1>Earpiece</h1>
+      <p class="thesis" aria-label="The coach talks; the screen is what it says."><span class="w" style="--k:0">The</span> <span class="w" style="--k:1">coach</span> <span class="w" style="--k:2">talks;</span> <span class="w" style="--k:3">the</span> <span class="w" style="--k:4">screen</span> <span class="w" style="--k:5">is</span> <span class="w" style="--k:6">what</span> <span class="w" style="--k:7">it</span> <span class="w" style="--k:8">says.</span></p>
+    </div>
+    <dl class="notes">
+      <div><dt>How it feels</dt><dd>Phone on the bench, earbuds in. Poster-loud type you can read at arm's length, one sentence at a time. No scrolling, no dashboard: only the present moment.</dd></div>
+      <div><dt>How the coach speaks</dt><dd>Short, plain, numbered. &ldquo;That was six. You normally lose less than one rep between sets &mdash; today you lost three.&rdquo; The evidence arrives as a quiet strip while it talks, and it says how sure it is.</dd></div>
+      <div><dt>The trade-off</dt><dd>You need earbuds and a gym quiet enough to be heard. A sentence is slower than a glance at a chart, and there is no history: miss it and you tap Replay. Every spoken answer has a tap twin for the noisy days.</dd></div>
+    </dl>
+  </div>
+</header>
+<div class="legend"><div class="legend-in">
+  <span><b>Highlighted word</b> = what the coach is saying right now</span>
+  <span><b>Wide type</b> = the coach &nbsp;&middot;&nbsp; <b>Tall numerals</b> = your data</span>
+  <span><b>Waveform</b> = the live voice</span>
+  <span><b>One big thing</b> per screen to tap, or just say it</span>
+  <span><b>Quiet marks:</b> deload toggles sit small; &ldquo;Injured, skip&rdquo; lives only on a planned session (F5)</span>
+</div></div>
+
+<main class="stage">
+
+<!-- ======================= F1 · Lifting ======================= -->
+<figure>
+  <figcaption><b>F1</b>Lifting</figcaption>
+  <section class="phone f1" data-frame="F1" aria-label="Frame 1, Lifting: the coach reads set two aloud">
+    <div class="sb"><span>10:24</span><span class="r">
+      <svg class="bud" viewBox="0 0 16 22" aria-hidden="true"><circle cx="7" cy="7" r="6"/><rect x="8.5" y="9" width="4" height="12" rx="2"/></svg>
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+    <div class="scr">
+      <header class="sess"><span class="live"><i class="dot"></i>Upper A &middot; wk 4/6</span><button class="qbtn" type="button" role="switch" aria-checked="false" aria-label="This whole session was a deload: off. Say: mark the session a deload."><i class="sw"></i>Session deload</button></header>
+      <p class="night"><b>Last night</b>sleep 5 h 48 m (avg 7 h 21 m) &middot; HRV 38 ms (baseline 52) &middot; resting HR 61 (baseline 55)</p>
+      <p class="ghost">Nine on set one. Fair, after that night.</p>
+      <p class="cap"><span class="w said">Set</span> <span class="w said">two.</span> <span class="w said">One-eighty-five,</span> <span class="w now">eight</span> <span class="w">to</span> <span class="w">ten.</span> <span class="w">Target</span> <span class="w">RPE</span> <span class="w">eight.</span></p>
+      <div class="mt8"><div class="wave" style="--wh:30px" aria-hidden="true"><i style="--h:0.29;--d:-0.67s"></i><i style="--h:0.29;--d:-0.36s"></i><i style="--h:0.46;--d:-0.99s"></i><i style="--h:0.54;--d:-0.71s"></i><i style="--h:0.66;--d:-0.67s"></i><i style="--h:0.86;--d:-0.26s"></i><i style="--h:0.87;--d:-0.23s"></i><i style="--h:1.00;--d:-0.07s"></i><i style="--h:0.64;--d:-0.85s"></i><i style="--h:0.46;--d:-0.13s"></i><i style="--h:0.46;--d:-1.02s"></i><i style="--h:0.33;--d:-0.24s"></i><i style="--h:0.25;--d:-0.09s"></i><i style="--h:0.39;--d:-0.90s"></i><i style="--h:0.52;--d:-0.70s"></i><i style="--h:0.64;--d:-0.51s"></i><i style="--h:0.57;--d:-0.96s"></i><i style="--h:0.68;--d:-0.94s"></i><i style="--h:0.69;--d:-0.75s"></i><i style="--h:0.68;--d:-0.77s"></i><i style="--h:0.71;--d:-0.43s"></i><i style="--h:0.59;--d:-1.02s"></i><i style="--h:0.40;--d:-0.39s"></i><i style="--h:0.24;--d:-0.81s"></i><i style="--h:0.41;--d:-0.06s"></i><i style="--h:0.52;--d:-0.81s"></i><i style="--h:0.93;--d:-0.93s"></i><i style="--h:1.00;--d:-0.05s"></i><i style="--h:0.94;--d:-0.68s"></i><i style="--h:0.65;--d:-0.14s"></i><i style="--h:0.76;--d:-0.02s"></i><i style="--h:0.61;--d:-0.88s"></i><i style="--h:0.70;--d:-0.05s"></i><i style="--h:0.44;--d:-0.59s"></i><i style="--h:0.31;--d:-1.10s"></i><i style="--h:0.42;--d:-0.23s"></i><i style="--h:0.48;--d:-0.34s"></i><i style="--h:0.68;--d:-0.80s"></i></div></div>
+      <div class="exbar"><span>Bench &middot; set 2 of 4</span><button class="qbtn two" type="button" role="switch" aria-checked="false" aria-label="This was a deload: off. Say: mark this a deload."><i class="sw"></i><span><b>This was a deload</b><em>say &ldquo;mark this a deload&rdquo;</em></span></button></div>
+      <div class="nums">
+        <button class="cell" type="button" aria-label="Set type: working set 2. Tap to change to warm-up, drop or failure."><span>Set type</span><b class="fl"><i>W</i><i class="on">2</i><i>D</i><i>F</i></b></button>
+        <div class="cell"><span>Previous</span><b>185 &times; 10</b></div>
+        <div class="cell"><span>Load</span><b>185<small>lb</small></b></div>
+        <div class="cell"><span>Reps</span><b>8&ndash;10</b></div>
+      </div>
+      <p class="logged mt8"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="wu">W&times;4</span>Set 1 <b>185 &times; 9</b><span class="pv">prev 185 &times; 10</span><em>RPE 8</em></p>
+      <div class="rirrow mt8">
+        <p>RPE<em>target 8</em><span>Say &ldquo;RPE ten&rdquo; or tap</span></p>
+        <div class="seg" role="group" aria-label="RPE, nothing selected yet. Target is 8"><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>
+      </div>
+      <div class="restrow mt8"><p><b><i class="rdot"></i>Rest 1:38 left</b><span>Full 2:30 recommended</span></p><div class="rb3"><button type="button">&minus;15s</button><button type="button">+15s</button><button type="button" aria-label="Skip the rest, to override the recommended 2:30">Skip</button></div></div>
+      <div class="giant mtauto" role="button" tabindex="0" aria-label="Tap the check to log 9 reps at 185 pounds. Or say it.">
+        <span class="listen"><i class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i>Tap the check &middot; or say it</span>
+        <span class="ask"><b>Log<br>9 reps</b><i>185 lb &middot; accepts the targets</i></span>
+        <span class="numwrap"><svg class="rings" viewBox="-100 -100 200 200" aria-hidden="true"><circle class="rp" r="62"/><circle class="rp b" r="62"/><circle class="rp c" r="62"/></svg><span class="n num">9</span></span>
+        <span class="nudge" aria-hidden="true"><span>&minus;</span><span>+</span></span>
+      </div>
+    </div>
+    <i class="home"></i>
+  </section>
+  <p class="note"><b>Highlighted word</b> = the word being spoken. Previous, load and reps are placeholders: tap the check (or say it). <b>RPE starts empty</b>. Rest is already running; 2:30 is a recommendation.</p>
+</figure>
+
+<!-- ======================= F2 · The flag ======================= -->
+<figure>
+  <figcaption><b>F2</b>The flag</figcaption>
+  <section class="phone dark call" data-frame="F2" aria-label="Frame 2, The flag: an incoming call from the coach">
+    <div class="sb"><span>10:24</span><span class="r">
+      <svg class="bud" viewBox="0 0 16 22" aria-hidden="true"><circle cx="7" cy="7" r="6"/><rect x="8.5" y="9" width="4" height="12" rx="2"/></svg>
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+    <div class="scr">
+      <div class="callhead">
+        <div class="who">Coach <time>0:04</time></div>
+        <p class="sub"><i></i>Rest running <b>0:07</b> of 2:30</p>
+      </div>
+      <div class="ring">
+        <svg viewBox="-195 -89 390 178" aria-hidden="true">
+          <circle class="rp" r="60"/><circle class="rp b" r="60"/><circle class="rp c" r="60"/>
+          <g aria-hidden="true"><g transform="rotate(0)"><rect class="rb" x="-2" y="-82.7" width="4" height="24.7" rx="2" style="--d:-0.06s"/></g><g transform="rotate(5)"><rect class="rb a" x="-2" y="-79.9" width="4" height="21.9" rx="2" style="--d:-0.51s"/></g><g transform="rotate(10)"><rect class="rb" x="-2" y="-64.4" width="4" height="6.4" rx="2" style="--d:-0.71s"/></g><g transform="rotate(15)"><rect class="rb a" x="-2" y="-71.1" width="4" height="13.1" rx="2" style="--d:-0.67s"/></g><g transform="rotate(20)"><rect class="rb a" x="-2" y="-76.7" width="4" height="18.7" rx="2" style="--d:-0.14s"/></g><g transform="rotate(25)"><rect class="rb a" x="-2" y="-69.2" width="4" height="11.2" rx="2" style="--d:-0.72s"/></g><g transform="rotate(30)"><rect class="rb" x="-2" y="-67.2" width="4" height="9.2" rx="2" style="--d:-0.76s"/></g><g transform="rotate(35)"><rect class="rb a" x="-2" y="-82.5" width="4" height="24.5" rx="2" style="--d:-0.87s"/></g><g transform="rotate(40)"><rect class="rb a" x="-2" y="-76.2" width="4" height="18.2" rx="2" style="--d:-0.68s"/></g><g transform="rotate(45)"><rect class="rb" x="-2" y="-74.2" width="4" height="16.2" rx="2" style="--d:-0.54s"/></g><g transform="rotate(50)"><rect class="rb" x="-2" y="-81.9" width="4" height="23.9" rx="2" style="--d:-0.22s"/></g><g transform="rotate(55)"><rect class="rb a" x="-2" y="-71.3" width="4" height="13.3" rx="2" style="--d:-0.69s"/></g><g transform="rotate(60)"><rect class="rb a" x="-2" y="-65.6" width="4" height="7.6" rx="2" style="--d:-0.63s"/></g><g transform="rotate(65)"><rect class="rb a" x="-2" y="-77.6" width="4" height="19.6" rx="2" style="--d:-0.77s"/></g><g transform="rotate(70)"><rect class="rb a" x="-2" y="-67.3" width="4" height="9.3" rx="2" style="--d:-0.01s"/></g><g transform="rotate(75)"><rect class="rb" x="-2" y="-65.6" width="4" height="7.6" rx="2" style="--d:-0.48s"/></g><g transform="rotate(80)"><rect class="rb" x="-2" y="-71.8" width="4" height="13.8" rx="2" style="--d:-0.38s"/></g><g transform="rotate(85)"><rect class="rb" x="-2" y="-79.3" width="4" height="21.3" rx="2" style="--d:-0.82s"/></g><g transform="rotate(90)"><rect class="rb" x="-2" y="-66.9" width="4" height="8.9" rx="2" style="--d:-0.08s"/></g><g transform="rotate(95)"><rect class="rb a" x="-2" y="-72.4" width="4" height="14.4" rx="2" style="--d:-0.46s"/></g><g transform="rotate(100)"><rect class="rb a" x="-2" y="-78.1" width="4" height="20.1" rx="2" style="--d:-0.69s"/></g><g transform="rotate(105)"><rect class="rb" x="-2" y="-75.3" width="4" height="17.3" rx="2" style="--d:-0.88s"/></g><g transform="rotate(110)"><rect class="rb" x="-2" y="-74.5" width="4" height="16.5" rx="2" style="--d:-0.46s"/></g><g transform="rotate(115)"><rect class="rb" x="-2" y="-86.8" width="4" height="28.8" rx="2" style="--d:-0.42s"/></g><g transform="rotate(120)"><rect class="rb" x="-2" y="-81.6" width="4" height="23.6" rx="2" style="--d:-0.68s"/></g><g transform="rotate(125)"><rect class="rb" x="-2" y="-64.4" width="4" height="6.4" rx="2" style="--d:-0.10s"/></g><g transform="rotate(130)"><rect class="rb" x="-2" y="-71.7" width="4" height="13.7" rx="2" style="--d:-0.26s"/></g><g transform="rotate(135)"><rect class="rb a" x="-2" y="-80.2" width="4" height="22.2" rx="2" style="--d:-0.28s"/></g><g transform="rotate(140)"><rect class="rb a" x="-2" y="-85.6" width="4" height="27.6" rx="2" style="--d:-0.83s"/></g><g transform="rotate(145)"><rect class="rb a" x="-2" y="-79.3" width="4" height="21.3" rx="2" style="--d:-0.67s"/></g><g transform="rotate(150)"><rect class="rb a" x="-2" y="-80.9" width="4" height="22.9" rx="2" style="--d:-0.00s"/></g><g transform="rotate(155)"><rect class="rb" x="-2" y="-76.0" width="4" height="18.0" rx="2" style="--d:-0.54s"/></g><g transform="rotate(160)"><rect class="rb" x="-2" y="-66.7" width="4" height="8.7" rx="2" style="--d:-0.54s"/></g><g transform="rotate(165)"><rect class="rb a" x="-2" y="-74.7" width="4" height="16.7" rx="2" style="--d:-0.73s"/></g><g transform="rotate(170)"><rect class="rb a" x="-2" y="-75.0" width="4" height="17.0" rx="2" style="--d:-0.40s"/></g><g transform="rotate(175)"><rect class="rb" x="-2" y="-65.1" width="4" height="7.1" rx="2" style="--d:-0.18s"/></g><g transform="rotate(180)"><rect class="rb a" x="-2" y="-79.9" width="4" height="21.9" rx="2" style="--d:-0.23s"/></g><g transform="rotate(185)"><rect class="rb" x="-2" y="-80.5" width="4" height="22.5" rx="2" style="--d:-0.79s"/></g><g transform="rotate(190)"><rect class="rb a" x="-2" y="-64.6" width="4" height="6.6" rx="2" style="--d:-0.70s"/></g><g transform="rotate(195)"><rect class="rb a" x="-2" y="-64.4" width="4" height="6.4" rx="2" style="--d:-0.49s"/></g><g transform="rotate(200)"><rect class="rb" x="-2" y="-72.3" width="4" height="14.3" rx="2" style="--d:-0.09s"/></g><g transform="rotate(205)"><rect class="rb" x="-2" y="-84.6" width="4" height="26.6" rx="2" style="--d:-0.71s"/></g><g transform="rotate(210)"><rect class="rb a" x="-2" y="-75.1" width="4" height="17.1" rx="2" style="--d:-0.14s"/></g><g transform="rotate(215)"><rect class="rb a" x="-2" y="-83.8" width="4" height="25.8" rx="2" style="--d:-0.28s"/></g><g transform="rotate(220)"><rect class="rb a" x="-2" y="-81.1" width="4" height="23.1" rx="2" style="--d:-0.18s"/></g><g transform="rotate(225)"><rect class="rb" x="-2" y="-70.5" width="4" height="12.5" rx="2" style="--d:-0.78s"/></g><g transform="rotate(230)"><rect class="rb a" x="-2" y="-74.2" width="4" height="16.2" rx="2" style="--d:-0.56s"/></g><g transform="rotate(235)"><rect class="rb a" x="-2" y="-79.4" width="4" height="21.4" rx="2" style="--d:-0.30s"/></g><g transform="rotate(240)"><rect class="rb" x="-2" y="-65.8" width="4" height="7.8" rx="2" style="--d:-0.82s"/></g><g transform="rotate(245)"><rect class="rb a" x="-2" y="-71.3" width="4" height="13.3" rx="2" style="--d:-0.46s"/></g><g transform="rotate(250)"><rect class="rb" x="-2" y="-72.6" width="4" height="14.6" rx="2" style="--d:-0.79s"/></g><g transform="rotate(255)"><rect class="rb" x="-2" y="-75.4" width="4" height="17.4" rx="2" style="--d:-0.17s"/></g><g transform="rotate(260)"><rect class="rb" x="-2" y="-76.9" width="4" height="18.9" rx="2" style="--d:-0.50s"/></g><g transform="rotate(265)"><rect class="rb" x="-2" y="-68.6" width="4" height="10.6" rx="2" style="--d:-0.78s"/></g><g transform="rotate(270)"><rect class="rb" x="-2" y="-64.9" width="4" height="6.9" rx="2" style="--d:-0.17s"/></g><g transform="rotate(275)"><rect class="rb" x="-2" y="-87.2" width="4" height="29.2" rx="2" style="--d:-0.70s"/></g><g transform="rotate(280)"><rect class="rb a" x="-2" y="-67.0" width="4" height="9.0" rx="2" style="--d:-0.36s"/></g><g transform="rotate(285)"><rect class="rb" x="-2" y="-76.1" width="4" height="18.1" rx="2" style="--d:-0.79s"/></g><g transform="rotate(290)"><rect class="rb" x="-2" y="-71.8" width="4" height="13.8" rx="2" style="--d:-0.36s"/></g><g transform="rotate(295)"><rect class="rb" x="-2" y="-67.5" width="4" height="9.5" rx="2" style="--d:-0.70s"/></g><g transform="rotate(300)"><rect class="rb a" x="-2" y="-76.1" width="4" height="18.1" rx="2" style="--d:-0.45s"/></g><g transform="rotate(305)"><rect class="rb a" x="-2" y="-80.9" width="4" height="22.9" rx="2" style="--d:-0.76s"/></g><g transform="rotate(310)"><rect class="rb" x="-2" y="-73.8" width="4" height="15.8" rx="2" style="--d:-0.03s"/></g><g transform="rotate(315)"><rect class="rb" x="-2" y="-73.6" width="4" height="15.6" rx="2" style="--d:-0.68s"/></g><g transform="rotate(320)"><rect class="rb" x="-2" y="-78.2" width="4" height="20.2" rx="2" style="--d:-0.87s"/></g><g transform="rotate(325)"><rect class="rb" x="-2" y="-71.2" width="4" height="13.2" rx="2" style="--d:-0.32s"/></g><g transform="rotate(330)"><rect class="rb a" x="-2" y="-69.8" width="4" height="11.8" rx="2" style="--d:-0.73s"/></g><g transform="rotate(335)"><rect class="rb a" x="-2" y="-75.0" width="4" height="17.0" rx="2" style="--d:-0.34s"/></g><g transform="rotate(340)"><rect class="rb a" x="-2" y="-82.4" width="4" height="24.4" rx="2" style="--d:-0.59s"/></g><g transform="rotate(345)"><rect class="rb" x="-2" y="-65.7" width="4" height="7.7" rx="2" style="--d:-0.13s"/></g><g transform="rotate(350)"><rect class="rb" x="-2" y="-67.1" width="4" height="9.1" rx="2" style="--d:-0.08s"/></g><g transform="rotate(355)"><rect class="rb" x="-2" y="-78.9" width="4" height="20.9" rx="2" style="--d:-0.13s"/></g></g>
+          <circle class="core" r="53"/>
+          <circle class="edge" r="53"/>
+        </svg>
+        <span class="n digit">6</span>
+      </div>
+      <p class="ghost">Hold on &mdash; set two came in light.</p>
+      <p class="cap"><span class="w said">That</span> <span class="w said"><b>was</b></span> <span class="w said"><b>six.</b></span> <span class="w said">You</span> <span class="w said">normally</span> <span class="w said">lose</span> <span class="w now">less</span> <span class="w">than</span> <span class="w">one</span> <span class="w">rep</span> <span class="w">between</span> <span class="w">sets —</span> <span class="w">today</span> <span class="w">you</span> <span class="w">lost</span> <span class="w"><b>three.</b></span></p>
+      <div class="evid">
+        <ul class="facts">
+          <li>185 lb</li><li>6 reps &middot; RPE 10</li><li>expected 8&ndash;9</li><li>band 7&ndash;9</li>
+        </ul>
+        <p class="sigma"><b>3.4&sigma;</b><span>beyond your usual drop<small>lost 3 &middot; usual 0.6 &plusmn; 0.7 over 12 sessions</small></span></p>
+        <ol class="why">
+          <li><i class="rk">1</i><p><b>Likely: short rest</b> <em>1:32 of 2:30</em></p></li>
+          <li><i class="rk">2</i><p><b>May add: low recovery</b> <em>HRV &minus;27%, sleep 5 h 48 m</em></p></li>
+          <li><i class="rk">3</i><p><b>No sign of strength loss</b> <em>set-one max 253, on your trend</em></p></li>
+        </ol>
+      </div>
+      <div class="acts">
+        <div class="btn go" role="button" tabindex="0"><b>Use 165 &times; 8</b><span>Sets 3&ndash;4 &middot; full 2:30 rest</span></div>
+        <div class="actrow">
+          <div class="btn talk" role="button" tabindex="0"><b>Talk me through it</b></div>
+        </div>
+      </div>
+    </div>
+    <i class="home"></i>
+  </section>
+  <p class="note">The flag arrives as a <b>call</b>, and the rest clock keeps running underneath. The caption speaks the finding; the strip holds the evidence.</p>
+</figure>
+
+<!-- ======================= F3 · Next best action, today ======================= -->
+<figure>
+  <figcaption><b>F3</b>Next best action &middot; today</figcaption>
+  <section class="phone f3" data-frame="F3" aria-label="Frame 3, Next best action today: say A, B or C">
+    <div class="sb"><span>10:24</span><span class="r">
+      <svg class="bud" viewBox="0 0 16 22" aria-hidden="true"><circle cx="7" cy="7" r="6"/><rect x="8.5" y="9" width="4" height="12" rx="2"/></svg>
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+    <div class="scr">
+      <header class="mast"><span class="live"><i class="dot"></i>Coach &middot; for today</span><div class="wave mini" aria-hidden="true"><i style="--h:0.63;--d:-0.14s"></i><i style="--h:0.61;--d:-0.72s"></i><i style="--h:0.66;--d:-0.74s"></i><i style="--h:0.37;--d:-0.95s"></i><i style="--h:0.57;--d:-0.91s"></i><i style="--h:0.44;--d:-0.05s"></i><i style="--h:0.87;--d:-0.26s"></i></div></header>
+      <p class="ghost">Here's what I'd do with the rest of today.</p>
+      <p class="cap"><span class="w said">Incline</span> <span class="w said">goes</span> <span class="w said">to</span> <span class="w said">two</span> <span class="w said">sets.</span> <span class="w said">Chest</span> <span class="w said">stays</span> <span class="w said">at</span> <span class="w now">fifteen</span> <span class="w">of</span> <span class="w">sixteen</span> <span class="w">this</span> <span class="w">week.</span></p>
+      <p class="sayhint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>Say A, B or C<span>or tap one</span></p>
+      <div class="opt rec" role="button" tabindex="0">
+        <div class="key"><b>A</b><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>say</i></div>
+        <div>
+          <p class="tag">Recommended</p>
+          <h3>Drop to 165 for two sets</h3>
+          <p class="say">&ldquo;Eight reps at RPE 8, full two-thirty rest. I'll set the timer to match.&rdquo;</p>
+          <p class="info">&minus;11% load &middot; pulling unchanged &middot; chest 15 of 16, inside your 12&ndash;18 target</p>
+        </div>
+        <span class="accept">Use 165 &times; 8 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+      </div>
+      <p class="orcho">or choose another</p>
+      <div class="opt alt" role="button" tabindex="0">
+        <div class="key"><b>B</b><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>say</i></div>
+        <div><h3>Stay at 185, rest 3:00</h3><p class="say">&ldquo;Cap it at RPE 9 &mdash; expect six or seven. More fatigue carried into Thursday.&rdquo;</p></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.2" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="opt alt" role="button" tabindex="0">
+        <div class="key"><b>C</b><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg>say</i></div>
+        <div><h3>Stop bench, move on</h3><p class="say">&ldquo;You lose two good chest sets. Chest ends the week at fourteen of sixteen.&rdquo;</p></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.2" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </div>
+      <div class="foot3">
+        <button class="quiet" type="button">Not now &mdash; keep my plan</button>
+        <span class="saynote">or say &ldquo;not now&rdquo;</span>
+      </div>
+    </div>
+    <i class="home"></i>
+  </section>
+  <p class="note">The options are <b>spoken lines</b>, not cards: say &ldquo;A&rdquo;, &ldquo;B&rdquo; or &ldquo;C&rdquo;, or tap. The recommended line is the highlighted one.</p>
+</figure>
+
+<!-- ======================= F4 · Plan applied ======================= -->
+<figure>
+  <figcaption><b>F4</b>Plan applied</figcaption>
+  <section class="phone f4" data-frame="F4" aria-label="Frame 4, Plan applied: rest running, sets 3 and 4 changed by the coach with undo">
+    <div class="sb"><span>10:24</span><span class="r">
+      <svg class="bud" viewBox="0 0 16 22" aria-hidden="true"><circle cx="7" cy="7" r="6"/><rect x="8.5" y="9" width="4" height="12" rx="2"/></svg>
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+    <div class="scr">
+      <header class="sess"><span class="live"><i class="dot"></i>Plan applied</span><button class="qbtn" type="button" role="switch" aria-checked="false" aria-label="This whole session was a deload: off. Say: mark the session a deload."><i class="sw"></i>Session deload</button></header>
+      <p class="ghost">Changed. Sets three and four.</p>
+      <p class="cap"><span class="w said">Loading</span> <span class="w said">one-sixty-five.</span> <span class="w said">Swap</span> <span class="w said">each</span> <span class="w said">twenty-five</span> <span class="w said">for</span> <span class="w said">a</span> <span class="w now">ten</span> <span class="w">and</span> <span class="w">a</span> <span class="w">five.</span></p>
+      <div class="rest">
+        <div class="rt"><div class="rl"><b><i class="rdot"></i>Rest running</b><span>Full 2:30 recommended</span></div><div class="rb3"><button type="button">&minus;15s</button><button type="button">+15s</button><button type="button" aria-label="Skip the rest, to override the recommended 2:30">Skip</button></div></div>
+        <span class="n big">1:07</span>
+        <div class="rail"><i class="fill"></i><i class="mark"></i><span class="lab">Last time 1:32</span></div>
+      </div>
+      <div class="exbar"><span>Bench &middot; set 3 of 4</span><button class="qbtn two" type="button" role="switch" aria-checked="false" aria-label="This was a deload: off. Say: mark this a deload."><i class="sw"></i><span><b>This was a deload</b><em>say &ldquo;mark this a deload&rdquo;</em></span></button></div>
+      <div class="nums f4n">
+        <button class="cell" type="button" aria-label="Set type: working set 3. Tap to change to warm-up, drop or failure."><span>Set type</span><b class="fl"><i>W</i><i class="on">3</i><i>D</i><i>F</i></b></button>
+        <div class="cell"><span>Previous</span><b>185 &times; 9</b></div>
+        <div class="cell coach"><span>Target</span><b>165 &times; 8</b></div>
+        <div class="cell empty"><span>RPE</span><b>&mdash;<small class="dim">tgt 8</small></b></div>
+      </div>
+      <p class="chg"><span><i class="cdot"></i><b>Coach changed sets 3&ndash;4:</b> <s>185</s> <svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M1.5 6h14M10.5 1.5L15.5 6l-5 4.5"/></svg> 165</span><button class="undo" type="button">Undo</button></p>
+      <p class="why1">Backed off after a short-rest grinder; keeps two productive sets.</p>
+      <ul class="upc">
+        <li><b>Chest-supported T-bar row</b><button class="qbtn" type="button" role="switch" aria-checked="false" aria-label="T-bar row was a deload: off"><i class="sw"></i>Deload</button></li>
+        <li><div><b>Incline press &middot; 3 <svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M1.5 6h14M10.5 1.5L15.5 6l-5 4.5"/></svg> 2 sets</b><span>One set fewer so chest still lands at 15 of 16.</span></div><button class="qbtn" type="button" role="switch" aria-checked="false" aria-label="Incline press was a deload: off"><i class="sw"></i>Deload</button></li>
+        <li><b>Lat pulldown</b><button class="qbtn" type="button" role="switch" aria-checked="false" aria-label="Lat pulldown was a deload: off"><i class="sw"></i>Deload</button></li>
+        <li><b>Cable lateral raise</b><button class="qbtn" type="button" role="switch" aria-checked="false" aria-label="Cable lateral raise was a deload: off"><i class="sw"></i>Deload</button></li>
+      </ul>
+      <div class="armed" role="button" tabindex="0" aria-label="Tap the check to log set 3: 8 reps at 165 pounds, when the set is done.">
+        <span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <div><b>Log 8 reps</b><span>Tap the check when set 3 is done &middot; or say it</span></div>
+      </div>
+    </div>
+    <i class="home"></i>
+  </section>
+  <p class="note">The coach's change is <b>visible and undoable</b>, with one reason line. Rest auto-started on the check: the coach recommends the full 2:30; &minus;15s, +15s and Skip are yours. Every exercise has its own deload toggle.</p>
+</figure>
+
+<!-- ======================= F5 · Next session ======================= -->
+<figure>
+  <figcaption><b>F5</b>Next session</figcaption>
+  <section class="phone f5" data-frame="F5" aria-label="Frame 5, Next session: the coach recaps Thursday">
+    <div class="sb"><span>10:24</span><span class="r">
+      <svg class="bud" viewBox="0 0 16 22" aria-hidden="true"><circle cx="7" cy="7" r="6"/><rect x="8.5" y="9" width="4" height="12" rx="2"/></svg>
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+    <div class="scr">
+      <header class="mast"><span class="live"><i class="dot"></i>Coach &middot; next session</span><span>Thu 5 Nov &middot; Upper A</span></header>
+      <p class="ghost">Here's Thursday.</p>
+      <p class="cap"><span class="w said">Bench</span> <span class="w said">holds</span> <span class="w said">at</span> <span class="w now">one-eighty-five.</span> <span class="w">Four</span> <span class="w">sets</span> <span class="w">of</span> <span class="w">eight</span> <span class="w">to</span> <span class="w">ten,</span> <span class="w">two-thirty</span> <span class="w">rest</span> <span class="w">recommended.</span></p>
+      <div class="play" role="img" aria-label="Playback: 9 seconds of 38, in the Hold section">
+        <p class="now"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.2 6a8.5 8.5 0 0 1 0 12"/></svg>Playing</span><time>0:09 / 0:38</time></p>
+        <div class="segs"><i class="cur"></i><i></i><i></i><i></i></div>
+        <div class="seglab"><span class="cur">Hold</span><span>Progress</span><span>Watch</span><span>HRV</span></div>
+      </div>
+      <ul class="rules">
+        <li class="rule"><div><p class="if"><i>IF</i>Sets 1 and 2 both reach 9 or more reps at RPE 9 or easier, at 185</p><p class="then"><svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M1.5 6h14M10.5 1.5L15.5 6l-5 4.5"/></svg> Add 5 lb next time</p></div><span class="n out">190</span></li>
+        <li class="rule watch"><div><p class="if"><i>IF</i>Bench flags again on a normal-recovery day</p><p class="then"><svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M1.5 6h14M10.5 1.5L15.5 6l-5 4.5"/></svg> One-week pressing deload: &minus;10% load, &minus;1 set</p></div><span class="n out">&minus;10%</span></li>
+        <li class="rule"><div><p class="if"><i>IF</i>Thursday-morning HRV is under 45 ms</p><p class="then"><svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M1.5 6h14M10.5 1.5L15.5 6l-5 4.5"/></svg> Start bench 10 lb lighter</p></div><span class="n out">175</span></li>
+      </ul>
+      <div class="skip">
+        <p><b>Coach:</b> a session skipped for injury isn't a failure or a missed progression. The plan waits.</p>
+        <button class="skipbtn" type="button" aria-label="Injured, skip Thursday's session"><b>Injured, skip</b><i>say &ldquo;skip, injured&rdquo;</i></button>
+      </div>
+      <div class="replay" role="button" tabindex="0" aria-label="Replay the Thursday plan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.6 12a7.5 7.5 0 1 0 2.3-5.4"/><path d="M4 3.6v4h4"/><path d="M10.2 9.4v5.2l4.4-2.6z"/></svg>
+        <div><b>Replay Thursday</b><span>0:38 &middot; or say &ldquo;replay&rdquo;</span></div>
+        <div class="wave mini" aria-hidden="true"><i style="--h:0.51;--d:-0.85s"></i><i style="--h:0.60;--d:-0.40s"></i><i style="--h:0.86;--d:-0.96s"></i><i style="--h:0.69;--d:-0.74s"></i><i style="--h:0.39;--d:-0.54s"></i><i style="--h:0.81;--d:-0.17s"></i><i style="--h:0.39;--d:-0.26s"></i><i style="--h:0.48;--d:-0.20s"></i><i style="--h:0.59;--d:-0.40s"></i></div>
+      </div>
+    </div>
+    <i class="home"></i>
+  </section>
+  <p class="note">One spoken line, a playback line, three <b>if / then</b> rules. <b>Injured, skip</b> lives here, on the planned session only, with the coach's promise that it counts against nothing.</p>
+</figure>
+
+<!-- ======================= F6 · Your choice: eyes-free ======================= -->
+<figure>
+  <figcaption><b>F6</b>Your choice &middot; eyes-free</figcaption>
+  <section class="phone dark f6" data-frame="F6" aria-label="Frame 6, Eyes-free: answer the flag with an earbud tap">
+    <div class="sb"><span>10:24</span><span class="r">
+      <svg class="bud" viewBox="0 0 16 22" aria-hidden="true"><circle cx="7" cy="7" r="6"/><rect x="8.5" y="9" width="4" height="12" rx="2"/></svg>
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16" height="8" rx="2"/><rect x="24" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+    <div class="scr">
+      <header class="mast"><span class="live"><i class="dot"></i>Coach &middot; screen can sleep</span><div class="wave mini" aria-hidden="true"><i style="--h:0.69;--d:-0.78s"></i><i style="--h:0.99;--d:-0.30s"></i><i style="--h:0.39;--d:-1.09s"></i><i style="--h:0.82;--d:-0.61s"></i><i style="--h:0.85;--d:-0.91s"></i><i style="--h:0.79;--d:-1.00s"></i><i style="--h:0.97;--d:-0.92s"></i></div></header>
+      <div class="bud-art" aria-hidden="true">
+        <svg viewBox="0 0 390 200"><g transform="translate(-30 12)">
+          <path class="arc" d="M170 58.1A34 34 0 0 0 170 101.9"/>
+          <path class="arc b" d="M151.6 42.7A58 58 0 0 0 151.6 117.3"/>
+          <path class="arc c" d="M133.2 27.3A82 82 0 0 0 133.2 132.7"/>
+          <rect class="shell" x="268" y="98" width="32" height="76" rx="16"/>
+          <ellipse class="tip" cx="212" cy="80" rx="16" ry="22"/>
+          <ellipse class="shell" cx="256" cy="76" rx="48" ry="46"/>
+          <circle class="mesh" cx="248" cy="74" r="15"/>
+          <circle class="dotgrid" cx="248" cy="74" r="4"/>
+          <circle class="rp tp" cx="284" cy="130" r="14"/><circle class="rp tp b" cx="284" cy="130" r="14"/>
+          <circle class="touch" cx="284" cy="130" r="11"/>
+          <text class="tag" x="318" y="134">Tap here</text>
+        </g></svg>
+      </div>
+      <p class="cap"><span class="w said">One</span> <span class="w said">tap</span> <span class="w said">for</span> <span class="w said">one-sixty-five.</span> <span class="w said">Two</span> <span class="w said">and</span> <span class="w said">I'll</span> <span class="w now">talk</span> <span class="w">you</span> <span class="w">through</span> <span class="w">it.</span></p>
+      <div class="gests">
+        <div class="gest yes"><div class="gl"><i></i></div><div><b>Use 165 &times; 8</b><span>One tap &middot; sets 3&ndash;4</span></div></div>
+        <div class="gest"><div class="gl"><i></i><i></i></div><div><b>Talk me through it</b><span>Two taps &middot; three options</span></div></div>
+        <div class="gest"><div class="gl"><i class="long"></i></div><div><b>Say it again</b><span>Hold &middot; I replay it</span></div></div>
+      </div>
+      <p class="tagline mtauto">Phone face-down.<br>Eyes on the bar.</p>
+      <div class="said-row mt14"><span>Or say</span><q>&ldquo;use it&rdquo;</q><q>&ldquo;talk me through it&rdquo;</q><q>&ldquo;say that again&rdquo;</q></div>
+    </div>
+    <i class="home"></i>
+  </section>
+  <p class="note"><b>Eyes-free:</b> the same flag answered with earbud taps. The screen can sleep face-down on the bench.</p>
+</figure>
+
+</main>
+</body>
+</html>

@@ -297,6 +297,8 @@
           }
           const reps = numberFrom(row.Reps);
           const weight = numberFrom(row.Weight);
+          const suppliedRpe = row.RPE != null && String(row.RPE).trim() !== "" && Number.isFinite(Number(row.RPE));
+          const rpe = suppliedRpe ? Number(row.RPE) : "";
           const resistanceType = exercise.resistanceType === "assisted_bodyweight" ? "assisted_bodyweight" : isBodyweightExerciseName(exerciseName) ? (weight > 0 ? "bodyweight_plus_load" : "bodyweight") : exercise.resistanceType || "external";
           if (resistanceType === "bodyweight_plus_load") { exercise.resistanceType = resistanceType; exercise.isBodyweight = true; }
           const nextSetNumber = (setCountsByExercise.get(exercise.id) || 0) + 1;
@@ -315,7 +317,8 @@
             isBodyweight: isBodyweightResistance(resistanceType),
             addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
             assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
-            rpe: numberFrom(row.RPE),
+            rpe,
+            rpeSource: suppliedRpe ? "typed" : "unknown",
             completed: true,
             originalImportedValue: { setOrder: String(row["Set Order"] || ""), weight: row.Weight, weightUnit, reps: row.Reps, rpe: row.RPE, distance: row.Distance, seconds: row.Seconds }
           });
@@ -478,6 +481,9 @@
       function validateImportedAppData(imported, limits = BACKUP_IMPORT_LIMITS) {
         validateBackupJsonShape(imported, { maxDepth: limits.maxJsonDepth, maxObjectKeys: limits.maxObjectKeys });
         if (!imported || typeof imported !== "object" || Array.isArray(imported)) throw new Error("Backup root must be a JSON object.");
+        // Validate additive coach fields before any compatibility coercion or copying.
+        // This pure boundary rejects the entire candidate, including cross-owned plans.
+        window.FitnessBackupContract.validateCoachData(imported);
         const templateNumericDomain = {
           "template-exercise-sets": { min: 1, max: 100, step: 1, integer: true },
           "template-exercise-reps": { min: 1, max: 1000, step: 1, integer: true },
@@ -492,14 +498,14 @@
           && (!Number.isSafeInteger(imported.dataRevision) || imported.dataRevision < 0)) {
           throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
         }
-        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
-        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "durationSeconds", "durationSemanticsVersion", "activeDurationMs", "activeDurationStartedAt", "workoutPausedAt", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "exerciseQualityAnswers", "deletedAt", "trashed", "canceledAt"]);
+        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "skippedSessions", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
+        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "durationSeconds", "durationSemanticsVersion", "activeDurationMs", "activeDurationStartedAt", "workoutPausedAt", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "exerciseQualityAnswers", "deletedAt", "trashed", "canceledAt", "isDeload", "coachingPrescription", "coachingSuspensions"]);
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked", "stableTargetSnapshot", "resolvedActionId", "pendingReconcile"]);
-        const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "sourceTemplateSetId", "reps", "weight", "weightUnit", "resistanceType", "isBodyweight", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "originalTargetReps", "originalTargetWeight", "originalTargetRpe", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "classificationUndo", "sourceSetOrder", "originalImportedValue"]);
+        const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "sourceTemplateSetId", "reps", "weight", "weightUnit", "resistanceType", "isBodyweight", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "originalTargetReps", "originalTargetWeight", "originalTargetRpe", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "classificationUndo", "sourceSetOrder", "originalImportedValue", "completedAt", "loadSource", "repsSource", "rpeSource", "completionOrder", "loadTouched", "repsTouched", "rpeTouched"]);
         const allowedClassificationUndoFields = new Set(["setType", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "classificationSource", "classificationConfidence", "manualOverride", "reviewRequired"]);
-        const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "source"]);
-        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "recommendationSnapshot"]);
-        const allowedSettingsFields = new Set(["weightUnit", "timerSound", "timerVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "installGuideDismissed", "setupSoundConfirmed", "expectedTemplateId", "readinessBaseline"]);
+        const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "source", "scheduledWeekdays"]);
+        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "recommendationSnapshot", "defaultLoad", "targetLoad", "defaultReps", "weight", "weightUnit", "incrementUnit"]);
+        const allowedSettingsFields = new Set(["weightUnit", "timerSound", "timerVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "installGuideDismissed", "setupSoundConfirmed", "expectedTemplateId", "readinessBaseline", "coachMode", "coachBetweenSetRevisions", "barWeight", "plateInventory", "equipmentCorrections", "routineIncrementUnit"]);
         const obsoleteSettingsFields = new Set(["theme", "colorPackage", "workoutCompletionSound", "interactionVibration", "restCompleteLockScreenNotifications", "autoScrollNextSet", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion"]);
         const acceptedSettingsFields = new Set([...allowedSettingsFields, ...obsoleteSettingsFields]);
         const allowedCustomProfileFields = new Set(["schemaVersion", "status", "primaryMuscleGroupId", "secondaryMuscleGroupId", "resistanceType", "exerciseStyle", "progressionMetric", "smallestIncrement", "confirmedAt"]);
@@ -662,7 +668,7 @@
         const validateTemplateSetTypes = (setTypes, label) => {
           if (setTypes == null) return [];
           if (!Array.isArray(setTypes) || setTypes.length > 100) throw new Error(`${label} must contain at most 100 set-role records.`);
-          const allowedFields = new Set(["id", "type", "setType", "label", "setCount", "count", "sets", "repMin", "repMax", "exactReps", "rangeSource", "rangeAdjusted", "rpeMin", "rpeMax", "targetRpe", "rpe", "rpeTolerance", "loadRule", "progressionRule", "increment", "loadReductionMin", "loadReductionMax", "dropPercentMin", "dropPercentMax", "restSeconds", "countsTowardVolume", "countsTowardScore", "countsTowardProgression", "isWarmup", "historySampleSize"]);
+          const allowedFields = new Set(["id", "type", "setType", "label", "setCount", "count", "sets", "repMin", "repMax", "exactReps", "rangeSource", "rangeAdjusted", "rpeMin", "rpeMax", "targetRpe", "rpe", "rpeTolerance", "loadRule", "progressionRule", "increment", "loadReductionMin", "loadReductionMax", "dropPercentMin", "dropPercentMax", "restSeconds", "countsTowardVolume", "countsTowardScore", "countsTowardProgression", "isWarmup", "historySampleSize", "incrementUnit", "defaultLoad", "targetLoad", "defaultReps", "weight", "weightUnit", "reps", "reviewRequired", "ambiguous"]);
           const validTypes = new Set(["straight", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
           const numericDomains = {
             setCount: { min: 0, max: 100, integer: true },
@@ -695,7 +701,7 @@
             if (setType.repMin != null && setType.repMax != null && Number(setType.repMin) > Number(setType.repMax)) throw new Error(`${itemLabel} rep minimum must not exceed its maximum.`);
             if (setType.rpeMin != null && setType.rpeMax != null && Number(setType.rpeMin) > Number(setType.rpeMax)) throw new Error(`${itemLabel} RPE minimum must not exceed its maximum.`);
             if (setType.loadReductionMin != null && setType.loadReductionMax != null && Number(setType.loadReductionMin) > Number(setType.loadReductionMax)) throw new Error(`${itemLabel} load reduction minimum must not exceed its maximum.`);
-            for (const field of ["exactReps", "rangeAdjusted", "countsTowardVolume", "countsTowardScore", "countsTowardProgression", "isWarmup"]) {
+            for (const field of ["exactReps", "rangeAdjusted", "countsTowardVolume", "countsTowardScore", "countsTowardProgression", "isWarmup", "reviewRequired", "ambiguous"]) {
               if (setType[field] != null && typeof setType[field] !== "boolean") throw new Error(`${itemLabel} ${field} must be boolean.`);
             }
             for (const field of ["label", "rangeSource", "loadRule", "progressionRule"]) assertText(setType[field], `${itemLabel} ${field}`);
@@ -962,6 +968,7 @@
           exercises,
           sets,
           templates,
+          ...(Object.prototype.hasOwnProperty.call(imported, "skippedSessions") ? { skippedSessions: cloneJsonValue(imported.skippedSessions) } : {}),
           rawImports,
           migrationAudit,
           // Imported ordering metadata is validated above for auditability but
@@ -1149,7 +1156,8 @@
           if (sourceActiveWorkoutDraft) {
             const validatedDraft = validateActiveWorkoutDraftEnvelope(sourceActiveWorkoutDraft, candidate, {
               allowLegacyV1: false,
-              ignoreSourceRevision: true
+              ignoreSourceRevision: true,
+              strictCoachValidation: true
             });
             if (!validatedDraft) throw new Error("Backup activeWorkoutDraft failed validation; no data was changed.");
             activeWorkoutDraft = {

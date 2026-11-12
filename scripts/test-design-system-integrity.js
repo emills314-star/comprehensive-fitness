@@ -48,7 +48,8 @@ assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaul
 assert.match(renderCompletedSummary, /workout-grade-hero[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value in the completion hero");
 assert.match(renderCompletedSummary, /Why this grade[\s\S]*reasons\.slice\(0, 3\)/, "the completion hero must pair the grade with at most three plain reasons");
 assert.doesNotMatch(renderCompletedSummary, /confidence|categoryScores|internalScore|summary-diff-result|achievement/i, "the concise completion must not expose grade internals, plan adherence, or achievements");
-assert.match(renderLiftHome, /Choose your workout[\s\S]*data-action="start-template"/, "Empty Today must present the approved workout chooser with direct actions");
+assert.match(renderLiftHome, /renderTodayWorkoutChooser\(\)/, "Empty Today must delegate to its direct workout chooser");
+assert.match(functionSource(views, "renderTodayWorkoutChooser", "renderPlannedWorkoutPreview"), /Choose your workout[\s\S]*data-action="start-template"/, "The empty chooser must retain the approved prompt and direct Start actions");
 assert.match(renderLiftHome, /rollingHypertrophySummary\(\)/, "Today must consume the shared rolling score selector");
 assert.doesNotMatch(renderLiftHome, /Stable target|Last time|weekly volume|confidence|evidence/i, "Today must not restore deleted recommendation or volume previews");
 assert.match(renderResolvedAction, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "the exception renderer must remain silent unless the canonical resolver produced an action");
@@ -60,7 +61,8 @@ assert.doesNotMatch(history, /\b(?:setPrescription|finalPrescription|exercise\.p
 
 assert.match(renderChartPointDetail, /Selected session[\s\S]*chart-point-rollup[\s\S]*load[\s\S]*reps[\s\S]*RPE[\s\S]*role[\s\S]*Recorded sets/, "A selected factual chart point must expose date, load, reps, RPE, role, and source sets");
 assert.doesNotMatch(views, /function readinessMetricDelta\(|function readinessMetricField\(/, "the categorical readiness flow must not retain numeric delta scoring");
-assert.match(renderOptionalReadinessSheet, /Not entered[\s\S]*Worse than usual[\s\S]*About usual[\s\S]*Better than usual/, "readiness must remain a brief low-to-high categorical deviation input");
+assert.match(renderOptionalReadinessSheet, /Not entered[\s\S]*Worse than usual[\s\S]*About usual/, "readiness must remain a brief categorical deviation input with low-to-usual ordering");
+assert.doesNotMatch(renderOptionalReadinessSheet, /Better than usual/, "v1 must not offer a readiness improvement that changes no behavior");
 assert.doesNotMatch(renderStoragePersistenceFact, /class="ri-val d |tone:/, "storage-persistence facts must remain plain ink");
 
 const subFloorRem = [...style.matchAll(/font-size:\s*(0?\.\d+)rem/g)]

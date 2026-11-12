@@ -37,9 +37,13 @@ assert.match(foundation, /const currentDestinationIds = \["today", "progress", "
 assert.equal((render.match(/navButton\(/g) || []).length, 2, "The shell must render exactly two persistent navigation controls");
 assert.match(render, /navButton\("today", "Today"[\s\S]*navButton\("progress", "Progress"/, "The two controls must be Today and Progress");
 assert.doesNotMatch(render, /navButton\("(?:plan|more|routines|settings|dashboard|charts)"/, "Secondary and deleted routes must not appear in persistent navigation");
-assert.match(render, /shellWorkoutDockVisible[\s\S]*renderSessionDock[\s\S]*<nav class="bottom-nav"/, "The active logger must replace persistent navigation with workout controls");
+assert.match(render, /shellWorkoutDockVisible\s*\? renderActiveSessionHeader\(session\)/, "The active logger exposes workout controls in its Loaded Bar session header");
+assert.match(render, /activeTab === "workout" \? "" : `<nav class="bottom-nav"/, "The contextual active logger must not render persistent navigation");
+assert.doesNotMatch(render, /renderSessionDock\(/, "The active logger must not duplicate its header controls in the old dock");
+assert.match(functionSource(views, "renderActiveSessionHeader"), /data-action="session-deload"[\s\S]*data-action="request-submit-workout">Finish<\/button>[\s\S]*data-action="session-menu"/, "The replacement header retains Session deload, Finish and the session menu");
 assert.doesNotMatch(renderView, /activeTab === "(?:plan|more)"/, "Legacy Plan and More must not remain canonical render destinations");
-assert.match(renderView, /activeTab === "routines"[\s\S]*renderTemplates\(\)[\s\S]*activeTab === "settings"[\s\S]*renderSettings\(\)/, "Routines and Settings must remain contextual secondary views");
+assert.match(renderView, /activeTab === "routines"[\s\S]*renderTemplates\(\)[\s\S]*activeTab === "settings"[\s\S]*renderS4bSettings\(\)/, "Routines and Settings must remain contextual secondary views");
+assert.match(functionSource(views, "renderS4bSettings"), /renderSettings\(\)\.replace[\s\S]*renderCoachAndEquipmentSettings\(\)/, "The contextual Settings composition must retain the base controls alongside Coach and Equipment");
 
 assert.match(tabFromLocation, /currentDestinationIds\.includes\(hash\) \? hash : "today"/, "Only exact current hash destinations may resolve; unknown hashes must fall back to Today");
 assert.match(normalizeDestination, /currentDestinationIds\.includes\(tab\) \? tab : "today"/, "Only exact current programmatic destinations may resolve; unknown destinations must fall back to Today");

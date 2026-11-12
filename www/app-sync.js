@@ -740,12 +740,13 @@
       function updateTimerDisplay() {
         if (!timer) return;
         const dockElapsed = document.querySelector("[data-session-dock-elapsed]");
-        if (dockElapsed) dockElapsed.textContent = workoutProgress().elapsed;
+        if (dockElapsed) dockElapsed.textContent = loadedBarElapsedLabel(activeWorkoutSession());
         const selector = '.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]';
         const bar = document.querySelector(selector);
         if (!bar) return;
         const countdown = bar.querySelector("[data-timer-countdown]");
         const progressLabel = bar.querySelector("[data-timer-progress-label]");
+        const durationLabel = bar.querySelector("[data-timer-duration]");
         const progress = bar.querySelector(".timer-progress");
         const summary = bar.querySelector(".timer-summary");
         const stateLabel = bar.querySelector(".timer-rest-copy > span");
@@ -757,7 +758,11 @@
         const percent = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         if (countdown) countdown.textContent = formatTimer(timer.remainingSeconds);
         if (progressLabel) progressLabel.textContent = timer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(timer.remainingSeconds);
-        if (stateLabel) stateLabel.textContent = timer.isOvertime ? "Rest complete" : timer.isPaused ? "Paused" : "Rest";
+        if (durationLabel) durationLabel.textContent = "of " + formatTimer(timer.durationSeconds);
+        bar.querySelectorAll('[data-action="adjust-timer"]').forEach((button) => { button.disabled = timer.isPaused || timer.isOvertime; });
+        const pause = bar.querySelector('[data-action="toggle-timer"]');
+        if (pause) pause.disabled = timer.isOvertime;
+        if (stateLabel) stateLabel.textContent = timer.isOvertime && !bar.classList.contains("loaded-bar-rest-clamp") ? "Rest complete" : timer.isPaused ? "Paused" : "Rest";
         if (summary) summary.setAttribute("aria-label", timer.isOvertime
           ? "Rest target passed by " + formatOvertime(overtimeSeconds) + ". Open timer controls."
           : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining. Open timer controls.");

@@ -99,6 +99,7 @@ const renderWorkout = functionSource(views, "renderWorkout");
 const renderExercise = functionSource(views, "renderExercise");
 const renderSet = functionSource(views, "renderSet");
 const renderActiveSessionHeader = functionSource(views, "renderActiveSessionHeader");
+const renderRestClamp = functionSource(views, "renderLoadedBarRestClamp");
 const substitute = functionSource(workout, "applyExerciseSubstitution");
 const addExercise = functionSource(workout, "addExercise");
 const patchSetValue = functionSource(workout, "patchSetValue");
@@ -114,6 +115,7 @@ const restoreActiveDraft = functionSource(foundation, "restoreActiveWorkoutDraft
 const updateTemplate = functionSource(workout, "updateTemplateFromExercise");
 const patchTemplateName = functionSource(workout, "patchTemplateExerciseName");
 const startTemplate = functionSource(workout, "startTemplate");
+const startPlan = functionSource(workout, "buildWorkoutStartPlan");
 const validateImport = functionSource(imports, "validateImportedAppData");
 const importDataFile = functionSource(imports, "importDataFile");
 const submitWorkoutPrs = functionSource(history, "submitWorkoutPrs");
@@ -172,7 +174,7 @@ assert.match(addExercise, /setCount < 1[\s\S]*repMin > repMax[\s\S]*targetRpe \*
 assert.match(addExercise, /stableTargetSnapshot:\s*\{\s*sets:\s*setCount,\s*repLow:\s*repMin,\s*repHigh:\s*repMax,\s*rpe:\s*targetRpe,\s*restSeconds\s*\}[\s\S]*Array\.from\(\{\s*length:\s*setCount\s*\}[\s\S]*targetRepMin:\s*repMin[\s\S]*targetRepMax:\s*repMax[\s\S]*targetRpe[\s\S]*targetRestSeconds:\s*restSeconds/, "A new exercise must create target-complete working rows from the visible stable targets");
 assert.match(patchSetValue, /const domains[\s\S]*reps:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*weight:\s*\{\s*min:\s*0[\s\S]*rpe:\s*\{\s*min:\s*0,\s*max:\s*10,\s*step:\s*0\.5[\s\S]*durationSeconds:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*distance:\s*\{\s*min:\s*0/, "Set writers must enforce integer reps/duration, non-negative load/distance, and half-step RPE");
 assert.match(patchSetValue, /if \(invalid\)[\s\S]*return false;[\s\S]*acknowledgeActiveSet\(setId\)/, "Invalid set input must be rejected before acknowledging or mutating the active set");
-assert.match(patchSetValue, /field === "weight"[\s\S]*patch\.weightUnit = data\.settings\.weightUnit/, "Editing a load must store the current display unit on that set");
+assert.match(patchSetValue, /field === "weight"[\s\S]*patch\.weightUnit = \["lb", "kg"\]\.includes\(set\.weightUnit\) \? set\.weightUnit : data\.settings\.weightUnit/, "Editing a load preserves its row unit, matching the table label and physical value");
 assert.match(patchSession, /patch\.title\.length > 256[\s\S]*return false[\s\S]*patch\.notes\.length > 4096[\s\S]*return false/, "Session storage must reject titles over 256 and notes over 4,096 before mutation");
 assert.match(patchExercise, /patch\.notes\.length > 4096[\s\S]*return false/, "Exercise storage must reject notes over 4,096 before mutation");
 assert.match(patchTemplate, /patch\.name\.length > 256[\s\S]*return false[\s\S]*patch\.notes\.length > 4096[\s\S]*return false/, "Routine storage must reject names over 256 and notes over 4,096 before mutation");
@@ -180,8 +182,9 @@ assert.match(views, /data-action="session-title"[\s\S]*maxlength="256"/, "The vi
 assert.match(views, /data-action="session-notes"[\s\S]*maxlength="4096"/, "The visible workout note editor must expose the 4,096-character boundary");
 assert.match(patchTemplateName, /const normalizedName = String\(name \|\| ""\)\.trim\(\)[\s\S]*normalizedName\.length > 256[\s\S]*return/, "Routine rename must reject an overlong name before mutating the routine");
 assert.match(patchTemplateName, /exercise\.identitySource === "user_declared_custom"[\s\S]*exerciseIdentityFields\(\{\s*\.\.\.exercise,\s*name:\s*normalizedName\s*\}\)[\s\S]*userSelectedExerciseIdentity\(normalizedName\)/, "Routine rename must preserve a declared custom ID while resolving a different known/base variant to a separate identity");
-assert.match(startTemplate, /name:\s*templateExercise\.name[\s\S]*exerciseIdentityFields\(templateExercise\)/, "Routine start must carry the full stored name and bounded stable identity into the active workout");
-assert.match(startTemplate, /getMostRecentWorkoutSets\(templateExercise\.name[\s\S]*canonicalExerciseId:\s*templateExercise\.performanceExerciseId/, "Routine start must query prior comparable history with the renamed variant identity");
+assert.match(startTemplate, /buildWorkoutStartPlan\(template, session\)/, "Routine start must use the shared preview/start construction");
+assert.match(startPlan, /name:\s*templateExercise\.name[\s\S]*exerciseIdentityFields\(templateExercise\)/, "Routine start must carry the full stored name and bounded stable identity into the active workout");
+assert.match(startPlan, /getMostRecentWorkoutSets\(templateExercise\.name[\s\S]*canonicalExerciseId:\s*templateExercise\.performanceExerciseId/, "Routine start must query prior comparable history with the renamed variant identity");
 assert.match(substitute, /completed[\s\S]*incomplete|incomplete[\s\S]*completed/, "Completed source work and incomplete replacement work must be separated");
 assert.match(substitute, /if \(!incompleteIds\.size\)[\s\S]*stableTargetSnapshot[\s\S]*normalizeSetTypeCode\(source\.setType[\s\S]*=== "warmup" \? "straight"/, "Warm-up-only recorded work must seed a non-warm-up replacement set from stable working targets");
 assert.match(substitute, /isWarmup:\s*false[\s\S]*countsTowardProgression:\s*true/, "The seeded replacement row must be an incomplete progression-eligible working set");
@@ -193,19 +196,23 @@ assert.match(interactions, /action === "update-template-exercise"[\s\S]*updateTe
 assert.match(updateTemplate, /patchTemplateExercise/, "The explicit routine-save path must remain available");
 assert.match(updateTemplate, /const substitutions[\s\S]*routineSourceSubstitution = substitutions\[0\][\s\S]*sourcePerformanceId/, "Multi-hop routine save must resolve the routine slot from the earliest substitution source identity");
 assert.match(updateTemplate, /structureExerciseIds[\s\S]*exercise\.id[\s\S]*substitutions\.map\(\(entry\) => entry\.exerciseRuntimeId[\s\S]*structureSets/, "Explicit routine save must union every substitution source runtime row with the current replacement");
-assert.match(updateTemplate, /workSets\.length[\s\S]*templateSetTypesFromHistory\(workSets[\s\S]*warmupSets\.map/, "Explicit routine save must preserve the complete working-set count, roles, stable targets, and warm-up structure");
+assert.match(updateTemplate, /sets:\s*workSets\.length/, "Explicit routine save must preserve the complete working-set count");
+assert.match(updateTemplate, /templateSetTypesFromHistory\(workSets/, "Explicit routine save must rebuild the full role structure from working sets");
+assert.match(updateTemplate, /setTypes,[\s\S]*warmups:\s*warmupSets\.map/, "Explicit routine save must preserve the rebuilt role targets and warm-up structure");
 
 assert.equal((views.match(/class="workout-rest-starter/g) || []).length, 1, "The active logger must define exactly one shared rest starter");
 assert.match(views, /class="workout-rest-starter[^"]*"[^>]*data-action="start-timer"|data-action="start-timer"[^>]*class="workout-rest-starter/, "The one rest starter must use the established timer action");
 assert.match(views, /const sourceSet = completed\.at\(-1\);/, "The shared rest starter must not appear before a completed set exists");
 assert.match(foundation, /timer_requires_completed_set/, "Timer authorization must reject incomplete or skipped source sets");
-assert.match(renderWorkout, /workout-timer-slot/, "The timer and shared starter must live in the workout-level timer slot");
+assert.match(views, /context\.renderRestClamp && set\.id === context\.focusSetId \? renderLoadedBarRestClamp/, "The shared timer sits before the active logging row");
+assert.match(views, /context\.renderRestClamp && !clampShown \? renderLoadedBarRestClamp/, "A final-set rest remains visible after the table when no active row remains");
+assert.doesNotMatch(renderActiveSessionHeader, /data-timer-id|data-timer-progress-label/, "The session header cannot duplicate the rest projection");
 assert.doesNotMatch(renderSet, /set-rest-button|data-action="start-timer"/, "No set row may repeat a rest-start button");
 assert.doesNotMatch(html, /\.set-rest-button/, "Deleted per-set rest-button styling must not remain");
 
-assert.match(renderActiveSessionHeader, /data-phase=[\s\S]*overtime/, "The header timer must expose an explicit overtime phase");
-assert.match(renderActiveSessionHeader, /data-timer-progress-label/, "The recoverable header timer must retain one stable progress label");
-assert.match(renderActiveSessionHeader, /"\+" \+ formatOvertime/, "The rendered overtime value must be visibly prefixed with +");
+assert.match(renderRestClamp, /data-phase=[\s\S]*overtime/, "The rest clamp must expose an explicit overtime phase");
+assert.match(renderRestClamp, /data-timer-progress-label/, "The recoverable clamp timer retains one stable progress label");
+assert.match(renderRestClamp, /['"]\+['"] \+ formatOvertime/, "The rendered overtime value must be visibly prefixed with +");
 assert.match(sync, /dataset\.phase\s*=\s*["']overtime["']|dataset\.phase\s*=[^;\n]*overtime/, "Incremental timer updates must preserve the overtime phase");
 assert.match(sync, /progressLabel\.textContent[\s\S]*\+/, "Incremental timer updates must preserve the +mm:ss overtime label");
 assert.match(interactions, /visibilitychange[\s\S]*Date\.now\(\)[\s\S]*render|visibilitychange[\s\S]*sync/, "Returning from the background must reconcile timer state from wall-clock time");
@@ -230,5 +237,25 @@ assert.match(validateActiveDraft, /snapshot\.session\.title[\s\S]*length > 256[\
 assert.match(validateActiveDraft, /durationSeconds\s*<\s*5[\s\S]*durationSeconds\s*>\s*3600/, "Recovery must reject an invalid timer duration");
 assert.match(validateActiveDraft, /exerciseIds[\s\S]*setIds[\s\S]*pendingNextSetId/, "Recovery must validate exercise, set, and timer cross-references before replacement");
 assert.match(restoreActiveDraft, /if \(!candidate\) return false;[\s\S]*data\.sessions\s*=/, "A failed draft candidate must leave the loaded application state untouched");
+
+const coachModel = require("../tests/fixtures/synthetic-coach-backup").syntheticCoachBackup();
+const coachBackup = require("../backup-contract");
+const coachDraft = new Function("data", `
+  let activeDraftSequence=0;
+  const timer=null;
+  const isoNow=()=>"2026-11-03T18:00:00Z";
+  const activeWorkoutSession=()=>data.sessions[0];
+  const dataEntityIndex=()=>({
+    exerciseIndicesBySession:new Map([[data.sessions[0].id,data.exercises.map((_,index)=>index)]]),
+    setIndicesByExercise:new Map(data.exercises.map(exercise=>[exercise.id,data.sets.flatMap((set,index)=>set.exerciseId===exercise.id?[index]:[])]))
+  });
+  ${activeDraftSnapshot}
+  return activeWorkoutDraftSnapshot({incrementSequence:false});
+`)(coachModel);
+const serializedCoachDraft = JSON.parse(coachBackup.serializeBackupExport(coachModel, {activeWorkoutDraft:coachDraft})).activeWorkoutDraft;
+assert.deepEqual(serializedCoachDraft,coachDraft,"The real compact draft must round-trip deload, prescriptions/suspensions and set provenance/order/timestamps");
+const badCoachDraft=structuredClone(coachDraft);
+badCoachDraft.sets[0].completionOrder=99;
+assert.throws(()=>coachBackup.createBackupExport(coachModel,{activeWorkoutDraft:badCoachDraft}),/completionOrder/);
 
 console.log("Redesign M6 active-workout contracts passed (deletions, identity-safe substitution, shared/overtime rest, and lossless draft recovery).");

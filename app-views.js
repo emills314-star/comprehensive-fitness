@@ -1,4 +1,69 @@
 
+      let loadedBarSheet = null;
+      const loadedBarExpandedWarmups = new Set();
+      const loadedBarPrompts = new Map();
+      let todayWorkoutChoice = null;
+      let todayWorseThanUsual = null;
+      let todayPreview = null;
+
+      // Ownership validation and engine access remain in app-coach.js.
+      function coachingTargetsForSession(session, model = data) {
+        if (!exceptionResolverApi?.resolvePrescriptionChannel) return { visible: false, reason: "channel_unavailable" };
+        const exerciseIds = new Set(model.exercises.filter((exercise) => exercise.sessionId === session?.id).map((exercise) => exercise.id));
+        return exceptionResolverApi.resolvePrescriptionChannel({
+          prescription: session?.coachingPrescription,
+          effectiveMode: effectiveCoachMode(model.settings),
+          exceptionDecisions: session?.resolvedActions,
+          suspensions: session?.coachingSuspensions,
+          revisionEnabled: model.settings.coachBetweenSetRevisions,
+          actualSetIds: model.sets.filter((set) => exerciseIds.has(set.exerciseId)).map((set) => set.id)
+        }, (prescription) => validateSessionCoachingPrescription(session, prescription, model));
+      }
+
+      function loadedBarNumber(value) {
+        return value == null || String(value).trim() === "" || !Number.isFinite(Number(value)) ? "" : Number(value);
+      }
+
+      // The same projection drives placeholders and acceptance. Shadow/off use
+      // local targets; Show never substitutes them for a suppressed coach row.
+      function loadedBarTargetsForSet(set, exercise, channel = null) {
+        const projection = channel || coachingTargetsForSession(sessionById(exercise.sessionId));
+        const coached = projection.visible ? projection.exercises.find((item) => item.exerciseId === exercise.id)?.sets.find((row) => row.setId === set.id) : null;
+        const target = coached?.target;
+        const unit = set.weightUnit || data.settings.weightUnit;
+        const rawLoad = loadedBarNumber(target?.load);
+        const coachLoad = rawLoad !== "" && ["external", "bodyweight_plus_load"].includes(resistanceTypeFor(exercise, set));
+        const coachReps = loadedBarNumber(target?.reps) !== "";
+        const localTargets = effectiveCoachMode() !== "show";
+        // V1 coaches assisted work's reps only. A visible eligible row can still
+        // accept its factual assistance; a suppressed row cannot offer it.
+        const factualAssistance = Boolean(coached) && resistanceTypeFor(exercise, set) === "assisted_bodyweight";
+        const weight = coachLoad && target.unit && target.unit !== unit
+          ? rawLoad * (target.unit === "lb" ? 1 / 2.2046226218 : 2.2046226218) : coachLoad ? rawLoad : localTargets || factualAssistance ? loadedBarNumber(set.targetWeight) : "";
+        const reps = coachReps ? Number(target.reps) : localTargets ? loadedBarNumber(set.targetReps ?? (Number(set.targetRepMin) > 0 ? set.targetRepMin : "")) : "";
+        return { weight, reps, durationSeconds: reps, distance: reps, coach: Boolean(coached), coachLoad, coachReps, suppressed: !localTargets && !coached, row: coached };
+      }
+
+      function promptLoadedBarField(set, field, prompt) {
+        loadedBarPrompts.set(set.id, { field, prompt });
+        render();
+        const action = ({ weight: "set-weight", reps: "set-reps", durationSeconds: "set-duration", distance: "set-distance" })[field];
+        const input = Array.from(root.querySelectorAll(`[data-action="${action}"]`)).find((item) => item.dataset.setId === set.id);
+        input?.focus();
+      }
+
+      function clearLoadedBarPrompt(setId, field = "") {
+        const prompt = loadedBarPrompts.get(setId);
+        if (!prompt || (field && prompt.field !== field)) return;
+        loadedBarPrompts.delete(setId);
+        document.getElementById("set-prompt-" + setId)?.remove();
+        const row = document.getElementById("set-" + setId);
+        row?.querySelectorAll('[aria-invalid="true"]').forEach((input) => {
+          input.removeAttribute("aria-invalid");
+          input.removeAttribute("aria-describedby");
+        });
+      }
+
       function render() {
         const renderStartedAt = performanceNow();
         document.documentElement.classList.toggle("large-text-reflow", usesLargeTextReflow());
@@ -16,7 +81,8 @@
         if (optionalReadinessFlow?.sessionId && !data.sessions.some((item) => item.id === optionalReadinessFlow.sessionId)) optionalReadinessFlow = null;
         if (cancelWorkoutFlow && !sessionCanBeDiscarded(data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId))) cancelWorkoutFlow = null;
         if (historyEditConfirm && !isEditingHistorySession()) historyEditConfirm = "";
-        const modalOpen = Boolean(templateStartFlow || optionalReadinessFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open);
+        if (loadedBarSheet && (activeTab !== "workout" || !guardWorkoutMutation(loadedBarSheet.mode === "exercise" ? "exercise-menu" : loadedBarSheet.mode === "rpe" ? "rpe-pad" : "set-type-sheet", loadedBarSheet.mode === "exercise" ? { exerciseId: loadedBarSheet.exerciseId } : { setId: loadedBarSheet.setId }, false).allowed)) loadedBarSheet = null;
+        const modalOpen = Boolean(templateStartFlow || optionalReadinessFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open || loadedBarSheet);
         const dialogKey = activeDialogKey();
         const sameDialogFocus = dialogKey && dialogKey === renderedDialogKey ? focusDescriptorForElement(document.activeElement) : null;
         document.body.classList.toggle("modal-open", modalOpen);
@@ -42,8 +108,8 @@
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
-            <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
-            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { inert: modalOpen }) : activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
+            <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${ComprehensiveFitnessLoadedBar.renderDefs()}${viewHtml}</main>
+            ${activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("today", "Today", "workout")}
               ${navButton("progress", "Progress", "review")}
             </nav>`}
@@ -52,6 +118,7 @@
             ${renderCancelWorkoutSheet()}
             ${renderHistoryEditConfirmSheet()}
             ${renderClearDataSheet()}
+            ${renderLoadedBarSetSheet()}
             ${renderTimerCompleteNotice()}
           </div>
         `;
@@ -131,7 +198,7 @@
         const currentFocusDescription = root.querySelector("[data-current-focus-description]");
         const currentFocusRemaining = root.querySelector("[data-current-focus-remaining]");
         if (dockCompleted) dockCompleted.textContent = progress.completed + " of " + progress.total + " sets";
-        if (dockElapsed) dockElapsed.textContent = progress.elapsed;
+        if (dockElapsed) dockElapsed.textContent = loadedBarElapsedLabel(activeWorkoutSession());
         if (currentFocusDescription) currentFocusDescription.textContent = progress.current;
         if (currentFocusRemaining) currentFocusRemaining.textContent = progress.remaining
           ? progress.remaining + " working set" + (progress.remaining === 1 ? " remains" : "s remain")
@@ -141,9 +208,10 @@
 
       function renderSetContext(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
-        const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        const restSeconds = Number(exercise.restSeconds ?? data.settings.defaultRestSeconds ?? 90);
         return {
           restSeconds,
+          coachChannel: coachingTargetsForSession(sessionById(exercise.sessionId)),
           previousSets: exerciseSets.length
             ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, {
                 excludeSessionId: exercise.sessionId,
@@ -195,7 +263,7 @@
 
       function syncTimerDom() {
         if (!timer) return;
-        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".active-session-timer-status > .timer-bar");
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".loaded-bar-rest-clamp, .active-session-timer-status > .timer-bar");
         if (!bar) return;
         bar.dataset.timerId = timer.id;
         const stateLabel = bar.querySelector(".timer-rest-copy > span");
@@ -207,7 +275,7 @@
         bar.toggleAttribute("data-paused", timer.isPaused);
         if (context) context.textContent = timerNextContextLabel(timer) + " · " + timerNotificationStatusLabel(timer);
         if (pause) {
-          pause.innerHTML = pause.closest(".active-session-timer-controls") ? (timer.isPaused ? "Resume" : "Pause") : (timer.isPaused ? icon.play : icon.pause);
+          pause.innerHTML = pause.closest(".loaded-bar-rest-clamp, .active-session-timer-controls") ? (timer.isPaused ? "Resume" : "Pause") : (timer.isPaused ? icon.play : icon.pause);
           pause.setAttribute("title", timer.isPaused ? "Resume timer" : "Pause timer");
           pause.setAttribute("aria-label", timer.isPaused ? "Resume timer" : "Pause timer");
         }
@@ -249,9 +317,50 @@
       function renderView() {
         if (activeTab === "progress") return renderProgress();
         if (activeTab === "routines") return renderTemplates();
-        if (activeTab === "settings") return renderSettings();
+        if (activeTab === "settings") return renderS4bSettings();
         if (activeTab === "today") return renderLiftHome();
         return renderWorkout();
+      }
+
+      function equipmentCorrectionDisplayName(identity) {
+        const candidates = [...data.exercises, ...data.templates.flatMap((routine) => routine.exercises || [])];
+        const exercise = candidates.find((item) => coachVariantIdentity(item) === identity);
+        return exercise?.name || identity.split("|")[0];
+      }
+
+      function renderCoachAndEquipmentSettings() {
+        const settings = data.settings;
+        const mode = effectiveCoachMode();
+        const coach = '<label class="s4b-setting-field"><span>Coach mode</span><select data-action="coach-mode" aria-describedby="coach-activation-help">'
+          + '<option value="shadow"' + (mode === 'shadow' ? ' selected' : '') + '>Shadow (learning, targets hidden)</option>'
+          + '<option value="off"' + (mode === 'off' ? ' selected' : '') + '>Off</option>'
+          + '<option value="show"' + (mode === 'show' ? ' selected' : '') + (COACH_ACTIVATION_APPROVED ? '' : ' disabled') + '>Show coach targets (experimental)</option></select></label>'
+          + '<p class="settings-note" id="coach-activation-help">' + (COACH_ACTIVATION_APPROVED ? 'Coach targets are experimental.' : 'Available after the coach is calibrated on your history.') + '</p>'
+          + '<label class="s4b-setting-switch toggle-line"><span><b>Between-set changes</b><small>Adjust untouched targets as you log sets when coach targets are shown.</small></span><span class="toggle"><input type="checkbox" role="switch" data-action="coach-between-set-revisions"' + (settings.coachBetweenSetRevisions ? ' checked' : '') + ' /><i></i></span></label>'
+          + '<label class="s4b-setting-field"><span>Routine increments are in</span><select data-action="routine-increment-unit" aria-describedby="routine-increment-help">'
+          + [['lb', 'lb'], ['kg', 'kg'], ['', 'Not set']].map(([value, label]) => '<option value="' + value + '"' + ((settings.routineIncrementUnit || '') === value ? ' selected' : '') + '>' + label + '</option>').join('')
+          + "</select></label><p class=\"settings-note\" id=\"routine-increment-help\">Used for load steps in routines that don't say their unit.</p>";
+        const units = ['lb', 'kg'].map((unit) => '<fieldset class="s4b-equipment-unit"><legend>' + unit.toUpperCase() + '</legend>'
+          + '<label class="s4b-setting-field"><span>Bar weight (' + unit + ')</span><input type="number" min="0" step="any" inputmode="decimal" value="' + escapeHtml(settings.barWeight[unit]) + '" data-action="equipment-bar-weight" data-unit="' + unit + '" /></label>'
+          + '<div class="s4b-plates-label" id="plates-label-' + unit + '">Plates you have (' + unit + ')</div><div class="s4b-plate-chips" role="group" aria-labelledby="plates-label-' + unit + '">'
+          + defaultSettings.plateInventory[unit].map((plate) => '<button type="button" data-action="equipment-plate" data-unit="' + unit + '" data-plate="' + plate + '" aria-label="' + plate + ' ' + unit + ' plates" aria-pressed="' + settings.plateInventory[unit].includes(plate) + '">' + plate + '</button>').join('')
+          + '</div><button type="button" class="s4b-reset-plates" data-action="equipment-reset-plates" data-unit="' + unit + '" aria-label="Reset ' + unit + ' plates to standard">Reset to standard</button></fieldset>').join('');
+        const classLabel = (value) => ({ barbell: 'Barbell', dumbbell: 'Dumbbell', stack: 'Stack', plate_loaded: 'Plate loaded', bodyweight: 'Bodyweight', generic: 'Generic' })[value] || value;
+        const corrections = settings.equipmentCorrections.length ? '<ul class="s4b-equipment-corrections">' + settings.equipmentCorrections.map((entry) => {
+          const name = equipmentCorrectionDisplayName(entry.exerciseIdentity);
+          const identity = escapeHtml(entry.exerciseIdentity);
+          return '<li><div class="s4b-correction-name"><b>' + escapeHtml(name) + '</b><span>' + classLabel(entry.equipmentClass) + '</span></div><div class="s4b-correction-actions"><details><summary>Change</summary><label>Equipment for ' + escapeHtml(name) + '<select data-action="equipment-correction-change" data-exercise-identity="' + identity + '">'
+            + ComprehensiveFitnessLoadedBar.EQUIPMENT_CLASSES.map((value) => '<option value="' + value + '"' + (entry.equipmentClass === value ? ' selected' : '') + '>' + classLabel(value) + '</option>').join('')
+            + '</select></label></details><button type="button" data-action="equipment-correction-reset" data-exercise-identity="' + identity + '" aria-label="Reset equipment for ' + escapeHtml(name) + '">Reset</button></div></li>';
+        }).join('') + '</ul>' : "<p class=\"settings-note\">Pick equipment from an exercise's menu during a workout.</p>";
+        return renderSettingsGroup('Coach', mode === 'show' ? 'Experimental targets' : mode === 'off' ? 'Off' : 'Shadow · targets hidden', coach, { open: true, id: 's4b-coach-settings', className: 's4b-settings' })
+          + renderSettingsGroup('Equipment', 'Bars, plates and corrections', units + '<h3>Equipment corrections</h3>' + corrections, { open: true, id: 's4b-equipment-settings', className: 's4b-settings' });
+      }
+
+      function renderS4bSettings() {
+        // The base Settings renderer is owned by app-analysis.js. Compose the new
+        // sections at its first settings group without changing that module.
+        return renderSettings().replace(/<details class="group settings-group/, (group) => renderCoachAndEquipmentSettings() + group);
       }
 
       function renderViewSafely() {
@@ -291,34 +400,18 @@
         return renderLiftProgress();
       }
 
+      function loadedBarElapsedLabel(session) {
+        const duration = workoutActiveDurationMs(session);
+        return duration === null ? workoutProgress().elapsed : formatTimer(Math.floor(duration / 1000));
+      }
+
       function renderActiveSessionHeader(session) {
-        const activeTimer = timer?.workoutId === session.id ? timer : null;
-        const overtimeSeconds = activeTimer?.isOvertime
-          ? Math.max(0, Number(activeTimer.overtimeSeconds || Math.floor((Date.now() - Number(activeTimer.endsAt || Date.now())) / 1000)))
-          : 0;
-        const elapsed = activeTimer
-          ? activeTimer.isOvertime
-            ? Number(activeTimer.durationSeconds || 0) + overtimeSeconds
-            : Math.max(0, Number(activeTimer.durationSeconds || 0) - Number(activeTimer.remainingSeconds || 0))
-          : 0;
-        const progress = activeTimer && Number(activeTimer.durationSeconds || 0) > 0
-          ? Math.min(100, Math.round((elapsed / Number(activeTimer.durationSeconds)) * 100))
-          : 0;
-        const timerLabel = activeTimer
-          ? activeTimer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(activeTimer.remainingSeconds)
-          : "";
-        const restStatus = activeTimer
-          ? '<div class="active-session-timer-status"><div class="timer-bar" data-timer-id="' + escapeHtml(activeTimer.id) + '" data-phase="' + (activeTimer.isOvertime ? 'overtime' : activeTimer.remainingSeconds <= 10 ? 'final' : 'resting') + '" ' + (activeTimer.isPaused ? 'data-paused="true"' : '') + '><span class="timer-summary" aria-label="' + escapeHtml(activeTimer.isOvertime ? 'Rest target passed by ' + formatOvertime(overtimeSeconds) : (activeTimer.isPaused ? 'Paused rest timer' : 'Rest timer') + ', ' + formatTimer(activeTimer.remainingSeconds) + ' remaining') + '"><span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + progress + '" style="--timer-progress:' + progress + '%"><span></span></span><span class="timer-rest-copy"><span>' + (activeTimer.isOvertime ? 'Done' : activeTimer.isPaused ? 'Paused' : 'Rest') + '</span></span><strong data-timer-progress-label>' + timerLabel + '</strong></span></div></div>'
-          : '<span class="active-session-ready"><i aria-hidden="true"></i>Ready</span>';
-        const controls = activeTimer
-          ? '<div class="active-session-timer-controls" aria-label="Rest timer controls">' + (activeTimer.isOvertime
-              ? '<button type="button" data-action="clear-timer">Finish rest</button>'
-              : '<button type="button" data-action="toggle-timer">' + (activeTimer.isPaused ? 'Resume' : 'Pause') + '</button><button type="button" data-action="adjust-timer" data-seconds="-15" aria-label="Reduce rest by 15 seconds">−15s</button><button type="button" data-action="adjust-timer" data-seconds="15" aria-label="Add 15 seconds">+15s</button><button type="button" data-action="skip-timer">Skip</button>') + '</div>'
-          : '';
-        return '<div class="active-session-header">' + restStatus
-          + '<h1 title="' + escapeHtml(session.title || 'Workout') + '">' + escapeHtml(session.title || 'Workout') + '</h1>'
-          + '<details class="session-overflow active-session-menu"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">' + icon.more + '</summary><div class="session-overflow-menu"><button type="button" data-action="close-workout-context">' + icon.left + '<span>Back to Today</span></button><button type="button" data-action="log-workout-readiness">' + icon.info + '<span>Log readiness</span></button><button type="button" data-action="save-template">' + icon.templates + '<span>Save as routine</span></button>' + (sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : '') + '</div></details>'
-          + controls + '</div>';
+        const safety = guardWorkoutMutation("session-deload", { sessionId: session.id }, false);
+        return '<div class="active-session-header loaded-bar-session">'
+          + '<div class="loaded-bar-session-title"><h1 title="' + escapeHtml(session.title || 'Workout') + '">' + escapeHtml(session.title || 'Workout') + '</h1><span aria-label="Elapsed time" data-session-dock-elapsed>' + escapeHtml(loadedBarElapsedLabel(session)) + '</span></div>'
+          + '<label class="loaded-bar-session-deload"><input type="checkbox" role="switch" aria-label="Session deload" data-action="session-deload" data-session-id="' + session.id + '"' + (session.isDeload ? ' checked' : '') + workoutSafetyDisabledAttributes(safety) + ' /><span>Session deload</span></label>'
+          + '<button class="secondary-action loaded-bar-finish" type="button" data-action="request-submit-workout">Finish</button>'
+          + '<details class="session-overflow active-session-menu"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">' + icon.more + '</summary><div class="session-overflow-menu"><button type="button" data-action="close-workout-context">' + icon.left + '<span>Back to Today</span></button><button type="button" data-action="log-workout-readiness">' + icon.info + '<span>Log readiness</span></button><button type="button" data-action="toggle-workout-pause" aria-pressed="' + Boolean(session.workoutPausedAt) + '">' + (session.workoutPausedAt ? 'Resume time' : 'Pause time') + '</button><button type="button" data-action="save-template">' + icon.templates + '<span>Save as routine</span></button>' + (sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : '') + '</div></details></div>';
       }
 
       function liftHomeIsVisible() {
@@ -353,26 +446,26 @@
         }
         const editingHistory = isEditingHistorySession(session.id);
         const historyReadOnly = isSessionSubmitted(session) && !editingHistory;
-        const activeExecution = session.id === activeWorkoutId && hasActiveWorkout() && !historyReadOnly;
+        const activeExecution = session.id === activeWorkoutId && hasActiveWorkout() && !isSessionSubmitted(session);
         const addExerciseSafety = guardWorkoutMutation("add-exercise", {}, false);
         if (activeWorkoutId === session.id) ensureActiveSet();
         const progress = workoutProgress();
         const workoutExercises = activeExercises();
         const canReturnToActiveSession = historyReadOnly && hasActiveWorkout() && activeWorkoutId && activeWorkoutId !== session.id;
-        const exerciseHtml = workoutExercises.length ? measurePerformance("lift:exerciseList", () => workoutExercises.map((exercise) => renderExercise(exercise)).join(""), { count: workoutExercises.length }) : "";
+        const focusExercise = workoutExercises.find((exercise) => exercise.id === workoutFocusExerciseId)
+          || workoutExercises.find((exercise) => exercise.id === setById(activeSetId)?.exerciseId) || workoutExercises[0];
+        const exerciseHtml = activeExecution && focusExercise ? renderLoadedBarFocus(focusExercise, session)
+          : workoutExercises.length ? measurePerformance("lift:exerciseList", () => workoutExercises.map((exercise) => renderExercise(exercise)).join(""), { count: workoutExercises.length }) : "";
         return `
-          <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
-            <section class="active-workout-hero ${activeExecution ? "execution-hero" : ""}">
-              ${activeExecution
-                ? '<div class="current-workout-heading"><div class="section-kicker">Current focus</div><strong data-current-focus-description>' + escapeHtml(progress.current) + '</strong><small data-current-focus-remaining>' + (progress.remaining ? progress.remaining + ' working set' + (progress.remaining === 1 ? ' remains' : 's remain') : 'Review the session, then submit when it is complete') + '</small></div>'
-                : '<div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div>'}
-            </section>
+          <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""} ${activeExecution ? "loaded-bar-workout" : ""}">
+            ${activeExecution ? "" : '<section class="active-workout-hero"><div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div></section>'}
             ${renderResolvedAction(resolvedActionForScope(session, "session"), { session })}
-            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? "" : renderSharedRestStarter(session)}</div>
-            ${renderNotificationPrompt()}
+            ${activeExecution ? "" : '<div class="workout-timer-slot" aria-live="polite">' + (timer?.workoutId === session.id ? '' : renderSharedRestStarter(session)) + '</div>'}
             <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
                 ${exerciseHtml}
+                ${activeExecution ? renderLoadedBarUpNext(workoutExercises, focusExercise?.id) : ""}
+                ${renderNotificationPrompt()}
             ${historyReadOnly ? "" : `<details class="compact-disclosure add-exercise-panel">
               <summary>Add exercise <span>${icon.add}</span></summary>
               <div class="disclosure-body">
@@ -516,8 +609,161 @@
         return '<article class="recommendation resolved-action-card ' + escapeHtml(category || "change") + '" role="status"><span>' + escapeHtml(scope) + '</span><h2>' + escapeHtml(titles[code] || categoryFallbacks[category] || "Adjust today’s workout") + '</h2><p>' + escapeHtml(reason) + '</p>' + safetyCopy + choices + '</article>';
       }
 
+      function recoveryForWorkoutStart(templateId, recovery = defaultRecovery()) {
+        const worse = todayWorseThanUsual?.date === todayIso() && todayWorseThanUsual.routineId === templateId;
+        return cleanRecovery({ ...recovery, ...(worse ? { readinessDeviation: "meaningfully_poor" } : {}) });
+      }
+
+      function chooseTodayWorkout(routineId) {
+        if (historyEditFlow || hasActiveWorkout() || !data.templates.some((routine) => routine.id === routineId)) return false;
+        todayWorkoutChoice = { routineId, date: todayIso() };
+        todayPreview = null;
+        render();
+        return true;
+      }
+
+      function setTodayWorseThanUsual(routineId, checked) {
+        if (typeof checked !== "boolean" || historyEditFlow || hasActiveWorkout() || !data.templates.some((routine) => routine.id === routineId)) return false;
+        todayWorseThanUsual = checked ? { routineId, date: todayIso() } : null;
+        render();
+        return true;
+      }
+
+      // D7: inert until Google Health supplies validated observations and their contract.
+      // Do not infer wearable data from manual recovery or introduce a stored shape here.
+      function renderTodayLastNight() { return ""; }
+
+      function plannedWorkoutPreview(template, recovery = defaultRecovery()) {
+        const current = activeSession();
+        const replaceCurrent = current && current.date === todayIso() && current.source !== "strong" && !isSessionSubmitted(current);
+        const session = { ...(replaceCurrent ? current : createSession(template.name, { started: true })),
+          title: template.name, templateId: template.id, submitted: false, submittedAt: "", workoutStarted: true, workoutState: "active",
+          recovery: recoveryForWorkoutStart(template.id, recovery) };
+        session.resolvedActions = resolveWorkoutExceptions(session, session.recovery);
+        const plan = buildWorkoutStartPlan(template, session);
+        const replacedExerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
+        let model = { ...data, sessions: [...data.sessions.filter((item) => item.id !== session.id), session],
+          exercises: [...data.exercises.filter((exercise) => exercise.sessionId !== session.id), ...plan.exercises],
+          sets: [...data.sets.filter((row) => !replacedExerciseIds.has(row.exerciseId)), ...plan.sets] };
+        // No evaluation at all while hidden. The adapter returns a temporary model;
+        // it is never assigned to data, committed, saved, or made an active draft.
+        if (effectiveCoachMode() === "show") model = prescribeSessionCoaching(model, session.id, template, { preview: true });
+        const projectedSession = model.sessions.find((item) => item.id === session.id);
+        return { session: projectedSession, exercises: plan.exercises,
+          sets: model.sets.filter((row) => plan.exercises.some((exercise) => exercise.id === row.exerciseId)),
+          channel: coachingTargetsForSession(projectedSession, model) };
+      }
+
+      function openPlannedWorkoutPreview(routineId, date = todayIso()) {
+        if (historyEditFlow || hasActiveWorkout() || !data.templates.some((routine) => routine.id === routineId)) return false;
+        const next = nextScheduledWorkoutOccurrence(data, new Date(todayIso() + "T12:00:00"));
+        if (date !== todayIso() && !(next?.date === date && next.routines.some((routine) => routine.id === routineId))) return false;
+        todayPreview = { routineId, date };
+        queuePostRenderFocus(actionFocusDescriptor("close-planned-preview"));
+        render();
+        return true;
+      }
+
+      function plannedRowsForExercise(preview, exercise) {
+        return preview.sets.filter((row) => row.exerciseId === exercise.id && !setTypeSemantics(row).isWarmup)
+          .sort((left, right) => canonicalSetSequence(left) - canonicalSetSequence(right));
+      }
+
+      function plannedStartSummary(preview, exercise) {
+        const rows = plannedRowsForExercise(preview, exercise);
+        const targets = rows.map((row) => loadedBarTargetsForSet(row, exercise, preview.channel));
+        const type = resistanceTypeFor(exercise);
+        const reps = targets.map((target) => target.reps === "" ? "—" : formatLoadNumber(target.reps)).join(" · ");
+        const unit = rows[0]?.weightUnit || data.settings.weightUnit;
+        const load = targets[0]?.weight;
+        if (["duration", "distance"].includes(type)) return reps + (type === "duration" ? " sec" : " m");
+        if (type === "bodyweight") return reps + " reps";
+        if (targets.some((target) => target.weight !== load)) return targets.map((target) =>
+          (target.weight === "" ? "—" : formatLoadNumber(target.weight) + " " + unit) + " × " + (target.reps === "" ? "—" : target.reps)).join(" · ");
+        return reps + " reps" + (load == null || load === "" ? "" : " at " + formatLoadNumber(load) + " " + unit);
+      }
+
+      function renderTodayReadiness(template) {
+        const checked = todayWorseThanUsual?.routineId === template.id && todayWorseThanUsual.date === todayIso();
+        return '<label class="s4b-worse toggle-line"><span><strong>Worse than usual</strong><small>'
+          + (effectiveCoachMode() === "show" ? 'No increases, and one set fewer per lift.' : 'Saved with this workout.')
+          + '</small></span><span class="toggle ' + (checked ? 'on' : '') + '"><input type="checkbox" role="switch" data-action="today-worse-than-usual" data-routine-id="' + escapeHtml(template.id) + '" ' + (checked ? 'checked' : '') + ' /><i></i></span></label>';
+      }
+
+      function renderPlannedWorkoutCard(template) {
+        const preview = plannedWorkoutPreview(template);
+        const date = new Date(todayIso() + "T12:00:00");
+        const kicker = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", month: "short" }).format(date);
+        const skipped = (data.skippedSessions || []).some((skip) => skip.routineId === template.id && skip.date === todayIso());
+        return '<section class="s4b-planned" aria-labelledby="s4b-routine-title"><div class="section-kicker">' + escapeHtml(kicker) + ' · Planned</div>'
+          + '<h1 id="s4b-routine-title">' + escapeHtml(template.name) + '</h1>'
+          + (template.subtitle || template.notes ? '<p class="s4b-subtitle">' + escapeHtml(template.subtitle || template.notes) + '</p>' : '')
+          + renderTodayLastNight()
+          + '<button class="s4b-exercise-list loaded-bar-up-next" type="button" data-action="preview-planned-workout" data-routine-id="' + escapeHtml(template.id) + '" data-date="' + todayIso() + '" aria-label="Preview ' + escapeHtml(template.name) + '">'
+          + preview.exercises.map((exercise) => {
+            const rows = plannedRowsForExercise(preview, exercise);
+            const equipment = loadedBarEquipmentForSet(exercise, rows[0], preview.channel);
+            return '<span class="s4b-planned-row">' + ComprehensiveFitnessLoadedBar.renderEquipment({ ...equipment, size: "row" })
+              + '<span class="s4b-planned-copy"><strong>' + escapeHtml(exercise.name) + '</strong><small>' + escapeHtml(plannedStartSummary(preview, exercise))
+              + '</small></span><span class="s4b-set-count">' + rows.length + '<small>sets</small></span></span>';
+          }).join('') + '<span class="s4b-preview-label">Preview workout ›</span></button>'
+          + renderTodayReadiness(template)
+          + '<div class="s4b-start-actions"><button class="primary-action today-primary-action" type="button" data-action="start-template" data-template-id="' + escapeHtml(template.id) + '">Start</button>'
+          + (skipped ? '' : '<button class="s4b-injury-skip" type="button" data-action="record-injury-skip" data-routine-id="' + escapeHtml(template.id) + '" data-date="' + todayIso() + '">Injured — skip</button>') + '</div>'
+          + '<p class="s4b-skip-footnote">Skipping for injury is not a failure and not a missed session.</p>'
+          + '<button class="s4b-readiness-link" type="button" data-action="log-template-readiness" data-template-id="' + escapeHtml(template.id) + '">Log readiness (optional)</button></section>';
+      }
+
+      function renderTodaySkipStatus(skips) {
+        if (!skips.length) return '';
+        return '<div class="s4b-skips" role="status">' + skips.map((skip) => '<p>' + escapeHtml(skip.routineName || data.templates.find((template) => template.id === skip.routineId)?.name || 'Workout')
+          + ' skipped · injured <button type="button" data-action="undo-injury-skip" data-skip-id="' + escapeHtml(skip.id) + '">Undo</button></p>').join('') + '</div>';
+      }
+
+      function renderTodayWorkoutChooser(templates = data.templates) {
+        return '<section class="today-workout-chooser" aria-labelledby="choose-workout-heading"><div><h2 id="choose-workout-heading">Choose your workout</h2><p>Select a workout to load today’s session.</p></div>'
+          + (templates.length ? '<div class="today-workout-list">' + templates.map((template) => '<div class="s4b-chooser-option"><button class="today-workout-option" type="button" data-action="start-template" data-template-id="' + escapeHtml(template.id) + '"><span><strong>'
+            + escapeHtml(template.name) + '</strong><small>' + template.exercises.length + ' lifts · ' + templateExerciseCount(template) + ' working sets</small></span><b>Start ›</b></button><button class="s4b-plan-choice" type="button" data-action="plan-today-workout" data-routine-id="'
+            + escapeHtml(template.id) + '">Preview / injury skip</button></div>').join('') + '</div>' : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>') + '</section>';
+      }
+
+      function renderPlannedWorkoutPreview() {
+        const template = data.templates.find((routine) => routine.id === todayPreview?.routineId);
+        if (!template) { todayPreview = null; return ''; }
+        const preview = plannedWorkoutPreview(template);
+        const date = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", month: "short" }).format(new Date(todayPreview.date + "T12:00:00"));
+        const api = ComprehensiveFitnessLoadedBar;
+        return '<section class="view s4b-preview"><button type="button" data-action="close-planned-preview">Back to Today</button><div class="section-kicker">Planned · ' + escapeHtml(date) + ' · ' + escapeHtml(template.name) + '</div>'
+          + preview.exercises.map((exercise) => {
+            const rows = plannedRowsForExercise(preview, exercise);
+            const equipment = loadedBarEquipmentForSet(exercise, rows[0], preview.channel);
+            const reason = preview.channel.visible ? preview.channel.exercises.find((item) => item.exerciseId === exercise.id)?.reasonText : null;
+            return '<article class="s4b-preview-exercise"><h2>' + escapeHtml(exercise.name) + '</h2><section class="loaded-bar-equipment' + (equipment.load ? ' has-plates' : '') + (equipment.tooHeavyToDraw ? ' undrawable-load' : '') + '">'
+              + api.renderEquipment({ ...equipment, size: 'hero', collar: reason ? 'flag' : 'steel' })
+              + (equipment.target === null ? '' : '<div class="loaded-bar-total">' + escapeHtml(api.formatLoad(equipment.target)) + '<small>' + equipment.unit.toUpperCase() + '</small></div>')
+              + (equipment.load ? '<div class="loaded-bar-per-side"><span>Each side</span><strong>' + escapeHtml(api.perSideText(equipment.load.perSide) || 'No plates') + '</strong></div>' : '') + '</section>'
+              + (equipment.load?.note || equipment.note ? '<p class="loaded-bar-load-note">' + escapeHtml(equipment.load?.note || equipment.note) + '</p>' : '')
+              + (reason ? '<p class="loaded-bar-collar-tag">' + escapeHtml(reason) + '</p>' : '')
+              + '<div class="s4b-preview-table" role="table" aria-label="Planned sets for ' + escapeHtml(exercise.name) + '"><div role="row"><span role="columnheader">Set</span><span role="columnheader">Previous</span><span role="columnheader">' + equipment.unit.toUpperCase() + '</span><span role="columnheader">Reps</span><span role="columnheader">RPE</span></div>'
+              + rows.map((row, index) => {
+                const target = loadedBarTargetsForSet(row, exercise, preview.channel);
+                const previous = row.previousComparableSet;
+                const type = resistanceTypeFor(exercise, row);
+                const previousRpe = loadedBarNumber(previous?.rpe);
+                const noLoad = ['duration', 'distance', 'bodyweight'].includes(type);
+                const previousText = previous ? (noLoad ? '' : formatLoadNumber(resistanceLoad(previous, type, equipment.unit)) + ' × ')
+                  + (type === 'duration' ? previous.durationSeconds ?? previous.reps : type === 'distance' ? previous.distance ?? previous.reps : previous.reps)
+                  + (previousRpe === '' ? '' : ' @ ' + previousRpe) : '—';
+                return '<div role="row"><span role="cell">' + (index + 1) + '</span><span role="cell" class="s4b-preview-previous">' + escapeHtml(previousText) + '</span><span role="cell">'
+                  + (noLoad || target.weight === '' ? '—' : escapeHtml(formatLoadNumber(target.weight))) + '</span><span role="cell">' + (target.reps === '' ? '—' : escapeHtml(formatLoadNumber(target.reps)))
+                  + '</span><span role="cell" aria-label="RPE left empty"></span></div>';
+              }).join('') + '</div></article>';
+          }).join('') + '<p class="s4b-preview-note">Targets are computed when you press Start.</p><button class="primary-action today-primary-action" type="button" data-action="start-template" data-template-id="'
+          + escapeHtml(template.id) + '">Start</button></section>';
+      }
+
       function renderLiftHome() {
-        const nextTemplate = expectedWorkoutTemplate();
+        const nextTemplate = expectedWorkoutTemplate(data, new Date(todayIso() + "T12:00:00"));
         const running = activeWorkoutSession();
         if (running) {
           const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === running.id).map((exercise) => exercise.id));
@@ -536,16 +782,18 @@
               ${renderQuickStartTemplates(running.templateId || "")}
             </section>`;
         }
-        const rolling = rollingHypertrophySummary();
-        const orderedTemplates = [nextTemplate, ...data.templates.filter((template) => template.id !== nextTemplate?.id)].filter(Boolean);
+        if (todayPreview) return renderPlannedWorkoutPreview();
+        const skips = (data.skippedSessions || []).filter((skip) => skip.date === todayIso());
+        const chosen = todayWorkoutChoice?.date === todayIso() ? data.templates.find((routine) => routine.id === todayWorkoutChoice.routineId) : null;
+        const planned = skips.length ? null : chosen || nextTemplate;
+        const next = skips.length ? nextScheduledWorkoutOccurrence(data, new Date(todayIso() + "T12:00:00")) : null;
         return `
-          <section class="view lift-home-view">
-            <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}</div><h1>Today</h1></div></div>
-            ${renderRollingHypertrophyCard(rolling)}
-            <section class="today-workout-chooser" aria-labelledby="choose-workout-heading">
-              <div><h2 id="choose-workout-heading">Choose your workout</h2><p>Select a workout to load today’s session.</p></div>
-              ${orderedTemplates.length ? '<div class="today-workout-list">' + orderedTemplates.map((template) => '<button class="today-workout-option" type="button" data-action="start-template" data-template-id="' + escapeHtml(template.id) + '"><span><strong>' + escapeHtml(template.name) + '</strong><small>' + template.exercises.length + ' lift' + (template.exercises.length === 1 ? '' : 's') + ' · ' + templateExerciseCount(template) + ' working sets</small></span><b>' + (template.id === nextTemplate?.id ? 'Start' : 'Choose') + ' ›</b></button>').join('') + '</div>' : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}
-            </section>
+          <section class="view lift-home-view s4b-today">
+            ${renderTodaySkipStatus(skips)}
+            ${planned ? renderPlannedWorkoutCard(planned) : '<div class="workout-heading today-heading"><h1>Today</h1></div>'}
+            ${next ? '<section class="s4b-next" aria-label="Next scheduled workout">' + next.routines.map((routine) => '<button type="button" data-action="preview-planned-workout" data-routine-id="' + escapeHtml(routine.id) + '" data-date="' + next.date + '">Next: ' + escapeHtml(routine.name) + ' · ' + escapeHtml(new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(new Date(next.date + 'T12:00:00'))) + '</button>').join('') + '</section>' : ''}
+            ${planned || next ? renderQuickStartTemplates(planned?.id || '') : renderTodayWorkoutChooser()}
+            ${renderRollingHypertrophyCard(rollingHypertrophySummary())}
           </section>`;
       }
 
@@ -629,8 +877,9 @@
                   <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : ""}" type="button" data-action="${isActiveTemplate ? "resume-active-workout" : "start-template"}" data-template-id="${template.id}">
                     <strong>${escapeHtml(template.name)}</strong>
                     <small>${template.exercises.length} lift${template.exercises.length === 1 ? "" : "s"} · ${templateExerciseCount(template)} working sets</small>
-                    <span>${isActiveTemplate ? "Resume workout" : "Choose workout"}</span>
+                    <span>${isActiveTemplate ? "Resume workout" : "Start workout"}</span>
                   </button>
+                  ${running ? '' : '<button class="s4b-plan-choice" type="button" data-action="plan-today-workout" data-routine-id="' + escapeHtml(template.id) + '">Preview / injury skip</button>'}
                 `;
               }).join("")}
             </div>
@@ -652,7 +901,7 @@
         optionalReadinessFlow = {
           templateId: template?.id || "",
           sessionId: session?.id || "",
-          draft: session ? cleanRecovery(sessionRecovery(session)) : defaultRecovery()
+          draft: session ? cleanRecovery(sessionRecovery(session)) : recoveryForWorkoutStart(template.id)
         };
         render();
       }
@@ -719,9 +968,9 @@
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
                 <div><div class="section-kicker">Optional readiness</div><h2 id="daily-readiness-title">What is different today?</h2><p>Choose only what you know. Skipping this stays silent and never limits workout logging.</p></div>
                 <div class="readiness-draft">
-                  ${readinessSegmentedField({ field: "deviation", label: "Readiness today", action: "template-readiness-deviation", value: recovery.readinessDeviation, options: [["", "Not entered"], ["meaningfully_poor", "Worse than usual"], ["usual", "About usual"], ["unusually_good", "Better than usual"]] })}
+                  ${readinessSegmentedField({ field: "deviation", label: "Readiness today", action: "template-readiness-deviation", value: recovery.readinessDeviation, options: [["", "Not entered"], ["meaningfully_poor", "Worse than usual"], ["usual", "About usual"]] })}
                   ${readinessSegmentedField({ field: "soreness", label: "Soreness today", action: "template-readiness-soreness", value: recovery.soreness, options: [["", "Not recorded"], ["1", "Usual"], ["3", "Unusual"], ["5", "Very unusual"]] })}
-                  <fieldset class="field readiness-field"><legend class="f-name">Illness or pain</legend><div class="readiness-toggle-grid"><label class="toggle-line"><span>Current illness</span><span class="toggle ${recovery.illness ? "on" : ""}"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} /><i></i></span></label><label class="toggle-line"><span>Pain or injury</span><span class="toggle ${recovery.pain ? "on" : ""}"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} /><i></i></span></label></div></fieldset>
+                  <fieldset class="field readiness-field"><legend class="f-name">${editingWorkout ? 'Illness or pain' : 'Illness'}</legend><div class="readiness-toggle-grid"><label class="toggle-line"><span>Current illness</span><span class="toggle ${recovery.illness ? "on" : ""}"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} /><i></i></span></label>${editingWorkout ? '<label class="toggle-line"><span>Pain or injury</span><span class="toggle ' + (recovery.pain ? 'on' : '') + '"><input type="checkbox" data-action="template-readiness-pain" ' + (recovery.pain ? 'checked' : '') + ' /><i></i></span></label>' : ''}</div></fieldset>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-area">Affected area</label><select id="template-readiness-area" data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></div>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-note">Optional context</label><textarea id="template-readiness-note" data-action="template-readiness-note" placeholder="Anything outside your normal band">${escapeHtml(recovery.outsideBandNote)}</textarea></div>
                 </div>
@@ -1075,6 +1324,7 @@
       }
 
       function renderReconcilePrompt(exercise) {
+        if (coachingTargetsForSession(sessionById(exercise.sessionId)).visible) return "";
         const pending = exercise.pendingReconcile;
         const set = pending ? setById(pending.setId) : null;
         if (!pending || !set) return "";
@@ -1110,18 +1360,14 @@
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
         const isActiveExercise = exerciseSets.some((set) => set.id === activeSetId || timer?.setId === set.id);
-        const addSetSafety = guardWorkoutMutation("add-set", { exercise }, false);
-        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise }, false);
-        const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise }, false);
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set)) || exerciseSets[0];
         const renderContext = renderSetContext(exercise);
-        const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
-        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderStandardWorkloadControls(exercise) + renderMuscleSelectors(exercise), { exerciseId: exercise.id });
+        const setHtml = measurePerformance("lift:setRows", () => renderLoadedBarTable(exercise, renderContext), { exerciseId: exercise.id, count: exerciseSets.length });
         const chipSet = exerciseSets.find((set) => isWorkingSet(set) && !set.completed && !set.skipped) || firstWorkSet;
         const plannedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set)).length;
         const completedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set) && set.completed && !set.skipped).length;
         const exerciseComplete = plannedWorkingSets > 0 && completedWorkingSets === plannedWorkingSets;
-        const chipRestSeconds = Number(chipSet?.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        const chipRestSeconds = Number(chipSet?.targetRestSeconds ?? exercise.restSeconds ?? data.settings.defaultRestSeconds ?? 90);
         const chipTarget = chipSet
           ? plannedWorkingSets + " set" + (plannedWorkingSets === 1 ? "" : "s")
             + " · " + targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps) + " reps"
@@ -1137,7 +1383,7 @@
             <div class="exercise-header">
               <span class="exercise-grip" aria-hidden="true">${icon.grip}</span>
               <h2 class="exercise-name exercise-name-full" title="${escapeHtml(exercise.name)}"><a href="#progress" class="exercise-history-link" data-action="open-exercise-history" data-exercise-id="${escapeHtml(exercise.id)}" data-performance-exercise-id="${escapeHtml(exercise.performanceExerciseId || canonicalExerciseId(exercise))}">${escapeHtml(exercise.name)}</a></h2>
-              ${targetChip}<span class="exercise-set-progress">${completedWorkingSets} / ${plannedWorkingSets} logged</span>
+              ${isDeloadExposure(owningSession, exercise, exerciseSets) ? '<span class="s4a-deload-tag">Deload</span>' : ""}${targetChip}<span class="exercise-set-progress">${completedWorkingSets} / ${plannedWorkingSets} logged</span>
               <details class="exercise-overflow"><summary class="icon-button" aria-label="Exercise menu">${icon.more}</summary><div class="exercise-overflow-menu">
                 <button type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} up">${icon.up}<span>Move up</span></button>
                 <button type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} down">${icon.down}<span>Move down</span></button>
@@ -1147,7 +1393,17 @@
             ${renderResolvedAction(resolvedActionForScope(owningSession, "exercise", exercise), { session: owningSession, exercise })}
             ${setHtml}
             <div data-reconcile-slot="${exercise.id}">${renderReconcilePrompt(exercise)}</div>
-            <details class="exercise-details">
+            ${renderLoadedBarExerciseOptions(exercise)}
+          </article>
+        `;
+      }
+
+      function renderLoadedBarExerciseOptions(exercise, expanded = false) {
+        const addSetSafety = guardWorkoutMutation("add-set", { exercise }, false);
+        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise }, false);
+        const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise }, false);
+        const optionsHtml = renderStandardWorkloadControls(exercise) + renderMuscleSelectors(exercise);
+        return `            <details class="exercise-details"${expanded ? ' open' : ''}>
               <summary>Exercise details</summary>
               <div class="disclosure-body">
                 <div class="exercise-quick-settings">
@@ -1168,9 +1424,147 @@
                 ${activeSession()?.templateId ? '<button type="button" data-action="update-template-exercise" data-exercise-id="' + exercise.id + '">Save today’s targets to routine</button><p class="settings-note">This is the only action here that changes the routine. The completed workout remains the historical record.</p>' : ""}
                 <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" maxlength="4096" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
               </div>
-            </details>
-          </article>
-        `;
+            </details>`;
+      }
+
+      // UI-only derivation. Targets always use the same resolver projection as the table.
+      function loadedBarEquipmentForSet(exercise, set, channel = coachingTargetsForSession(sessionById(exercise.sessionId))) {
+        const api = ComprehensiveFitnessLoadedBar;
+        const identity = coachVariantIdentity(exercise);
+        const savedClass = data.settings.equipmentCorrections?.find((entry) => entry.exerciseIdentity === identity)?.equipmentClass;
+        const researchId = resolveExerciseIdentityProfile(exercise).researchExerciseId;
+        const record = researchId ? prescriptionEngine?.evidence?.research?.exerciseDatabase?.find((entry) => (entry.exercise_id || entry.exerciseId) === researchId) : null;
+        const automatic = api.deriveEquipmentClass({ exerciseName: exercise.name, catalogEquipment: record?.equipment ?? null });
+        const derived = api.deriveEquipmentClass({ savedClass, exerciseName: exercise.name, catalogEquipment: record?.equipment ?? null });
+        const targets = set ? loadedBarTargetsForSet(set, exercise, channel) : null;
+        const type = resistanceTypeFor(exercise, set);
+        const unit = set?.weightUnit || data.settings.weightUnit;
+        const weight = ["duration", "distance", "bodyweight"].includes(type) ? "" : loadedBarNumber(targets?.weight);
+        const equipmentClass = ["duration", "distance"].includes(type) || (weight === "" && type !== "bodyweight") ? "generic" : derived.equipmentClass;
+        const input = { equipmentClass, target: weight === "" ? null : weight, unit, barWeight: data.settings.barWeight?.[unit], plates: data.settings.plateInventory?.[unit] };
+        const load = ["barbell", "plate_loaded"].includes(equipmentClass) ? api.loadBarbell(input) : null;
+        return { ...input, identity, automaticClass: automatic.equipmentClass, derivedClass: derived.equipmentClass, targets,
+          equipmentClass: load?.tooHeavyToDraw ? "generic" : equipmentClass, load: load?.tooHeavyToDraw ? null : load,
+          tooHeavyToDraw: Boolean(load?.tooHeavyToDraw), note: load?.tooHeavyToDraw ? load.note : null };
+      }
+
+      function renderLoadedBarRepPips(set, target) {
+        const count = Number.isSafeInteger(target) && target > 0 && target <= 30 ? target : 0;
+        if (!count) return "";
+        const entered = loadedBarNumber(set.reps);
+        return '<div class="loaded-bar-pips" data-rep-pips="' + set.id + '" aria-hidden="true">' + Array.from({ length: count }, (_, index) => '<i class="' + (entered !== "" && index < entered ? 'filled' : '') + '">' + (index + 1) + '</i>').join('') + '</div>';
+      }
+
+      function syncLoadedBarRepPips(setId, value) {
+        const pips = root.querySelector('[data-rep-pips="' + CSS.escape(setId) + '"]');
+        const entered = loadedBarNumber(value);
+        pips?.querySelectorAll('i').forEach((pip, index) => pip.classList.toggle('filled', entered !== "" && index < entered));
+      }
+
+      function renderLoadedBarPlateChange(change, unit, coached) {
+        if (!change?.text) return "";
+        const round = (plate) => {
+          const equivalent = unit === 'kg' ? plate * 45 / 25 : plate;
+          const band = equivalent >= 40 ? 'p45' : equivalent >= 30 ? 'p35' : equivalent >= 15 ? 'p25' : equivalent >= 7.5 ? 'p10' : equivalent >= 4 ? 'p5' : 'p2';
+          return '<span class="loaded-bar-round ' + band + '">' + escapeHtml(ComprehensiveFitnessLoadedBar.formatLoad(plate)) + '</span>';
+        };
+        return '<section class="loaded-bar-plate-change' + (coached ? ' coach-change' : '') + '" aria-label="Plate change"><div class="loaded-bar-swap-rounds" aria-hidden="true">'
+          + change.remove.map(round).join('<span>+</span>') + (change.kind === 'swap' ? '<b>→</b>' : '<b>' + (change.kind === 'add' ? '+' : '−') + '</b>')
+          + change.add.map(round).join('<span>+</span>') + '<small>Each side</small></div><p>' + escapeHtml(change.text) + '</p></section>';
+      }
+
+      function renderLoadedBarFocus(exercise, session) {
+        const api = ComprehensiveFitnessLoadedBar;
+        const rows = setsForExercise(exercise.id);
+        const row = rows.find((set) => set.id === activeSetId && !set.completed && !set.skipped)
+          || rows.find((set) => !set.completed && !set.skipped) || rows.at(-1);
+        const context = renderSetContext(exercise);
+        context.focusSetId = row && !row.completed && !row.skipped ? row.id : '';
+        context.renderRestClamp = true;
+        const equipment = loadedBarEquipmentForSet(exercise, row, context.coachChannel);
+        const projected = context.coachChannel.visible ? context.coachChannel.exercises.find((item) => item.exerciseId === exercise.id) : null;
+        const reason = data.settings.coachBetweenSetRevisions === false ? null : projected?.reasonText;
+        const revision = equipment.targets?.row?.revision;
+        const fromRevision = row && !row.completed && !row.skipped && revision && !revision.locked ? loadedBarNumber(revision.from?.load) : '';
+        const previous = rows.filter((set) => set.id !== row?.id && set.completed && !set.skipped && isWorkingSet(set))
+          .sort((left, right) => Number(left.completionOrder || 0) - Number(right.completionOrder || 0) || String(left.completedAt || '').localeCompare(String(right.completedAt || '')) || canonicalSetSequence(left) - canonicalSetSequence(right)).at(-1);
+        const previousValue = previous ? loadedBarNumber(resistanceTypeFor(exercise, previous) === 'bodyweight_plus_load' ? previous.addedLoad ?? previous.weight : previous.weight) : '';
+        const from = fromRevision !== '' ? fromRevision : previousValue;
+        const fromUnit = fromRevision !== '' ? revision.from.unit || equipment.unit : previous?.weightUnit || equipment.unit;
+        const fromLoad = from === '' ? null : fromUnit === equipment.unit ? from : from * (fromUnit === 'lb' ? 1 / 2.2046226218 : 2.2046226218);
+        const previousBar = equipment.load && fromLoad !== null && Math.abs(fromLoad - equipment.target) > 0.000001
+          ? api.loadBarbell({ ...equipment, target: fromLoad }) : null;
+        const change = previousBar && !previousBar.tooHeavyToDraw ? api.plateChange(previousBar.perSide, equipment.load.perSide) : null;
+        const coachChange = Boolean(change?.text && fromRevision !== '');
+        return '<article id="exercise-' + exercise.id + '" class="loaded-bar-focus" tabindex="-1" aria-label="Exercise: ' + escapeHtml(exercise.name) + '">'
+          + '<header class="loaded-bar-exercise-heading"><h2><a href="#progress" data-action="open-exercise-history" data-exercise-id="' + exercise.id + '" data-performance-exercise-id="' + escapeHtml(exercise.performanceExerciseId || canonicalExerciseId(exercise)) + '">' + escapeHtml(exercise.name) + '</a></h2>'
+          + (isDeloadExposure(session, exercise, rows) ? '<span class="s4a-deload-tag">Deload</span>' : '')
+          + '<button class="icon-button" type="button" data-action="exercise-menu" data-exercise-id="' + exercise.id + '" aria-label="Exercise menu for ' + escapeHtml(exercise.name) + '">' + icon.more + '</button></header>'
+          + '<section class="loaded-bar-equipment' + (equipment.load ? ' has-plates' : '') + (equipment.tooHeavyToDraw ? ' undrawable-load' : '') + (coachChange ? ' coach-change' : '') + '" aria-label="Target equipment">'
+          + api.renderEquipment({ ...equipment, size: 'hero', collar: reason ? 'flag' : 'steel', ...(change?.text ? { previousPerSide: previousBar.perSide } : {}) })
+          + (equipment.target === null ? '' : '<div class="loaded-bar-total">' + escapeHtml(equipment.equipmentClass === 'dumbbell' ? api.dumbbellLabel(equipment.target) || api.formatLoad(equipment.target) : api.formatLoad(equipment.target)) + '<small>' + equipment.unit.toUpperCase() + '</small></div>')
+          + (equipment.load ? '<div class="loaded-bar-per-side"><span>Each side</span><strong>' + escapeHtml(api.perSideText(equipment.load.perSide) || 'No plates') + '</strong></div>' : '') + '</section>'
+          + (reason ? '<p class="loaded-bar-collar-tag" title="' + escapeHtml(reason) + '">' + escapeHtml(reason) + '</p>' : '')
+          + '<div class="coach-bounds-slot" data-coach-bounds-slot hidden></div>'
+          + (equipment.load?.note || equipment.note ? '<p class="loaded-bar-load-note">' + escapeHtml(equipment.load?.note || equipment.note) + '</p>' : '')
+          + renderLoadedBarPlateChange(change, equipment.unit, coachChange)
+          + renderResolvedAction(resolvedActionForScope(session, 'exercise', exercise), { session, exercise })
+          + renderLoadedBarTable(exercise, context)
+          + '<div data-reconcile-slot="' + exercise.id + '">' + renderReconcilePrompt(exercise) + '</div></article>';
+      }
+
+      function renderLoadedBarUpNext(exercises, focusedId) {
+        const api = ComprehensiveFitnessLoadedBar;
+        const complete = (exercise) => {
+          const rows = setsForExercise(exercise.id);
+          return rows.length > 0 && rows.every((set) => set.completed || set.skipped);
+        };
+        const remaining = exercises.filter((exercise) => exercise.id !== focusedId && !complete(exercise));
+        const done = exercises.filter((exercise) => exercise.id !== focusedId && complete(exercise));
+        if (!remaining.length && !done.length) return '';
+        const channel = coachingTargetsForSession(sessionById(exercises[0]?.sessionId));
+        const renderRow = (exercise, isDone) => {
+          const rows = setsForExercise(exercise.id).filter((set) => isWorkingSet(set));
+          const first = rows[0] || setsForExercise(exercise.id)[0];
+          const equipment = loadedBarEquipmentForSet(exercise, first, channel);
+          const type = resistanceTypeFor(exercise, first);
+          const summary = rows.map((set) => loadedBarTargetsForSet(set, exercise, channel).reps).filter((value) => value !== '').join(' · ');
+          const label = equipment.target === null ? '' : equipment.equipmentClass === 'dumbbell' ? api.dumbbellLabel(equipment.target) || api.formatLoad(equipment.target) : api.formatLoad(equipment.target) + '<small>' + equipment.unit.toUpperCase() + '</small>';
+          return '<button class="loaded-bar-next-row' + (isDone ? ' done' : '') + '" type="button" data-action="focus-workout-exercise" data-exercise-id="' + exercise.id + '" aria-label="' + (isDone ? 'Reopen ' : 'Focus ') + escapeHtml(exercise.name) + '">'
+            + (isDone ? '<span class="loaded-bar-done-mark" aria-hidden="true">✓</span>' : api.renderEquipment({ ...equipment, size: 'row' }))
+            + '<span class="loaded-bar-next-copy"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + (isDone ? 'Done' : escapeHtml(summary + (summary ? type === 'duration' ? ' sec' : type === 'distance' ? ' m' : ' reps' : 'Previous available'))) + '</span></span><em' + (equipment.tooHeavyToDraw ? ' class="undrawable-load"' : '') + '>' + label + '</em></button>';
+        };
+        return '<section class="loaded-bar-up-next" aria-label="Up next"><header><h3>Up next</h3>' + (remaining.length > 3 ? '<span>Then ' + (remaining.length - 3) + ' more lifts</span>' : '') + '</header>'
+          + remaining.map((exercise) => renderRow(exercise, false)).join('') + done.map((exercise) => renderRow(exercise, true)).join('') + '</section>';
+      }
+
+      function renderLoadedBarExerciseSheet(exercise, set) {
+        const derived = loadedBarEquipmentForSet(exercise, set);
+        const correction = data.settings.equipmentCorrections?.find((entry) => entry.exerciseIdentity === derived.identity);
+        return '<div class="sheet-backdrop loaded-bar-backdrop" data-action="close-set-sheet" role="presentation"><section class="loaded-bar-sheet loaded-bar-exercise-sheet" role="dialog" aria-modal="true" aria-labelledby="loaded-bar-sheet-title"><h2 id="loaded-bar-sheet-title">' + escapeHtml(exercise.name) + '</h2>'
+          + (set ? renderLoadedBarSetTypePicker(set, exercise) : '')
+          + '<label class="loaded-bar-deload"><span><b>This was a deload</b><small>Left out of progression, records and trends.</small></span><input type="checkbox" role="switch" aria-label="This exercise was a deload" data-action="exercise-deload" data-exercise-id="' + exercise.id + '"' + (exercise.isDeload ? ' checked' : '') + ' /></label>'
+          + '<label class="loaded-bar-equipment-picker">Equipment<select data-action="exercise-equipment" data-exercise-id="' + exercise.id + '"><option value="">Automatic (' + escapeHtml(derived.automaticClass.replace('_', '-')) + ')</option>'
+          + ComprehensiveFitnessLoadedBar.EQUIPMENT_CLASSES.map((value) => '<option value="' + value + '"' + (correction?.equipmentClass === value ? ' selected' : '') + '>' + escapeHtml(value.replace('_', '-')) + '</option>').join('') + '</select></label>'
+          + '<details class="loaded-bar-exercise-more compact-disclosure"><summary>More exercise options</summary><div class="loaded-bar-exercise-actions"><button type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="' + exercise.id + '" aria-label="Move ' + escapeHtml(exercise.name) + ' up">Move up</button><button type="button" data-action="move-exercise" data-direction="1" data-exercise-id="' + exercise.id + '" aria-label="Move ' + escapeHtml(exercise.name) + ' down">Move down</button><button class="danger" type="button" data-action="delete-exercise" data-exercise-id="' + exercise.id + '" aria-label="Remove exercise ' + escapeHtml(exercise.name) + '">Remove exercise</button></div>'
+          + (set ? '<button type="button" data-action="set-type-sheet" data-set-id="' + set.id + '">More set options · set ' + set.setNumber + '</button>' : '')
+          + renderLoadedBarExerciseOptions(exercise, true) + '</details><button class="secondary-action" type="button" data-action="close-set-sheet">Done</button></section></div>';
+      }
+
+      function renderLoadedBarRestClamp(session, columns = 6) {
+        const activeTimer = timer?.workoutId === session?.id ? timer : null;
+        if (!activeTimer) {
+          const starter = renderSharedRestStarter(session);
+          return starter ? '<div role="row" class="loaded-bar-rest-starter"><div role="cell" aria-colspan="' + columns + '">' + starter + '</div></div>' : '';
+        }
+        const overtime = activeTimer.isOvertime ? Math.max(0, Math.floor((Date.now() - Number(activeTimer.endsAt || Date.now())) / 1000)) : 0;
+        const elapsed = activeTimer.isOvertime ? activeTimer.durationSeconds + overtime : Math.max(0, activeTimer.durationSeconds - activeTimer.remainingSeconds);
+        const percent = activeTimer.durationSeconds > 0 ? Math.min(100, Math.round(elapsed / activeTimer.durationSeconds * 100)) : 100;
+        return '<div class="timer-bar loaded-bar-rest-clamp" role="row" data-timer-id="' + escapeHtml(activeTimer.id) + '" data-phase="' + (activeTimer.isOvertime ? 'overtime' : activeTimer.remainingSeconds <= 10 ? 'final' : 'resting') + '"' + (activeTimer.isPaused ? ' data-paused="true"' : '') + '><div role="cell" aria-colspan="' + columns + '">'
+          + '<div class="timer-summary" aria-label="' + escapeHtml(activeTimer.isOvertime ? 'Rest target passed by ' + formatOvertime(overtime) : (activeTimer.isPaused ? 'Paused rest timer' : 'Rest timer') + ', ' + formatTimer(activeTimer.remainingSeconds) + ' remaining') + '"><div class="timer-rest-copy"><span>' + (activeTimer.isPaused ? 'Paused' : 'Rest') + '</span><strong data-timer-progress-label>' + (activeTimer.isOvertime ? '+' + formatOvertime(overtime) : formatTimer(activeTimer.remainingSeconds)) + '</strong></div>'
+          + '<div class="loaded-bar-rest-track"><span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + percent + '" style="--timer-progress:' + percent + '%"><span></span></span><small data-timer-duration>of ' + formatTimer(activeTimer.durationSeconds) + '</small></div></div>'
+          + '<div class="loaded-bar-rest-actions"><button type="button" data-action="adjust-timer" data-seconds="-15" aria-label="Reduce rest by 15 seconds"' + (activeTimer.isPaused || activeTimer.isOvertime ? ' disabled' : '') + '>−15</button><button type="button" data-action="adjust-timer" data-seconds="15" aria-label="Add 15 seconds"' + (activeTimer.isPaused || activeTimer.isOvertime ? ' disabled' : '') + '>+15</button><button type="button" data-action="skip-timer">Skip</button></div>'
+          + '<details class="loaded-bar-rest-options"><summary aria-label="More rest timer controls">Timer options</summary><span class="timer-context">' + escapeHtml(timerNextContextLabel(activeTimer) + ' · ' + timerNotificationStatusLabel(activeTimer)) + '</span><button type="button" data-action="toggle-timer"' + (activeTimer.isOvertime ? ' disabled' : '') + ' aria-label="' + (activeTimer.isPaused ? 'Resume timer' : 'Pause timer') + '">' + (activeTimer.isPaused ? 'Resume' : 'Pause') + '</button><button type="button" data-action="clear-timer">Finish rest</button></details></div></div>';
       }
 
       function setCompletionClock(set) {
@@ -1179,111 +1573,126 @@
         return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(completedAt);
       }
 
+      function loadedBarFlag(set, context) {
+        const type = normalizeSetTypeCode(set.setType, set.isWarmup);
+        return ({ warmup: "W", drop: "D", failure: "F", top: "T", backoff: "B" })[type]
+          || String(Math.max(0, (context.workingSetIds || []).indexOf(set.id)) + 1);
+      }
+
+      function renderLoadedBarTable(exercise, context = renderSetContext(exercise)) {
+        const rows = setsForExercise(exercise.id);
+        const warmups = rows.filter((set) => setTypeSemantics(set).isWarmup);
+        const collapsed = warmups.length > 0 && warmups.every((set) => set.completed && !set.skipped) && !loadedBarExpandedWarmups.has(exercise.id);
+        const type = resistanceTypeFor(exercise, rows[0]);
+        const noLoad = ["duration", "distance"].includes(type);
+        const unit = rows.find((set) => set.id === activeSetId)?.weightUnit || rows[0]?.weightUnit || data.settings.weightUnit;
+        context.headerUnit = unit;
+        const loadTitle = type === "bodyweight" ? "BW" : (type === "bodyweight_plus_load" ? "+" : type === "assisted_bodyweight" ? "−" : "") + unit.toUpperCase();
+        const header = '<div class="loaded-bar-head" role="row"><span role="columnheader">Set</span><span role="columnheader">Previous</span>'
+          + (noLoad ? '' : '<span role="columnheader">' + loadTitle + '</span>')
+          + '<span role="columnheader">' + (type === "duration" ? "SEC" : type === "distance" ? "M" : "Reps") + '</span><span role="columnheader">RPE</span><span role="columnheader" aria-label="Complete">✓</span></div>';
+        let summaryShown = false;
+        let clampShown = false;
+        const body = rows.map((set) => {
+          if (collapsed && setTypeSemantics(set).isWarmup) {
+            if (summaryShown) return '';
+            summaryShown = true;
+            const loads = warmups.map((row) => {
+              const resistance = resistanceTypeFor(exercise, row);
+              const load = loadedBarNumber(resistance === 'bodyweight_plus_load' ? row.addedLoad : resistance === 'assisted_bodyweight' ? row.assistanceLoad : row.weight);
+              return (load === '' ? '—' : formatLoadNumber(load)) + (row.weightUnit && row.weightUnit !== unit ? ' ' + row.weightUnit : '');
+            });
+            return '<div class="loaded-bar-warmup-summary" role="row"><div role="cell" aria-colspan="' + (noLoad ? 5 : 6) + '"><button type="button" data-action="toggle-warmups" data-exercise-id="' + exercise.id + '" aria-expanded="false"><b>W</b><span>' + warmups.length + ' warm-ups · ' + escapeHtml(loads.join(' · ')) + '</span><span aria-label="Completed">✓</span></button></div></div>';
+          }
+          const clamp = context.renderRestClamp && set.id === context.focusSetId ? renderLoadedBarRestClamp(sessionById(exercise.sessionId), noLoad ? 5 : 6) : '';
+          if (clamp) clampShown = true;
+          return clamp + renderSet(set, exercise, context);
+        }).join('');
+        return '<div class="loaded-bar-table' + (noLoad ? ' no-load' : '') + '" role="table" aria-label="Sets for ' + escapeHtml(exercise.name) + '">' + header + body + (context.renderRestClamp && !clampShown ? renderLoadedBarRestClamp(sessionById(exercise.sessionId), noLoad ? 5 : 6) : '') + '</div>';
+      }
+
       function renderSet(set, exercise, context = {}) {
-        const restSeconds = Number(set.targetRestSeconds || context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
-        const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set }, false);
-        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set }, false);
-        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, set }, false);
-        const resistanceType = resistanceTypeFor(exercise, set);
-        const visualState = setVisualState(set);
-        const isLoggedMode = visualState === "completed" && !isEditingHistorySession();
-        const isNext = visualState === "current";
-        const isResting = Boolean(timer?.isActive && timer.setId === set.id);
-        const executionLabel = setExecutionLabel(set);
-        const warmupIndex = setTypeSemantics(set).isWarmup ? (context.warmupIds || []).indexOf(set.id) : -1;
-        const previousSets = context.previousSets || [];
+        const session = sessionById(exercise.sessionId);
+        const readOnly = isSessionSubmitted(session) && !isEditingHistorySession(session.id);
+        const type = resistanceTypeFor(exercise, set);
+        const noLoad = ["duration", "distance"].includes(type);
+        const unit = set.weightUnit || data.settings.weightUnit;
+        const state = context.focusSetId && !set.completed && !set.skipped ? (context.focusSetId === set.id ? "current" : "future") : setVisualState(set);
+        const targets = loadedBarTargetsForSet(set, exercise, context.coachChannel);
+        const revision = targets.row?.revision;
+        const revised = Boolean(revision && !revision.locked && !set.completed && !set.skipped);
         const role = normalizeSetTypeCode(set.setType, set.isWarmup);
-        const workingSetIndex = Math.max(0, (context.workingSetIds || []).indexOf(set.id));
-        const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex);
-        const previousDateLabel = previous?.priorSessionDate ? formatDate(previous.priorSessionDate) : previous ? "Previous session" : "No history";
-        const previousPerformanceText = !previous
-          ? "—"
-          : resistanceType === "duration"
-            ? formatLoadNumber(previous.durationSeconds || previous.reps || 0) + " sec"
-            : resistanceType === "distance"
-              ? formatLoadNumber(previous.distance || previous.reps || 0) + " " + (previous.distanceUnit || "m")
-              : String(Number(previous.reps || 0));
-        const previousLoadText = !previous || resistanceType === "duration" || resistanceType === "distance" ? "—" : formatResistance({ ...previous, resistanceType }, exercise);
-        const previousRpeText = previous && Number(previous.rpe || 0) > 0 ? String(previous.rpe) : "—";
-        const previousSummaryText = !previous
-          ? "—"
-          : resistanceType === "duration" || resistanceType === "distance"
-            ? previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "")
-            : previousLoadText + " × " + previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "");
+        const previous = set.previousComparableSet || previousComparableSetForRole(context.previousSets || [], role, set.setTypeIndex, Math.max(0, (context.workingSetIds || []).indexOf(set.id)));
+        const previousEffort = loadedBarNumber(previous?.rpe);
+        const previousText = !previous ? '—' : noLoad
+          ? formatLoadNumber(type === 'duration' ? previous.durationSeconds ?? previous.reps : previous.distance ?? previous.reps) + (type === 'duration' ? ' sec' : ' ' + (previous.distanceUnit || 'm')) + (previousEffort === '' ? '' : ' @ ' + previousEffort)
+          : (type === 'bodyweight' ? 'BW' : (type === 'bodyweight_plus_load' ? '+' : type === 'assisted_bodyweight' ? '−' : '') + formatLoadNumber(resistanceLoad(previous, type, unit))) + ' × ' + (previous.reps ?? '—') + (previousEffort === '' ? '' : ' @ ' + previousEffort);
         const previousField = previous?.priorSessionId
-            ? '<a class="set-field set-previous set-previous-link" href="#progress" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
-            : previous
-              ? '<div class="set-field set-previous"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></div>'
-              : '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No previous workout found") + '</strong><small>No history</small></div>';
-        const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
-        const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
-        const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
-        const targetRpeText = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
-        const performanceField = resistanceType === "duration"
-          ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
-          : resistanceType === "distance"
-            ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" /></label>'
-            : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" /></label>';
-        const setLabel = warmupIndex >= 0 ? "WU" + (warmupIndex + 1) : "Set " + set.setNumber;
-        const compactTargetSummary = targetLoadText + " × " + targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + " @ " + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe);
-        const targetSummary = resistanceType === "duration" || resistanceType === "distance"
-          ? [targetLoadText, targetRepText, targetRpeText].join(" | ")
-          : compactTargetSummary;
-        const actualLoadText = formatResistance(set, exercise);
-        const actualPerformanceText = resistanceType === "duration"
-          ? formatLoadNumber(set.durationSeconds || 0) + " sec"
-          : resistanceType === "distance"
-            ? formatLoadNumber(set.distance || 0) + " " + (set.distanceUnit || "m")
-            : String(Number(set.reps || 0)) + " reps";
-        const actualSummary = resistanceType === "duration" || resistanceType === "distance"
-          ? actualPerformanceText + (Number(set.rpe || 0) > 0 ? " @ RPE " + set.rpe : "")
-          : actualLoadText + " × " + Number(set.reps || 0) + (Number(set.rpe || 0) > 0 ? " @ " + Number(set.rpe).toFixed(1) : "");
-        const targetRpe = Number(set.targetRpe || set.targetRpeMax || set.targetRpeMin || 0);
-        const rpeDelta = Number(set.rpe || 0) - targetRpe;
-        const isOnTarget = Boolean(targetRpe && Number(set.rpe || 0) && Math.abs(rpeDelta) < 0.05);
-        const rpeDeltaText = isOnTarget
-          ? "on"
-          : !targetRpe || !Number(set.rpe || 0)
-            ? "Logged"
-            : (rpeDelta > 0 ? "+" : "") + formatLoadNumber(rpeDelta);
-        const rpeDeltaClass = !targetRpe || !Number(set.rpe || 0) ? "none" : rpeDelta > 0 ? "out" : rpeDelta < 0 ? "under" : "on";
-        const repTone = Number(set.reps || 0) < Number(set.targetRepMin || set.targetReps || 0) ? "under" : Number(set.reps || 0) > Number(set.targetRepMax || set.targetReps || 0) ? "over" : "on";
-        const repRangeSignal = rangeBar({ low: Number(set.targetRepMin || set.targetReps || 0), high: Number(set.targetRepMax || set.targetReps || 0), actual: isLoggedMode ? Number(set.reps || 0) : Number(set.targetReps || set.targetRepMin || 0), tone: isLoggedMode ? repTone : "none" });
-        const statusButton = '<button class="check-button ' + (set.completed ? "checked" : "") + '" type="button" data-action="toggle-set" data-set-id="' + set.id + '" title="' + (set.completed ? "Completed" : "Mark set complete") + '" aria-label="' + (set.completed ? "Set completed" : "Mark set complete") + '" aria-pressed="' + (set.completed ? "true" : "false") + '"' + workoutSafetyDisabledAttributes(completionSafety) + '>' + icon.done + '</button>';
-        const upcomingStatus = '<button class="check-button inactive-check" type="button" disabled aria-disabled="true" title="Complete the current set first" aria-label="Upcoming set; completion becomes available when this is the current set">' + icon.done + '</button>';
-        const loadField = resistanceType === "bodyweight"
-          ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
-          : resistanceType === "duration" || resistanceType === "distance"
-            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">' + noData("External load does not apply") + '</div></div>'
-            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + roundLoadForUnit(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
-        const setBody = isLoggedMode
-          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong><small class="set-previous-inline">Previous · ' + escapeHtml(previousSummaryText) + '</small>' + repRangeSignal + '</span><span class="act"><span class="lbl">' + escapeHtml(setCompletionClock(set)) + '</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
-          : isNext || isEditingHistorySession()
-            ? '<div class="set-current-editor claim-card" data-set-mode="current"><div class="set-current-heading"><div><span class="eyebrow">' + escapeHtml(setLabel + ' · now') + '</span><strong>' + escapeHtml(resistanceType === "duration" || resistanceType === "distance" ? targetSummary : targetLoadText + " × " + targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + " @ RPE " + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe)) + '</strong></div><span class="current-set-count">' + (context.workingSetIds || []).length + ' sets planned</span>' + statusButton + '</div><div class="current-set-inputs">' + previousField + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + (Number(set.rpe || 0) > 0 ? set.rpe : "") + '" placeholder="—" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label></div></div>'
-            : '<div class="set-pending-line" data-set-mode="pending"><span class="pending-set-label">' + escapeHtml(setLabel) + '</span><span class="pending-exercise-name">' + escapeHtml(executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong><small class="pending-previous">Previous · ' + escapeHtml(previousSummaryText) + (previous?.priorSessionDate ? ' · ' + escapeHtml(previousDateLabel) : '') + '</small>' + repRangeSignal + upcomingStatus + '</div>';
-        return `
-          <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
-            ${isLoggedMode ? "" : `<div class="set-heading">
-              <span class="set-type-badge type-${escapeHtml(role)}">${escapeHtml(executionLabel.toUpperCase())}${set.manualOverride ? " · CORRECTED" : ""}</span>
-            </div>`}
-            ${setBody}
-            ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
-            ${isLoggedMode ? "" : `<details class="set-tools-disclosure" ${isResting || visualState === "edited" || isEditingHistorySession() ? "open" : ""}>
-              <summary aria-label="Set options"><span aria-hidden="true">•••</span></summary>
-              <div class="set-tools-panel">
-                <div class="set-actions">
-                  <label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="${set.id}">${['warmup','straight','top','backoff','drop','failure','amrap','technique','deload','unknown'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('')}</select></label>
-                  <label class="set-rest-editor"><span>Rest seconds</span><input type="number" min="15" max="3600" step="15" value="${restSeconds}" data-action="set-rest-seconds" data-set-id="${set.id}" aria-label="Rest seconds after ${escapeHtml(setLabel)}" ${set.completed ? "disabled" : ""} /></label>
-                  ${set.manualOverride && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
-                  <button class="mini-button" type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Insert warm-up above ${escapeHtml(exercise.name)} set ${set.setNumber}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>Insert warm-up above</button>
-                  <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
-                  <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
-                  ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
-                </div>
-              </div>
-            </details>`}
-          </div>
-        `;
+          ? '<a class="set-previous-link" href="#progress" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || '') + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open previous workout' + (previous.priorSessionDate ? ' · ' + escapeHtml(formatDate(previous.priorSessionDate)) : '') + '">' + escapeHtml(previousText) + '</a>'
+          : '<span title="' + (previous ? 'Previous session' : 'No previous workout found') + '">' + escapeHtml(previousText) + '</span>';
+        const actualLoad = loadedBarNumber(type === 'bodyweight_plus_load' ? set.addedLoad ?? set.weight : type === 'assisted_bodyweight' ? set.assistanceLoad ?? set.weight : set.weight);
+        const metric = type === 'duration' ? 'durationSeconds' : type === 'distance' ? 'distance' : 'reps';
+        const action = type === 'duration' ? 'set-duration' : type === 'distance' ? 'set-distance' : 'set-reps';
+        const prompt = loadedBarPrompts.get(set.id);
+        const cell = (field, editAction, value, placeholder, label, was = '') => {
+          const changed = revised && loadedBarNumber(was) !== '' && loadedBarNumber(was) !== loadedBarNumber(placeholder);
+          const input = readOnly ? '<strong>' + escapeHtml(loadedBarNumber(value) === '' ? '—' : value) + '</strong>'
+            : '<input type="number" min="0"' + (field === 'rpe' ? ' max="10" step="0.5"' : field === 'weight' || field === 'distance' ? ' step="any"' : ' step="1"')
+              + ' value="' + escapeHtml(value ?? '') + '"' + (field === 'rpe' || targets.suppressed ? '' : ' placeholder="' + escapeHtml(placeholder) + '"')
+              + ' data-action="' + editAction + '" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + escapeHtml(label) + '"'
+              + (prompt?.field === field ? ' aria-invalid="true" aria-describedby="set-prompt-' + set.id + '"' : '') + ' />';
+          return '<div' + (field === 'rpe' ? '' : ' role="cell"') + ' class="loaded-bar-cell' + (changed ? ' revised-cell' : '') + '">' + input
+            + (field === 'weight' && context.headerUnit && unit !== context.headerUnit ? '<small class="loaded-bar-unit">' + unit.toUpperCase() + '</small>' : '')
+            + (changed ? '<del class="loaded-bar-was" aria-label="Was ' + escapeHtml(was) + '">' + escapeHtml(was) + '</del>' : '') + '</div>';
+        };
+        const fromLoad = loadedBarNumber(revision?.from?.load);
+        const wasLoad = fromLoad === '' ? '' : revision.from.unit && revision.from.unit !== unit ? fromLoad * (revision.from.unit === 'lb' ? 1 / 2.2046226218 : 2.2046226218) : fromLoad;
+        const band = [set.targetRpeMin, set.targetRpeMax ?? set.targetRpe];
+        const rpeHint = band?.every((value) => loadedBarNumber(value) !== '') ? band.join('–') : '';
+        const safety = guardWorkoutMutation('toggle-set', { exercise, set }, false);
+        const attributes = ' data-set-id="' + set.id + '"';
+        const flag = loadedBarFlag(set, context);
+        const typeField = readOnly ? '<strong>' + flag + '</strong>' : '<button type="button" data-action="set-type-sheet"' + attributes + ' aria-label="Set ' + set.setNumber + ' type: ' + escapeHtml(setTypeLabels[role] || role) + '">' + flag + '</button>';
+        const status = readOnly ? '<span aria-label="' + (set.skipped ? 'Skipped' : set.completed ? 'Completed' : 'Incomplete') + '">' + (set.skipped ? '—' : set.completed ? '✓' : '○') + '</span>'
+          : '<button class="check-button ' + (set.completed ? 'checked' : '') + '" type="button" data-action="toggle-set"' + attributes + ' aria-label="' + (set.completed ? 'Reopen' : 'Complete') + ' set ' + set.setNumber + '" aria-pressed="' + Boolean(set.completed) + '"' + workoutSafetyDisabledAttributes(safety) + '>' + icon.done + '</button>';
+        return '<div id="set-' + set.id + '" role="row" data-set-state="' + state + '" data-set-mode="' + (readOnly ? 'readonly' : set.completed ? 'logged' : state === 'current' ? 'current' : 'pending') + '" class="set-block loaded-bar-row ' + (state === 'current' ? 'next-set' : '') + (set.completed ? ' completed' : '') + (set.skipped ? ' skipped-set' : '') + (revised ? ' revised-row' : '') + '">'
+          + '<div role="cell" class="loaded-bar-type">' + typeField + '</div><div role="cell" class="loaded-bar-previous">' + previousField + '</div>'
+          + (noLoad ? '' : type === 'bodyweight' ? '<div role="cell" class="loaded-bar-cell">BW</div>' : cell('weight', 'set-weight', actualLoad, targets.weight, 'load ' + unit, wasLoad))
+          + cell(metric, action, set[metric], targets[metric], type === 'duration' ? 'seconds' : type === 'distance' ? 'distance metres' : 'reps', revision?.from?.reps)
+          + '<div role="cell" class="loaded-bar-rpe">' + cell('rpe', 'set-rpe', loadedBarNumber(set.rpe), '', 'RPE') + (readOnly || targets.suppressed || !rpeHint || state !== 'current' ? '' : '<small class="loaded-bar-rpe-hint">' + rpeHint + '</small>') + '</div>'
+          + '<div role="cell" class="loaded-bar-status">' + status + '</div>'
+          + (targets.row?.optional ? '<small class="loaded-bar-optional">optional</small>' : '')
+          + (revised ? '<div class="loaded-bar-revision" role="cell" aria-colspan="' + (noLoad ? 5 : 6) + '"><span>Target changed</span>' + (readOnly ? '' : '<button type="button" data-action="undo-coach-revision" data-session-id="' + session.id + '"' + attributes + '>↶ Undo</button>') + '</div>' : '')
+          + (state === 'current' && !readOnly && !noLoad ? renderLoadedBarRepPips(set, targets.reps) : '')
+          + (prompt ? '<span class="loaded-bar-prompt" id="set-prompt-' + set.id + '" role="status">' + escapeHtml(prompt.prompt) + '</span>' : '') + '</div>';
+      }
+
+      function renderLoadedBarSetTypePicker(set, exercise) {
+        const type = normalizeSetTypeCode(set.setType, set.isWarmup);
+        const choices = ['warmup', 'straight', 'drop', 'failure', ...(['top', 'backoff'].includes(type) ? ['top', 'backoff'] : [])];
+        const context = { workingSetIds: setsForExercise(exercise.id).filter((row) => isWorkingSet(row)).map((row) => row.id) };
+        return '<p>Set type · set ' + set.setNumber + '</p><div class="loaded-bar-type-choices" role="group" aria-label="Set type">' + choices.map((choice) => '<button type="button" data-action="choose-set-type" data-set-id="' + set.id + '" data-set-type="' + choice + '" aria-pressed="' + (choice === type) + '"><b>' + loadedBarFlag({ ...set, setType: choice, isWarmup: choice === 'warmup' }, context) + '</b><span>' + (choice === 'straight' ? 'Working' : escapeHtml(setTypeLabels[choice])) + '</span></button>').join('') + '</div>'
+;
+      }
+
+      function renderLoadedBarSetSheet() {
+        const set = loadedBarSheet ? setById(loadedBarSheet.setId) : null;
+        const exercise = loadedBarSheet?.exerciseId ? exerciseById(loadedBarSheet.exerciseId) : set ? exerciseById(set.exerciseId) : null;
+        if (!exercise) return '';
+        if (loadedBarSheet.mode === 'exercise') return renderLoadedBarExerciseSheet(exercise, set);
+        if (!set) return '';
+        const type = normalizeSetTypeCode(set.setType, set.isWarmup);
+        const types = renderLoadedBarSetTypePicker(set, exercise)
+          + '<label class="loaded-bar-other-type">Other set types<select data-action="set-type-override" data-set-id="' + set.id + '">' + Object.keys(setTypeLabels).map((choice) => '<option value="' + choice + '"' + (choice === type ? ' selected' : '') + '>' + escapeHtml(setTypeLabels[choice]) + '</option>').join('') + '</select></label>'
+          + (set.classificationUndo ? '<button type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : '')
+          + '<label class="loaded-bar-deload"><span><b>This was a deload</b><small>Left out of progression, records and trends.</small></span><input type="checkbox" data-action="exercise-deload" data-exercise-id="' + exercise.id + '"' + (exercise.isDeload ? ' checked' : '') + ' /></label>'
+          + '<details class="set-tools-disclosure loaded-bar-tools"><summary>More set options</summary><div class="set-actions">'
+          + '<label>Rest seconds<input type="number" min="0" max="3600" step="1" value="' + (set.targetRestSeconds ?? exercise.restSeconds ?? data.settings.defaultRestSeconds ?? 90) + '" data-action="set-rest-seconds" data-set-id="' + set.id + '" aria-label="Rest seconds after set ' + set.setNumber + '"' + (set.completed ? ' disabled' : '') + ' /></label>'
+          + '<button type="button" data-action="add-warmup-set" data-exercise-id="' + exercise.id + '" data-before-set-id="' + set.id + '">Insert warm-up above</button>'
+          + '<button type="button" data-action="toggle-skip-set" data-set-id="' + set.id + '">' + (set.skipped ? 'Unskip' : 'Skip') + '</button>'
+          + '<button class="danger" type="button" data-action="delete-set" data-set-id="' + set.id + '">Remove</button></div></details>';
+        const rpe = '<p>RPE · set ' + set.setNumber + '</p><div class="loaded-bar-rpe-choices">' + Array.from({ length: 9 }, (_, index) => 6 + index * 0.5).map((value) => '<button type="button" data-action="choose-set-rpe" data-set-id="' + set.id + '" data-value="' + value + '">' + value + '</button>').join('') + '<button type="button" data-action="choose-set-rpe" data-set-id="' + set.id + '" data-value="">Clear</button></div><label>RPE<input type="number" min="0" max="10" step="0.5" value="' + loadedBarNumber(set.rpe) + '" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label>';
+        return '<div class="sheet-backdrop loaded-bar-backdrop" data-action="close-set-sheet" role="presentation"><section class="loaded-bar-sheet" role="dialog" aria-modal="true" aria-labelledby="loaded-bar-sheet-title"><h2 id="loaded-bar-sheet-title">' + escapeHtml(exercise.name) + '</h2>' + (loadedBarSheet.mode === 'rpe' ? rpe : types) + '<button class="secondary-action" type="button" data-action="close-set-sheet">Done</button></section></div>';
       }
 
       function timerNotificationStatusLabel(timerSnapshot) {

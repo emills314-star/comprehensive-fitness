@@ -1,8 +1,16 @@
 # Project
 
+## Loaded Bar integration - PARTIALLY IMPLEMENTED locally, 2026-11-03
+
+Loaded Bar active workout, Today, Settings, injury skip and Progress/history deload presentation are **IMPLEMENTED** locally. The coach is wired in shadow only, with its activation gate closed. The owner reports public tests, PWA packaging and privacy checks passing; full Playwright, visual acceptance and device checks remain open. **PLANNED:** Google Health "Last night" and the "outside your normal" bounds flag after calibration. See [Roadmap](ROADMAP.md) for gates and open decisions.
+
+## Per-session coach - product direction accepted 2026-10-31
+
+Erik reset the product goal on 2026-10-31: an app that looks and feels like Strong during logging but acts as a coach, using his workouts, Fitbit recovery, and sets and reps to decide what each workout should look like for continual hypertrophy progress. [D-028](redesign/DECISION_LOG.md) supersedes the "not a normal-progression coach" boundary below. The planned v1 coach sets load, target reps, and working-set count per session inside Erik's stable targets, revises later sets after each completed set, honors "This was a deload" and "Injured — skip" marks, and shows Google Health recovery as information only. Contract: [`redesign/coach/COACH_V1_CONTRACT.md`](redesign/coach/COACH_V1_CONTRACT.md). The integration status above supersedes the original implementation status; the contract remains governing intent.
+
 ## Quiet Control progress refresh — IMPLEMENTED LOCALLY 2026-08-15
 
-The approved Quiet Control refresh keeps Today and Progress as the only persistent destinations while adding a narrowly scoped read-only analytics layer. An empty Today screen says **Choose your workout** and shows an equally weighted rolling score across distinct valid lifts represented in the ten most recent completed sessions. Progress now has Sessions and Exercises modes; exercise identity routes to a read-only scoped detail with trend, exact estimated-1RM source set, and a mathematical next target. The active-session header owns the sole rest countdown, set completion is explicit, and every set row shows position-matched prior-session load, repetitions, and RPE when available. None of these analytics creates a workout target, exception action, or normal-progression recommendation.
+The approved Quiet Control refresh keeps Today and Progress as the only persistent destinations while adding a narrowly scoped read-only analytics layer. An empty Today screen says **Choose your workout** and shows an equally weighted rolling score across distinct valid lifts represented in the ten most recent completed sessions. Progress now has Sessions and Exercises modes; exercise identity routes to a read-only scoped detail with trend, exact estimated-1RM source set, and a mathematical next target. The August active-session header owned the rest countdown (now presented in the Loaded Bar clamp); set completion is explicit, and every set row shows position-matched prior-session load, repetitions, and RPE when available. None of these analytics creates a workout target, exception action, or normal-progression recommendation.
 
 ## Active-session correctness update — IMPLEMENTED LOCALLY 2026-08-07
 
@@ -13,7 +21,7 @@ Today resolves multi-day routine assignments against the local weekday: one matc
 - **Purpose:** Current product scope and verified implementation boundary
 - **Last verified:** 2026-08-15
 - **Branch:** `codex/zero-based-redesign`
-- **Status:** **CORRECTED CANDIDATE VERIFIED LOCALLY; IMMUTABLE/PINNED/CLAUDE GATES OPEN**
+- **Status:** **PARTIALLY IMPLEMENTED LOCALLY; LOADED BAR INTEGRATION ACCEPTANCE OPEN**
 - **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md), [`redesign/final/FINAL_FEATURE_DISPOSITION.md`](redesign/final/FINAL_FEATURE_DISPOSITION.md)
 - **Related:** [Architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md)
 
@@ -29,7 +37,7 @@ Comprehensive Fitness is a local-first workout logger with a quiet spotter. Its 
 6. complete the actual workout;
 7. review one factual grade, limited highlights, and historical progress.
 
-Ordinary training is quiet. The product is not a program-design system, research browser, volume dashboard, scorecard collection, or normal-progression coach.
+Visible ordinary training is quiet while the coach activation gate is closed. The product is not a program-design system, research browser, volume dashboard, or scorecard collection.
 
 ## Current product topology
 
@@ -47,12 +55,12 @@ The UI is fixed light presentation. Theme and color-package selectors are not cu
 
 | Capability | Verified implementation |
 | --- | --- |
-| Workout chooser and Start | With no loaded session, Today says **Choose your workout** and starts the selected routine directly; readiness is not a gate. |
+| Workout chooser and Start | Today presents the planned routine or chooser and starts the selected routine directly; readiness is not a gate. |
 | One active draft | A clean, unlogged session may be replaced directly. Logged, skipped, edited, readiness, recovery, or note progress requires explicit replacement/abandonment confirmation. |
 | Stable targets | Named exercise variants own set count/roles, rep range, target RPE, rest, and independent identity/history. |
-| Factual prefill and prior work | Every set row exposes the same-position/same-role set from the most recent comparable completed session, including warm-ups when recorded; working-set prefill then uses the explicit routine default or blank. |
+| Factual prefill and prior work | Every set row exposes the same-position/same-role set from the most recent comparable completed session, including warm-ups when recorded; working-set placeholders then use the explicit routine default or blank; actual values remain blank until entered or accepted. |
 | Active logging | Load, repetitions, and decimal RPE are directly editable. Add, remove, skip, reorder, notes, substitution, custom variants, and role correction remain available. |
-| Rest | One shared timer lives in the compact centered session header, supports adjustment and Skip/Finish, displays overtime, and restores from the active draft. The same header says **Ready** when no rest is active. |
+| Rest | One shared timer appears in the gold rest clamp, supports adjustment and Skip/Finish, displays overtime, and restores from the active draft. |
 | Workout-only adaptation | Actual-work changes remain on the workout unless the user separately saves a suitable exercise change to the routine. |
 | Completion and grade | New submissions store one A-F `comprehensive-fitness-workout-grade/2.0.0` result. The current prospective algorithm is `actual-work-rubric/1.1.0`; stored earlier grades and versions are unchanged. |
 | Progress | Sessions presents chronological submitted-session cards with immutable stored grades. Exercises provides search, shared hypertrophy scores, latest performance, retained e1RM where applicable, and stable-ID detail. |
@@ -80,7 +88,7 @@ The current product has no:
 - Dashboard, Plan, More, Insights, Advanced, or persistent Routines destination;
 - weekly-volume, fractional-set, readiness, confidence, evidence, research-status, adherence, or program-score dashboards; the only current hypertrophy presentation is the approved read-only per-lift score and equally weighted rolling summary;
 - normal exact add-load/add-rep/add-set/hold recommendation;
-- plate calculator or execution-quality questionnaire;
+- the former standalone plate-calculator product or execution-quality questionnaire; Loaded Bar's equipment illustration includes bounded plate accounting;
 - React/Vite concept application or parallel product runtime;
 - cloud workout-copy control, queue, or upload path.
 

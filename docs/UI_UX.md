@@ -1,6 +1,28 @@
 # UI and UX
 
-## Quiet Control refresh — IMPLEMENTED LOCALLY 2026-08-15
+## Loaded Bar integration - PARTIALLY IMPLEMENTED locally, 2026-11-03
+
+The active workout has a session header with **Session deload** and **Finish**, a focused exercise and equipment drawn at the displayed target. Bars show **EACH SIDE** and, when needed, a "can't load exactly" note; an unavailable target above bar weight uses the nearest lower loadable weight. Targets below bar weight show "lighter than the bar". A collar reason and plate-swap callout appear only when their qualifying visible target or revision exists. The exercise menu contains the equipment picker. Rep pips reflect typed reps and **Up next** follows workout order. The gold rest clamp projects the shared timer; when automatic rest is enabled, it starts after every completion, including the last.
+
+The Strong-style table has SET / PREVIOUS / LB / REPS / RPE / check columns. Gray load and rep placeholders can be tapped to accept; RPE starts blank and its pad offers 6-10 in 0.5 steps, with keyboard entry available. The set-type sheet offers W, working, D and F and an exercise deload switch. Revised rows show "was" values and Undo when available; optional rows and collapsible warm-ups remain identifiable. Completed rows stay editable, and available checks permit manual completion order. Previous is factual and position/role matched.
+
+History and Progress show Deload tags and distinguish deload trend points; injury skips appear as "Skipped - injured" entries. Deloads are excluded from comparisons and record calculations as described in [Decision engine](DECISION_ENGINE.md).
+
+No coach-derived target, reason, revision or optional coached row is shown while the activation gate is closed; shadow/off retain factual Previous and local placeholders. In effective Show mode, suppressed, failed, suspended or factual-only rows have no fallback placeholders, equipment loads or RPE hints; Previous and typed logging remain available.
+
+### Today and Settings - IMPLEMENTED LOCALLY
+
+Today presents a planned workout card with equipment, start-target summaries and set counts. Its read-only preview shares the Start row projection, shows working rows and empty RPE, and offers Start. Shadow/off use factual targets; coach preview is temporary and passes through the resolver. A failed preview records a diagnostic without changing save or recovery state. No coach-derived value appears while the gate is closed.
+
+**Worse than usual** records poor readiness on Start; an explicit readiness-sheet selection takes precedence. **Injured - skip** records the selected routine for today without starting a session and offers same-day Undo. After any skip today, Today presents the next scheduled occurrence even when a different routine was scheduled today; the chooser remains available. Future previews cannot record a skip. The pre-start sheet retains illness but removes pain; in-workout readiness retains both. The Last night hook currently renders nothing.
+
+Settings offer Shadow and Off, a disabled Show option while the gate is closed, a between-set changes switch and lb/kg/Not set routine increment units. Equipment settings validate bar weights per unit, toggle standard plate denominations with reset, and list saved equipment corrections with Change and Reset.
+
+Decorative plate search is capped at 30 plates per side, 64 inventory entries and 10,000 search visits; when a result cannot be established within the limits, a generic numeric block replaces the plate drawing. Rep pips render only for positive safe-integer targets up to 30. Large observations remain editable. Numeric-field blur followed by a button press preserves the intended action across rerender, requires the matching release, and cancels on drag or cancellation. Exercise-sheet Move/Remove controls include the exercise name, and the options disclosure retains its shared cue.
+
+Visual acceptance, baseline acceptance and physical-device checks remain pending.
+
+## Quiet Control refresh - HISTORICAL 2026-08-15 (active workout superseded above)
 
 - Empty Today says **Choose your workout** and never says **Choose another workout** until a session exists.
 - A polished rolling score card links to Progress → Exercises and labels the actual completed-session count when fewer than ten exist.
@@ -9,7 +31,7 @@
 - Every set row shows position-matched previous-session load, repetitions, and RPE when available.
 - Progress switches between Sessions and Exercises; stable exercise IDs open one read-only exercise detail with no completed-session list.
 
-## Active-session targeted improvements — IMPLEMENTED LOCALLY 2026-08-07
+## Active-session targeted improvements - HISTORICAL 2026-08-07 (presentation superseded above)
 
 - Rest appears once in a compact pinned, safe-area-aware bar using shared timer state.
 - Incomplete sets expose per-set rest editing; completion uses an icon and accessible label.
@@ -40,12 +62,12 @@ The production product uses one fixed light presentation. There is no theme sele
 
 ## Today
 
-With no loaded session, the first useful viewport shows:
+With no loaded session, Today may show a planned card or the workout chooser as described above, alongside:
 
 - one rolling ten-completed-session hypertrophy summary;
 - the honest available completed-session count;
-- the primary prompt **Choose your workout**;
-- directly selectable workouts;
+- the primary prompt **Choose your workout** when a chooser is needed;
+- directly selectable workouts when applicable;
 - optional **Log readiness**;
 - at most one session exception when the canonical resolver permits it.
 
@@ -59,9 +81,9 @@ If a progressed draft is active, the confirmation preserves Resume/Finish/cancel
 
 Readiness is secondary and skippable before or during the workout. Current inputs support:
 
-- usual, unusually good, or meaningfully poor readiness;
+- usual or meaningfully poor readiness in the sheet;
 - soreness;
-- explicit pain/injury;
+- explicit pain/injury during a workout;
 - explicit illness;
 - affected area when relevant;
 - an optional note.
@@ -81,21 +103,7 @@ The active screen prioritizes:
 - load, repetitions, and RPE;
 - shared rest state.
 
-The pinned header uses an asymmetric-safe three-column grid so the session name remains visually centered. The old **In progress** badge is removed. The left slot says **Ready** or shows the live blue countdown/progress; timer controls remain reachable without a second rest bar. Long names truncate gracefully and preserve the overflow menu touch target.
-
-Current, completed, pending, skipped, and warm-up states are distinguishable without relying on color alone. Meaningful variant suffixes wrap rather than truncate.
-
-Only the current set has an enabled completion control. Upcoming sets show a gray disabled check. Completing a set adds a green check and subtle mint row treatment, de-emphasizes the row, and preserves readable load/repetition/RPE facts. The exercise container receives its restrained completed state only after every required working set is logged.
-
-### Inputs
-
-- Load is a numeric entry in the current display unit.
-- Repetitions are integer entry.
-- RPE supports decimal 0.5 values and immediate replacement. A prefilled `7` can become `7.5` in one focused edit without manual clearing or a second tap on `7`.
-- Factual prefill order is comparable prior set, explicit routine default, then blank.
-- Completing a set preserves the value just entered and advances predictably.
-- The Current focus description and remaining-set message refresh from the same `workoutProgress()` result after each completion. In a three-set workout they advance after sets 1 and 2 and restore the same current set and remaining count after reload.
-- Touch controls retain the supported minimum target size and set inputs keep a 16 CSS-pixel font floor on mobile to avoid iOS focus zoom.
+The focused exercise and set table above replace the earlier centered-header and disabled-upcoming-check presentation. Load and reps are blank actuals until entered or accepted; factual placeholders follow comparable previous performance, explicit routine defaults, then blank. Inputs preserve the row's unit. Touch targets and mobile input sizing remain accessibility requirements.
 
 ### Actual-work controls
 
@@ -109,7 +117,7 @@ Previous facts match exact performance identity, resistance type, and stable row
 
 ### Rest
 
-One shared rest control appears in the active-session header after completed, non-skipped work. It:
+One shared rest control appears in the gold clamp after completed, non-skipped work. It:
 
 - uses the exercise/role rest default;
 - shows remaining time and overtime;

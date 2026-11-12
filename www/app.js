@@ -1,4 +1,55 @@
 
+      function openLoadedBarSetSheet(setId, mode = "type") {
+        const action = mode === "rpe" ? "rpe-pad" : "set-type-sheet";
+        if (!guardWorkoutMutation(action, { setId }).allowed) return false;
+        captureDialogFocusOrigin("loadedBar");
+        loadedBarSheet = { setId, mode };
+        render();
+        return true;
+      }
+
+      function openLoadedBarExerciseSheet(exerciseId) {
+        if (!guardWorkoutMutation("exercise-menu", { exerciseId }).allowed) return false;
+        const rows = setsForExercise(exerciseId);
+        const set = rows.find((row) => row.id === activeSetId) || rows.find((row) => !row.completed && !row.skipped) || rows[0];
+        captureDialogFocusOrigin("loadedBar");
+        loadedBarSheet = { exerciseId, setId: set?.id || "", mode: "exercise" };
+        queuePostRenderFocus(actionFocusDescriptor("close-set-sheet"));
+        render();
+        return true;
+      }
+
+      function closeLoadedBarSetSheet() {
+        loadedBarSheet = null;
+        restoreFocusAfterDialog("loadedBar");
+        render();
+      }
+
+      function chooseLoadedBarSetType(setId, type) {
+        if (!guardWorkoutMutation("choose-set-type", { setId }).allowed || !Object.hasOwn(setTypeLabels, type)) return false;
+        setManualType(setId, type);
+        render();
+        return true;
+      }
+
+      function chooseLoadedBarRpe(setId, value) {
+        if (!guardWorkoutMutation("choose-set-rpe", { setId }).allowed) return false;
+        if (!patchSetValue(setId, "rpe", value, false)) return false;
+        loadedBarPrompts.delete(setId);
+        if (loadedBarSheet) closeLoadedBarSetSheet();
+        else render();
+        return true;
+      }
+
+      function toggleLoadedBarWarmups(exerciseId) {
+        const exercise = exerciseById(exerciseId);
+        if (!exercise || exercise.sessionId !== activeSession()?.id) return false;
+        if (loadedBarExpandedWarmups.has(exerciseId)) loadedBarExpandedWarmups.delete(exerciseId);
+        else loadedBarExpandedWarmups.add(exerciseId);
+        render();
+        return true;
+      }
+
       function isNumericEditAction(action) {
         return ["set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "template-exercise-sets", "template-exercise-rep-min", "template-exercise-rep-max", "template-exercise-rpe", "template-exercise-rest", "exercise-rest-seconds"].includes(action);
       }
@@ -54,8 +105,8 @@
 
       function isHistoryWorkoutMutation(action) {
         return [
-          "add-exercise", "move-exercise", "delete-exercise", "add-set", "add-warmup-set", "duplicate-set", "delete-set", "toggle-set", "toggle-skip-set", "start-timer",
-          "session-title", "session-date", "session-travel", "session-notes",
+          "add-exercise", "move-exercise", "delete-exercise", "add-set", "add-warmup-set", "duplicate-set", "delete-set", "toggle-set", "toggle-skip-set", "undo-coach-revision", "exercise-menu", "exercise-equipment", "set-type-sheet", "choose-set-type", "rpe-pad", "choose-set-rpe", "set-type-override", "undo-set-type-override", "set-rest-seconds", "reconcile-apply", "reconcile-dismiss", "start-timer",
+          "session-title", "session-date", "session-travel", "session-notes", "session-deload",
           "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
           "set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "set-warmup",
           "recovery-deviation", "recovery-illness", "recovery-pain", "recovery-affected-muscle", "recovery-outside-note"
@@ -69,10 +120,71 @@
       function releaseSetEntryFocusForCompletion(target) {
         if (target?.dataset?.action !== "toggle-set") return false;
         const active = document.activeElement;
-        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .set-current-editor input, .workout-view .set-current-editor select, .workout-view .set-current-editor textarea")) return false;
+        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .loaded-bar-row input, .workout-view .set-current-editor input, .workout-view .set-current-editor select, .workout-view .set-current-editor textarea")) return false;
         active.blur();
         return true;
       }
+
+      let pendingNumericEntryPointerClick = null;
+      let pendingNumericEntryPointerAction = null;
+
+      function releaseNumericEntryFocusForButton(target, event) {
+        if (event.button != null && event.button !== 0 || target?.tagName !== "BUTTON" || target.disabled || target.getAttribute("aria-disabled") === "true") return false;
+        const active = document.activeElement;
+        if (!(active instanceof HTMLElement) || active.tagName !== "INPUT" || !isNumericEditAction(active.dataset.action)
+          || !active.matches(".workout-view input, .loaded-bar-sheet input")) return false;
+        const descriptor = focusDescriptorForElement(target);
+        if (!descriptor) return false;
+        // Committing a numeric blur may replace the button before release. Keep
+        // its allowlisted identity, but do not activate anything on pointerdown.
+        event.preventDefault();
+        pendingNumericEntryPointerAction = {
+          descriptor,
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          canceled: false
+        };
+        active.blur();
+        return true;
+      }
+
+      function numericEntryPointerMatches(event) {
+        return pendingNumericEntryPointerAction && event.pointerId === pendingNumericEntryPointerAction.pointerId;
+      }
+
+      function moveNumericEntryPointer(event) {
+        if (!numericEntryPointerMatches(event)) return;
+        const pending = pendingNumericEntryPointerAction;
+        if (Math.hypot(event.clientX - pending.clientX, event.clientY - pending.clientY) > 10) pending.canceled = true;
+      }
+
+      function cancelNumericEntryPointer(event) {
+        if (numericEntryPointerMatches(event)) pendingNumericEntryPointerAction = null;
+      }
+
+      function releaseNumericEntryPointer(event) {
+        if (!numericEntryPointerMatches(event)) return;
+        moveNumericEntryPointer(event);
+        const pending = pendingNumericEntryPointerAction;
+        pendingNumericEntryPointerAction = null;
+        // Consume this intercepted release's native click even when a drag was
+        // canceled; it must never activate another button after the DOM changed.
+        pendingNumericEntryPointerClick = { pointerId: event.pointerId };
+        event.preventDefault();
+        if (pending.canceled) return;
+        const freshTarget = resolveFocusDescriptor(pending.descriptor);
+        if (freshTarget?.tagName !== "BUTTON" || event.target.closest?.("button") !== freshTarget
+          || !isVisibleEnabledFocusable(freshTarget)) return;
+        if (!focusVisibleEnabledElement(freshTarget)) return;
+        freshTarget.click();
+      }
+
+      // The document survives a view render and also observes releases outside
+      // the workout. Movement and cancellation never prevent native scrolling.
+      document.addEventListener("pointermove", moveNumericEntryPointer);
+      document.addEventListener("pointercancel", cancelNumericEntryPointer);
+      document.addEventListener("pointerup", releaseNumericEntryPointer);
 
       function focusWorkoutExercise(exerciseId) {
         if (!exerciseId) return;
@@ -93,30 +205,54 @@
       }
 
       root.addEventListener("pointerdown", (event) => {
+        pendingNumericEntryPointerClick = null;
+        pendingNumericEntryPointerAction = null;
         const target = event.target.closest("button, select, summary[data-action], label.toggle-line, label.alert-setting-field");
         if (!target || target.hasAttribute("disabled")) return;
         const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
-        const completionTarget = actionTarget || target;
-        if (releaseSetEntryFocusForCompletion(completionTarget)) {
-          event.preventDefault();
-          const setId = completionTarget.dataset.setId;
-          window.setTimeout(() => {
-            const freshTarget = Array.from(root.querySelectorAll('[data-action="toggle-set"]')).find((candidate) => candidate.dataset.setId === setId);
-            freshTarget?.click();
-          }, 0);
-          return;
-        }
+        if (releaseNumericEntryFocusForButton(actionTarget || target, event)) return;
         const level = feedbackLevelForAction(actionTarget?.dataset?.action || target.dataset.action, actionTarget || target);
         target.classList.add("is-pressing", "feedback-" + level);
         window.setTimeout(() => target.isConnected && target.classList.remove("is-pressing", "feedback-" + level), 180);
       });
 
       root.addEventListener("click", async (event) => {
+        if (pendingNumericEntryPointerClick && event.isTrusted
+          && (event.pointerId != null && event.pointerId === pendingNumericEntryPointerClick.pointerId || event.pointerId == null && event.detail > 0)) {
+          // This release was already handled. Suppress its native activation,
+          // including after a canceled drag, while retaining keyboard clicks.
+          pendingNumericEntryPointerClick = null;
+          event.preventDefault();
+          return;
+        }
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
-        const executableWorkoutMutationActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
-        if (executableWorkoutMutationActions.includes(action) && !guardWorkoutMutation(action, { exerciseId: target.dataset.exerciseId, setId: target.dataset.setId }).allowed) {
+        if (["record-injury-skip", "undo-injury-skip"].includes(action)) {
+          const identifiers = action === "record-injury-skip"
+            ? { routineId: target.dataset.routineId, date: target.dataset.date || todayIso() }
+            : { id: target.dataset.skipId };
+          if (!guardInjurySkipMutation(action, identifiers).allowed) { event.preventDefault(); return; }
+          if (action === "record-injury-skip") {
+            todayWorkoutChoice = null;
+            todayPreview = null;
+            todayWorseThanUsual = null;
+            recordInjurySkip(identifiers.routineId, identifiers.date);
+          } else {
+            const skip = data.skippedSessions.find((record) => record.id === identifiers.id);
+            todayWorkoutChoice = { routineId: skip.routineId, date: todayIso() };
+            undoInjurySkip(identifiers.id);
+          }
+          return;
+        }
+        if (action === "plan-today-workout") chooseTodayWorkout(target.dataset.routineId);
+        if (action === "preview-planned-workout") openPlannedWorkoutPreview(target.dataset.routineId, target.dataset.date || todayIso());
+        if (action === "close-planned-preview") { const origin = todayPreview; todayPreview = null; queuePostRenderFocus(actionFocusDescriptor("preview-planned-workout", { routineId: origin?.routineId, date: origin?.date })); render(); }
+        if (action === "equipment-plate") toggleEquipmentPlate(target.dataset.unit, target.dataset.plate);
+        if (action === "equipment-reset-plates") resetEquipmentPlates(target.dataset.unit);
+        if (action === "equipment-correction-reset") changeSavedEquipmentCorrection(target.dataset.exerciseIdentity, "");
+        const executableWorkoutMutationActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "undo-coach-revision", "exercise-menu", "exercise-equipment", "set-type-sheet", "choose-set-type", "rpe-pad", "choose-set-rpe", "set-type-override", "undo-set-type-override", "set-rest-seconds", "reconcile-apply", "reconcile-dismiss", "start-timer", "session-deload", "exercise-deload"];
+        if (executableWorkoutMutationActions.includes(action) && !guardWorkoutMutation(action, { exerciseId: target.dataset.exerciseId, setId: target.dataset.setId, sessionId: target.dataset.sessionId }).allowed) {
           event.preventDefault();
           return;
         }
@@ -410,7 +546,7 @@
           ensureActiveSet();
         }
         if (action === "add-set") addSet(target.dataset.exerciseId, false);
-        if (action === "add-warmup-set") addWarmupSet(target.dataset.exerciseId);
+        if (action === "add-warmup-set") addWarmupSet(target.dataset.exerciseId, target.dataset.beforeSetId);
         if (action === "duplicate-set") addSet(target.dataset.exerciseId, true);
         if (action === "delete-set") {
           if (timer?.setId === target.dataset.setId || timer?.pendingNextSetId === target.dataset.setId) cancelTimer("set-deleted", false);
@@ -424,6 +560,15 @@
           ensureActiveSet();
         }
         if (action === "undo-set-type-override") undoManualSetType(target.dataset.setId);
+        if (action === "undo-coach-revision" && undoSessionCoachRevision(target.dataset.sessionId, target.dataset.setId)) render();
+        if (action === "exercise-menu") openLoadedBarExerciseSheet(target.dataset.exerciseId);
+        if (action === "set-type-sheet") openLoadedBarSetSheet(target.dataset.setId);
+        if (action === "rpe-pad") openLoadedBarSetSheet(target.dataset.setId, "rpe");
+        if (action === "set-rpe" && target.closest(".loaded-bar-row")) openLoadedBarSetSheet(target.dataset.setId, "rpe");
+        if (action === "choose-set-type") chooseLoadedBarSetType(target.dataset.setId, target.dataset.setType);
+        if (action === "choose-set-rpe") chooseLoadedBarRpe(target.dataset.setId, target.dataset.value);
+        if (action === "close-set-sheet") closeLoadedBarSetSheet();
+        if (action === "toggle-warmups") toggleLoadedBarWarmups(target.dataset.exerciseId);
         if (action === "toggle-set") {
           releaseSetEntryFocusForCompletion(target);
           toggleSetCompletion(target.dataset.setId);
@@ -533,7 +678,14 @@
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
+        if (action === "today-worse-than-usual") setTodayWorseThanUsual(target.dataset.routineId, target.checked);
+        if (action === "coach-mode") setCoachModeSetting(target.value);
+        if (action === "coach-between-set-revisions") setCoachBetweenSetRevisions(target.checked);
+        if (action === "routine-increment-unit") setRoutineIncrementUnit(target.value || null);
+        if (action === "equipment-bar-weight") setEquipmentBarWeight(target.dataset.unit, target.value);
+        if (action === "equipment-correction-change") changeSavedEquipmentCorrection(target.dataset.exerciseIdentity, target.value);
         if (historyMutationIsLocked(action)) return;
+        if (["set-type-override", "set-rest-seconds"].includes(action) && !guardWorkoutMutation(action, { setId: target.dataset.setId }, false).allowed) return;
         if (templateNumericFields[action]) {
           handleTemplateNumericEdit(target);
           return;
@@ -560,12 +712,14 @@
           }
         }
         if (action === "session-travel") patchSession({ isTravel: target.checked });
+        if (action === "exercise-equipment") setExerciseEquipmentCorrection(target.dataset.exerciseId, target.value);
+        if (action === "session-deload") setSessionDeload(target.dataset.sessionId || activeSessionId, target.checked);
         if (action === "add-exercise-primary") addExercisePrimaryMuscle = target.value;
         if (action === "add-exercise-secondary") addExerciseSecondaryMuscle = target.value;
         if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
         if (action === "exercise-deload") {
-          patchExercise(target.dataset.exerciseId, { isDeload: target.checked });
+          setExerciseDeload(target.dataset.exerciseId, target.checked);
         }
         if (action === "exercise-resistance-type") {
           const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external";
@@ -710,6 +864,11 @@
           navigateToRestCompletion(timerCompleteNotice?.payload || restNavigationState || {});
           return;
         }
+        if (event.key === "Escape" && loadedBarSheet) {
+          event.preventDefault();
+          closeLoadedBarSetSheet();
+          return;
+        }
         if (event.key === "Escape" && (templateStartFlow || optionalReadinessFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open)) {
           event.preventDefault();
           if (optionalReadinessFlow) closeOptionalReadiness();
@@ -718,7 +877,7 @@
           else closeClearDataFlow();
           return;
         }
-        if (event.key === "Tab" && (templateStartFlow || optionalReadinessFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open)) {
+        if (event.key === "Tab" && (templateStartFlow || optionalReadinessFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open || loadedBarSheet)) {
           const activeDialog = root.querySelector('[role="dialog"][aria-modal="true"]');
           const focusable = visibleEnabledFocusableElements(activeDialog);
           if (focusable.length) {
@@ -820,6 +979,7 @@
         if (!target) return;
         const action = target.dataset.action;
         if (historyMutationIsLocked(action)) return;
+        if (action === "set-rest-seconds" && !guardWorkoutMutation(action, { setId: target.dataset.setId }, false).allowed) return;
         if (target.tagName === "INPUT" && isNumericEditAction(action) && target.dataset.replaceOnNextInput === "true") {
           const previousValue = target.dataset.previousValue || "";
           let replacement = target.value;
@@ -870,7 +1030,7 @@
           const accepted = patchSetValue(target.dataset.setId, field, target.value, false);
           if (accepted === false) target.value = String(setById(target.dataset.setId)?.[field] ?? "");
         };
-        if (action === "set-reps") writeSetInput("reps");
+        if (action === "set-reps") { writeSetInput("reps"); syncLoadedBarRepPips(target.dataset.setId, target.value); }
         if (action === "set-weight") writeSetInput("weight");
         if (action === "set-rpe") writeSetInput("rpe");
         if (action === "set-duration") writeSetInput("durationSeconds");
@@ -878,9 +1038,9 @@
         if (action === "set-rest-seconds") {
           const set = setById(target.dataset.setId);
           const numeric = Number(target.value);
-          if (!set || set.completed || !Number.isInteger(numeric) || numeric < 15 || numeric > 3600) {
-            target.value = String(set?.targetRestSeconds || exerciseById(set?.exerciseId)?.restSeconds || data.settings.defaultRestSeconds || 90);
-            showAppToast("Rest must be a whole number from 15 to 3600 seconds.");
+          if (!set || set.completed || !Number.isInteger(numeric) || numeric < 0 || numeric > 3600) {
+            target.value = String(set?.targetRestSeconds ?? exerciseById(set?.exerciseId)?.restSeconds ?? data.settings.defaultRestSeconds ?? 90);
+            showAppToast("Rest must be a whole number from 0 to 3600 seconds.");
           } else patchSet(target.dataset.setId, { targetRestSeconds: numeric }, false);
         }
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
@@ -1020,7 +1180,7 @@
         await applyWorkoutDeepLink();
         if (!["today", "progress", "workout", "routines", "settings"].includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
         render();
-        scheduleSave();
+        if (!coachRecoveryPending) scheduleSave();
         registerPwaServiceWorker();
         fetchPushConfig();
         reconcilePushRevocation();
@@ -1032,6 +1192,10 @@
       boot();
 
       function persistBeforeSuspend() {
+        if (coachRecoveryPending) {
+          saveRuntime();
+          return;
+        }
         if (historyEditFlow) {
           cancelPendingDataSave();
           saveRuntime();

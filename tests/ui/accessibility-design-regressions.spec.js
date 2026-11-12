@@ -10,6 +10,7 @@ const {
   buildProtectedSurfaceFixture
 } = require("./fixtures/protected-surfaces.fixture");
 const { buildAnalyticsEvidenceFixture } = require("./fixtures/analytics-settings.fixture");
+const { closeLoadedBarSheet, openExerciseOptions } = require("./fixtures/loaded-bar.helpers");
 
 const PRIMARY_TABS = [
   { id: "today", view: ".lift-home-view" },
@@ -967,8 +968,9 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   let dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect.soft(page.locator(".brand-bar"), "A destructive sheet must make the shell header inert").toHaveJSProperty("inert", true);
   await expect.soft(page.locator("#main-content"), "A destructive sheet must make workout content inert").toHaveJSProperty("inert", true);
-  await expect.soft(page.locator(".session-dock"), "A destructive sheet must overlay and make the persistent session dock inert").toHaveJSProperty("inert", true);
-  await expect.soft(page.locator(".session-dock")).toHaveAttribute("aria-hidden", "true");
+  const finishHost = page.locator('.brand-bar:has([data-action="request-submit-workout"])');
+  await expect.soft(finishHost, "A destructive sheet must make the header containing Finish inert").toHaveJSProperty("inert", true);
+  await expect.soft(finishHost).toHaveAttribute("aria-hidden", "true");
   await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep workout", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
@@ -1479,7 +1481,7 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
   const actions = [
     ['[data-action="move-exercise"][data-direction="-1"]', "move up", [/\bmove\b/i, /\bup\b/i]],
     ['[data-action="move-exercise"][data-direction="1"]', "move down", [/\bmove\b/i, /\bdown\b/i]],
-    ['[data-action="delete-exercise"]', "delete", [/\bdelete(?: exercise)?\b/i]],
+    ['[data-action="delete-exercise"]', "remove exercise", [/\bremove\b/i, /\bexercise\b/i]],
     ['[data-action="add-set"]', "add set", [/(?:\badd(?: a| one)? (?:working )?set\b|[+＋]\s*(?:working\s*)?set\b)/i]],
     ['[data-action="add-warmup-set"]', "add warm-up", [/(?:\badd(?: a| one)? warm[- ]?up(?: set)?\b|[+＋]\s*warm[- ]?up(?: set)?\b)/i]],
     ['[data-action="duplicate-set"]', "copy set", [/\bcopy(?: the last)? set\b/i]]
@@ -1487,17 +1489,16 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
 
   let auditedControls = 0;
   for (const [exerciseId, exerciseName] of cases) {
-    const card = page.locator(`.exercise-card[aria-label="Exercise: ${exerciseName}"]`);
-    await expect(card).toHaveCount(1);
-    await card.locator(".exercise-overflow > summary").click();
-    await card.locator(".exercise-details > summary").click();
+    const card = await openExerciseOptions(page, exerciseId);
+    await expect(page.locator(`.loaded-bar-focus[aria-label="Exercise: ${exerciseName}"]`)).toHaveCount(1);
     const expectedContext = new RegExp(exerciseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     for (const [selector, actionLabel, expectedActionParts] of actions) {
       const controls = card.locator(selector);
       const count = await controls.count();
+      await expect(controls, `${actionLabel} must remain available for ${exerciseName}`).toHaveCount(1);
       for (let index = 0; index < count; index += 1) {
         const control = controls.nth(index);
-        if (!(await control.isVisible())) continue;
+        await expect(control).toBeVisible();
         const accessibilityTree = await control.ariaSnapshot();
         const computedRoleAndName = accessibilityTree.split(/\r?\n/, 1)[0];
         auditedControls += 1;
@@ -1513,11 +1514,12 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
         }
       }
     }
+    await closeLoadedBarSheet(page);
   }
-  expect(auditedControls, "The live Lift fixture must expose repeated mutation controls to audit").toBeGreaterThan(0);
+  expect(auditedControls, "Every repeated mutation control must be audited for all three exercises").toBe(cases.length * actions.length);
 });
 
-test("set transitions preserve manual scroll and the retired workout-board jump stays absent", async ({ page }) => {
+test("set transitions preserve manual scroll and Up next changes exercise only on request", async ({ page }) => {
   await page.addInitScript(() => {
     const nativeScrollIntoView = Element.prototype.scrollIntoView;
     globalThis.__SCROLL_INTO_VIEW_AUDIT__ = [];
@@ -1540,17 +1542,21 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
   ).toBeGreaterThanOrEqual(16);
   await setTwoReps.focus();
   await expect(setTwoReps).toBeFocused();
-  await setTwo.dispatchEvent("pointerdown", { bubbles: true, isPrimary: true, pointerType: "touch" });
+  await setTwo.dispatchEvent("pointerdown", { bubbles: true, isPrimary: true, pointerType: "touch", pointerId: 1 });
   expect(
     await page.evaluate(() => document.activeElement?.dataset?.action === "set-reps"),
     "Touching the completion checkmark must release the focused set-entry field before completion"
   ).toBe(false);
   await page.evaluate(() => { globalThis.__SCROLL_INTO_VIEW_AUDIT__ = []; });
+  // Completion activates on the matching release, so a drag that began on the
+  // check can still be cancelled (app.js numeric-entry pointer continuity).
+  await setTwo.dispatchEvent("pointerup", { bubbles: true, isPrimary: true, pointerType: "touch", pointerId: 1 });
   await expect(setTwo).toHaveAttribute("aria-pressed", "true");
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__), "Completing a set must not move the workout viewport").toEqual([]);
 
-  await expect(page.locator('[data-action="focus-workout-exercise"]'), "The continuous workout document must not render the retired workout-board jump controls").toHaveCount(0);
+  const upNext = page.getByRole("region", { name: "Up next", exact: true });
+  await expect(upNext.locator('[data-action="focus-workout-exercise"]'), "The two other exercises remain reachable through Up next").toHaveCount(2);
   const result = await page.evaluate(() => ({
     mediaMatches: matchMedia("(prefers-reduced-motion: reduce)").matches,
     calls: globalThis.__SCROLL_INTO_VIEW_AUDIT__.map((entry) => ({ ...entry })),
@@ -1559,6 +1565,9 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
   expect(result.mediaMatches).toBe(true);
   expect(result.cssScrollBehavior).toBe("auto");
   expect(result.calls, "Completing a set in the continuous workout document must never invoke programmatic scrolling").toEqual([]);
+  await upNext.locator('[data-action="focus-workout-exercise"][data-exercise-id="public-synthetic-active-exercise-2"]').click();
+  await expect(page.locator('[id="exercise-public-synthetic-active-exercise-2"].loaded-bar-focus')).toBeVisible();
+  await expect(page.locator('[data-action="toggle-set"][data-set-id="public-synthetic-active-exercise-1-set-2"]')).toHaveCount(0);
 });
 
 test("forced-colors mode retains a visible non-shadow focus indicator on navigation and content controls", async ({ page }) => {

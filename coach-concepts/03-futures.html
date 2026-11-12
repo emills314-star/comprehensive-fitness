@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>03 · Futures — Coach concepts</title>
+  <link rel="stylesheet" href="palette.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--surface);
+      color: var(--text);
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button, input, select, a { -webkit-tap-highlight-color: transparent; }
+    button, a, select { touch-action: manipulation; }
+    button { cursor: pointer; border-radius: 0; }
+    button:disabled { cursor: default; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+      outline: 2px solid var(--current);
+      outline-offset: 2px;
+    }
+    h1, h2, h3, p { margin: 0; }
+    [hidden] { display: none !important; }
+    .svg-library { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon {
+      width: 22px;
+      height: 22px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .exploration { padding: 54px 40px 64px; }
+    .concept-header {
+      max-width: 1120px;
+      margin-bottom: 46px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--line-strong);
+    }
+    .concept-index {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      color: var(--green-2);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .concept-index .icon { width: 29px; height: 29px; }
+    .concept-header h1 { font-size: 100px; font-weight: 500; letter-spacing: -.085em; line-height: .98; }
+    .thesis { max-width: 800px; margin: 20px 0 27px; font-size: 25px; line-height: 1.32; letter-spacing: -.045em; }
+    .concept-notes { display: grid; gap: 8px; font-size: 14px; line-height: 1.5; }
+    .concept-notes p { display: flex; gap: 14px; }
+    .concept-notes strong { min-width: 155px; font-weight: 600; }
+    .concept-notes span { color: var(--muted); }
+    .scenario-note { margin-top: 18px; color: var(--muted); font-size: 12px; line-height: 18px; }
+    .frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 40px 28px; }
+    .frame { width: 390px; flex: 0 0 390px; margin: 0; }
+    figcaption {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-height: 32px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+    figcaption span { color: var(--current); font-size: 11px; letter-spacing: .08em; }
+    .phone {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 390px;
+      min-width: 390px;
+      max-width: 390px;
+      height: 844px;
+      min-height: 844px;
+      max-height: 844px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: var(--el-3);
+      font-size: 14px;
+      line-height: 1.3;
+      isolation: isolate;
+      font-variant-numeric: tabular-nums;
+    }
+    .phone > * { flex-shrink: 0; }
+    .statusbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      height: 28px;
+      padding: 8px 21px 0;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 16px;
+    }
+    .status-icons { width: 57px; height: 16px; stroke-width: 1.4; }
+    .appbar { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 18px; gap: 8px; }
+    .app-brand { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; letter-spacing: -.04em; }
+    .app-brand .icon { width: 23px; height: 23px; color: var(--current); }
+    .app-context { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .025em; white-space: nowrap; }
+    .eyebrow { display: block; font-size: 11px; font-weight: 500; line-height: 14px; letter-spacing: .05em; text-transform: uppercase; }
+    .session-options {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 30px;
+      margin: 0 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .session-label { margin-right: auto; font-size: 11px; }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 7px;
+      min-height: 26px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 14px;
+      white-space: nowrap;
+    }
+    .switch-track {
+      position: relative;
+      display: block;
+      width: 25px;
+      height: 14px;
+      flex: 0 0 25px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .switch-track::after {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      content: "";
+    }
+    .toggle[aria-checked="true"] { color: var(--green-2); }
+    .toggle[aria-checked="true"] .switch-track { border-color: var(--action); background: var(--current-dark); }
+    .toggle[aria-checked="true"] .switch-track::after { left: 13px; background: var(--action); }
+    .projection {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 84px;
+      margin: 4px 16px 0;
+      padding: 10px 14px;
+      border-top: 3px solid var(--action);
+      background: var(--text);
+      color: var(--on-action);
+    }
+    .projection .eyebrow { color: color-mix(in srgb, var(--on-action) 72%, var(--text)); }
+    .projection-copy { min-width: 0; }
+    .projection-copy strong { display: block; margin-top: 4px; font-size: 18px; font-weight: 500; letter-spacing: -.045em; }
+    .projection-copy p { margin-top: 3px; color: color-mix(in srgb, var(--on-action) 82%, var(--text)); font-size: 12px; line-height: 16px; }
+    .projected-load { margin-left: 8px; text-align: right; }
+    .projected-load strong { display: block; font-size: 35px; font-weight: 500; line-height: 37px; letter-spacing: -.07em; white-space: nowrap; }
+    .projected-load span { color: color-mix(in srgb, var(--on-action) 78%, var(--text)); font-size: 11px; }
+    .projection-notch { position: absolute; right: 0; top: -3px; width: 17px; height: 17px; background: var(--action); clip-path: polygon(0 0, 100% 0, 100% 100%); }
+    .session-meta { display: flex; align-items: center; justify-content: space-between; height: 24px; padding: 0 20px; color: var(--muted); font-size: 11px; }
+    .exercise-heading { height: 52px; padding: 2px 20px 0; }
+    .exercise-heading .eyebrow { color: var(--muted); margin-bottom: 3px; }
+    .exercise-heading h2 { font-size: 25px; font-weight: 500; line-height: 29px; letter-spacing: -.065em; }
+    .exercise-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 26px; margin: 0 20px; }
+    .exercise-controls > span { color: var(--muted); font-size: 11px; line-height: 14px; }
+    .log { margin: 0 16px; }
+    .set-grid { display: grid; grid-template-columns: 28px 83px minmax(62px, 1fr) 48px 43px 36px; column-gap: 5px; align-items: center; }
+    .log-head { height: 24px; color: var(--muted); font-size: 11px; font-weight: 500; }
+    .log-head span:nth-child(n+3) { text-align: center; }
+    .set-row { position: relative; height: 46px; border-bottom: 1px solid var(--line); }
+    .set-number { color: var(--muted); text-align: center; font-size: 13px; }
+    .set-type {
+      width: 28px;
+      height: 34px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-bottom: 1px dotted var(--line-strong);
+      border-radius: 0;
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      text-align: center;
+      text-align-last: center;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .set-type option { background: var(--bg); color: var(--text); font-size: 13px; }
+    .previous { color: var(--muted); font-size: 12px; letter-spacing: -.035em; white-space: nowrap; }
+    .cell-value { display: flex; align-items: center; justify-content: center; min-height: 34px; font-size: 20px; font-weight: 500; letter-spacing: -.045em; }
+    .effort-value { font-size: 16px; font-weight: 400; }
+    .complete {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 0;
+      background: var(--success-dark);
+      color: var(--success);
+    }
+    .complete .icon { width: 21px; height: 21px; }
+    .set-row.is-active { background: var(--current-dark); }
+    .set-row.is-active::before { position: absolute; inset: 0 auto 0 0; width: 2px; background: var(--action); content: ""; }
+    .set-row.is-active .set-type { color: var(--green-2); }
+    .set-row.is-active .complete { background: var(--action); color: var(--on-action); }
+    .log.is-resting .set-row.is-active .complete { background: var(--surface); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-strong); }
+    .set-input {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      padding: 0 2px;
+      border: 0;
+      border-bottom: 1px solid var(--line-strong);
+      border-radius: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: center;
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: -.05em;
+      opacity: 1;
+      -webkit-text-fill-color: currentColor;
+    }
+    .set-input::placeholder { color: var(--muted); opacity: 1; }
+    .set-input.rpe { font-size: 16px; font-weight: 400; letter-spacing: -.025em; }
+    .is-active .set-input { border-bottom-color: var(--action); background: var(--input-bg); color: var(--green-2); }
+    .is-active .set-input::placeholder { color: var(--green-2); }
+    .is-active .set-input.rpe::placeholder { color: var(--muted); }
+    .is-pending .complete { background: transparent; color: var(--line-strong); }
+    .is-logged .set-input { border-bottom-color: transparent; background: transparent; color: var(--text); }
+    .is-logged .complete { background: var(--success-dark); color: var(--success); }
+    .warmup-row { height: 30px; }
+    .warmup-row .cell-value { min-height: 26px; font-size: 14px; }
+    .warmup-row .complete { height: 25px; background: transparent; color: var(--muted); }
+    .warmup-row .complete .icon { width: 16px; height: 16px; }
+    .warmup-row .previous, .warmup-row .set-number { font-size: 11px; }
+    .flagged-value { color: var(--amber); }
+    .types-legend { display: flex; align-items: center; justify-content: space-between; gap: 5px; height: 24px; padding: 0 18px; color: var(--muted); font-size: 11px; line-height: 14px; }
+    .types-legend b { color: var(--text); font-weight: 500; }
+    .log-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 26px; padding: 0 20px; color: var(--muted); font-size: 11px; line-height: 13px; }
+    .log-hint > span { min-width: 0; }
+    .inline-undo { min-height: 28px; flex: none; padding: 0 3px; border: 0; background: transparent; color: var(--current); font-size: 12px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+    .inline-undo:disabled { color: var(--muted); text-decoration: none; }
+    .future-preview {
+      display: grid;
+      grid-template-columns: 110px 22px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      height: 46px;
+      margin: 8px 18px 0;
+      padding: 4px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: var(--green-2);
+    }
+    .future-preview .eyebrow { color: var(--muted); letter-spacing: -.02em; }
+    .future-preview strong { display: block; margin-top: 1px; font-size: 18px; font-weight: 500; line-height: 21px; letter-spacing: -.055em; }
+    .future-preview .icon { width: 20px; height: 20px; }
+    .rest-panel {
+      height: 74px;
+      margin: 8px 16px 0;
+      padding: 8px 12px;
+      border-left: 3px solid var(--rest-accent);
+      background: color-mix(in srgb, var(--rest-accent) 9%, var(--bg));
+      color: var(--rest-text);
+    }
+    .rest-top { display: flex; align-items: center; justify-content: space-between; height: 28px; gap: 8px; }
+    .rest-top .eyebrow { font-size: 11px; letter-spacing: .015em; }
+    .rest-top strong { font-size: 29px; font-weight: 500; line-height: 30px; letter-spacing: -.065em; }
+    .rest-bottom { display: flex; align-items: center; justify-content: space-between; height: 26px; margin-top: 4px; gap: 8px; }
+    .rest-target { font-size: 11px; line-height: 13px; }
+    .timer-actions { display: flex; gap: 5px; }
+    .timer-actions button { min-width: 40px; height: 26px; padding: 0 5px; border: 0; background: transparent; color: var(--rest-text); font-size: 12px; }
+    .timer-actions button:last-child { padding-right: 0; text-decoration: underline; text-underline-offset: 3px; }
+    .upcoming { margin: 8px 16px 0; padding: 4px 4px 3px; border-top: 1px solid var(--line-strong); }
+    .upcoming h3 { font-size: 15px; font-weight: 500; line-height: 18px; letter-spacing: -.04em; }
+    .upcoming .prescription { color: var(--muted); font-size: 12px; line-height: 17px; }
+    .upcoming .exercise-controls { height: 26px; margin: 0; }
+    .upcoming .reason { color: var(--muted); font-size: 11px; line-height: 14px; }
+    .upcoming-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .upcoming-top > span { color: var(--green-2); font-size: 12px; white-space: nowrap; }
+    [data-frame="F1"] .upcoming { height: 68px; }
+    .screen-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 44px; margin-top: auto; padding: 3px 20px 5px; border-top: 1px solid var(--line); }
+    .screen-footer p { color: var(--muted); font-size: 11px; line-height: 15px; }
+    .screen-footer strong { display: block; color: var(--text); font-size: 12px; font-weight: 500; }
+    .text-action { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; color: var(--current); font-size: 12px; font-weight: 500; white-space: nowrap; }
+    .text-action .icon { width: 16px; height: 16px; }
+    .primary { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 48px; padding: 0 15px; border: 0; background: var(--action); color: var(--on-action); font-size: 15px; font-weight: 500; letter-spacing: -.025em; }
+    .primary:hover { background: var(--green-2); }
+
+    /* F2: a broken projection makes the consequence immediate. */
+    [data-frame="F2"] { background: var(--panel-3); border-color: color-mix(in srgb, var(--amber) 24%, var(--panel-3)); }
+    [data-frame="F2"] .app-context { color: var(--rest-text); }
+    .broken-rail { display: grid; grid-template-columns: 1fr 1.16fr; gap: 8px; height: 86px; margin: 4px 16px 0; }
+    .broken-rail > div { position: relative; padding: 10px 12px; }
+    .obsolete { padding-right: 22px !important; background: var(--text); color: var(--on-action); clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 43%, 100% 57%, calc(100% - 17px) 100%, 0 100%); }
+    .obsolete .eyebrow { color: color-mix(in srgb, var(--on-action) 74%, var(--text)); }
+    .obsolete strong { display: block; font-size: 31px; font-weight: 500; line-height: 34px; letter-spacing: -.06em; text-decoration: line-through; text-decoration-color: var(--amber); text-decoration-thickness: 3px; }
+    .obsolete small { display: block; color: color-mix(in srgb, var(--on-action) 74%, var(--text)); font-size: 11px; line-height: 14px; }
+    .revised { padding-left: 22px !important; background: var(--action); color: var(--on-action); clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 14px 57%, 0 43%); }
+    .revised .eyebrow { letter-spacing: .015em; }
+    .revised strong { display: block; font-size: 31px; font-weight: 500; line-height: 34px; letter-spacing: -.06em; }
+    .revised small { display: block; font-size: 11px; line-height: 14px; }
+    .flag-heading { height: 86px; padding: 13px 20px 0; }
+    .flag-heading h2 { font-size: 35px; font-weight: 500; line-height: .99; letter-spacing: -.075em; }
+    .flag-numbers { display: flex; align-items: center; justify-content: space-between; height: 124px; padding: 0 20px 6px; }
+    .actual-result { width: 150px; }
+    .actual-result strong { display: block; margin-left: -5px; font-size: 116px; font-weight: 500; line-height: .82; letter-spacing: -.11em; }
+    .actual-result span { display: block; margin-top: 9px; font-size: 12px; font-weight: 500; }
+    .expected-result { width: 162px; padding-top: 6px; }
+    .expected-result .eyebrow { color: var(--rest-text); }
+    .expected-result strong { display: block; margin: 3px 0; font-size: 35px; font-weight: 500; line-height: 38px; letter-spacing: -.065em; }
+    .expected-result p { color: var(--rest-text); font-size: 12px; line-height: 16px; }
+    .outside-tag { display: inline-block; margin-top: 7px; padding-bottom: 2px; border-bottom: 2px solid var(--amber); color: var(--amber); font-size: 11px; font-weight: 600; letter-spacing: -.015em; }
+    .deviation { display: flex; align-items: center; justify-content: space-between; height: 64px; margin: 0 20px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--amber) 40%, var(--panel-3)); border-bottom: 1px solid color-mix(in srgb, var(--amber) 40%, var(--panel-3)); }
+    .deviation-number strong { display: block; color: var(--amber); font-size: 33px; font-weight: 500; line-height: 33px; letter-spacing: -.065em; }
+    .deviation-number span { color: var(--rest-text); font-size: 11px; line-height: 14px; }
+    .deviation p { color: var(--rest-text); text-align: right; font-size: 12px; line-height: 16px; }
+    .cause-list { height: 180px; margin: 8px 20px 0; }
+    .cause-list > .eyebrow { height: 18px; color: var(--rest-text); }
+    .cause { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 9px; height: 54px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--amber) 22%, var(--panel-3)); }
+    .cause:last-child { border-bottom: 0; }
+    .cause-rank { padding-top: 2px; color: var(--amber); font-size: 12px; font-weight: 500; }
+    .cause h3 { font-size: 14px; font-weight: 500; line-height: 18px; letter-spacing: -.035em; }
+    .cause p { margin-top: 2px; color: var(--rest-text); font-size: 12px; line-height: 16px; letter-spacing: -.025em; }
+    .last-night { height: 46px; margin: 8px 20px 0; padding: 7px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 15px; letter-spacing: -.025em; }
+    .last-night span { display: block; }
+    .flag-cta { height: 48px; margin: 10px 20px 0; }
+    .flag-bottom { display: flex; align-items: center; height: 38px; margin-top: auto; padding: 3px 20px 7px; color: var(--rest-text); font-size: 11px; line-height: 14px; }
+
+    /* F3: three futures stay parallel, with one shared projection lane. */
+    .choice-rail { display: flex; align-items: center; justify-content: space-between; height: 60px; margin: 4px 16px 0; padding: 8px 13px; border-top: 3px solid var(--action); background: var(--text); color: var(--on-action); }
+    .choice-rail .eyebrow { color: color-mix(in srgb, var(--on-action) 72%, var(--text)); }
+    .choice-rail p { margin-top: 3px; font-size: 12px; line-height: 17px; }
+    .choice-rail > strong { margin-left: 8px; font-size: 29px; font-weight: 500; letter-spacing: -.065em; white-space: nowrap; }
+    .choice-intro { height: 58px; padding: 8px 18px 0; }
+    .choice-intro h2 { font-size: 27px; font-weight: 500; line-height: 30px; letter-spacing: -.07em; }
+    .choice-intro p { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 16px; }
+    .future-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; height: 326px; margin: 0 12px; }
+    .future { display: grid; grid-template-rows: 52px 60px 42px 42px 50px 43px 35px; min-width: 0; height: 326px; border: 1px solid var(--line); background: var(--surface); color: var(--text); box-shadow: inset 0 5px 0 var(--line); }
+    .future[data-choice="B"] { background: var(--panel-2); }
+    .future.is-selected { z-index: 1; border-color: var(--action); background: var(--action); color: var(--on-action); box-shadow: inset 0 5px 0 var(--green-2), var(--el-2); }
+    .future-top { min-width: 0; padding: 8px 7px 4px; }
+    .future-top .eyebrow { font-size: 11px; line-height: 13px; letter-spacing: -.025em; white-space: nowrap; }
+    .future-top h3 { margin-top: 4px; font-size: 18px; font-weight: 500; line-height: 21px; letter-spacing: -.055em; }
+    .future-cell { min-width: 0; padding: 5px 7px; border-top: 1px solid var(--line); }
+    .future-label { display: block; color: var(--muted); font-size: 11px; font-weight: 500; line-height: 13px; letter-spacing: -.025em; }
+    .future-cell strong { display: block; margin-top: 1px; font-size: 18px; font-weight: 500; line-height: 21px; letter-spacing: -.065em; white-space: nowrap; }
+    .future-cell .detail { display: block; color: var(--muted); font-size: 12px; line-height: 16px; letter-spacing: -.04em; }
+    .future-cell.volume { padding-top: 2px; padding-bottom: 2px; }
+    .future-cell.volume strong { font-size: 24px; line-height: 24px; }
+    .future-cell.fatigue { padding-top: 4px; padding-bottom: 4px; }
+    .future-cell.fatigue strong { margin-top: 2px; font-size: 13px; line-height: 17px; letter-spacing: -.04em; }
+    .future-cell.start strong { font-size: 23px; line-height: 25px; }
+    .future-cell.gate { padding-top: 4px; padding-bottom: 4px; }
+    .future-cell.gate strong { margin-top: 2px; font-size: 13px; line-height: 18px; letter-spacing: -.045em; }
+    .future.is-selected .future-cell, .future.is-selected .future-foot { border-top-color: color-mix(in srgb, var(--on-action) 25%, transparent); }
+    .future.is-selected .future-label, .future.is-selected .detail { color: color-mix(in srgb, var(--on-action) 88%, var(--action)); }
+    .future-foot { min-width: 0; border-top: 1px solid var(--line); }
+    .select-future { display: block; width: 100%; height: 34px; margin: 0; padding: 0 2px; border: 0; background: var(--current-dark); color: var(--green-2); font-size: 12px; font-weight: 500; }
+    .future.is-selected .select-future { background: var(--on-action); color: var(--green-2); }
+    .scrubber-panel { height: 116px; margin: 8px 12px 0; padding: 7px 10px; border: 1px solid var(--line-strong); background: var(--surface); }
+    .scrubber-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 22px; font-size: 12px; line-height: 18px; }
+    .scrubber-caption label { font-weight: 500; }
+    .scrubber-caption output { color: var(--green-2); font-size: 20px; font-weight: 500; line-height: 22px; letter-spacing: -.055em; white-space: nowrap; }
+    .scrubber-track { position: relative; height: 42px; }
+    .load-scrubber { display: block; width: 100%; height: 35px; margin: 0; padding: 0; appearance: none; -webkit-appearance: none; background: transparent; cursor: ew-resize; }
+    .load-scrubber::-webkit-slider-runnable-track { height: 3px; background: var(--line-strong); }
+    .load-scrubber::-moz-range-track { height: 3px; background: var(--line-strong); }
+    .load-scrubber::-webkit-slider-thumb { width: 22px; height: 22px; margin-top: -9.5px; border: 3px solid var(--surface); border-radius: 0; appearance: none; -webkit-appearance: none; background: var(--action); }
+    .load-scrubber::-moz-range-thumb { width: 18px; height: 18px; border: 3px solid var(--surface); border-radius: 0; background: var(--action); }
+    .range-marks { position: absolute; right: 0; bottom: 0; left: 0; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; line-height: 12px; pointer-events: none; }
+    .scrub-readouts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; height: 35px; padding-top: 3px; border-top: 1px solid var(--line); }
+    .scrub-readouts span { display: block; color: var(--muted); font-size: 11px; line-height: 13px; letter-spacing: -.025em; }
+    .scrub-readouts strong { display: block; color: var(--green-2); font-size: 16px; font-weight: 500; line-height: 19px; letter-spacing: -.04em; }
+    .choice-primary { height: 46px; margin: 8px 16px 0; }
+    .choice-primary .primary { height: 46px; }
+    .choice-note { height: 30px; padding: 3px 18px 0; color: var(--muted); font-size: 11px; line-height: 13px; letter-spacing: -.015em; white-space: pre-line; }
+    .quiet-actions { display: flex; align-items: center; justify-content: space-between; height: 42px; margin-top: auto; padding: 0 18px 5px; }
+    .quiet-actions button { min-height: 32px; padding: 0 2px; border: 0; background: transparent; color: var(--muted); font-size: 12px; }
+    .quiet-actions .another { color: var(--current); }
+    .quiet-actions span { color: var(--muted); font-size: 11px; }
+
+    /* F4: one visible prescription change, with the logged past preserved. */
+    .coach-change { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 32px; margin: 0 18px; border-top: 1px solid var(--line); color: var(--green-2); font-size: 12px; font-weight: 500; }
+    .change-reason { height: 19px; padding: 0 20px; color: var(--muted); font-size: 11px; line-height: 15px; letter-spacing: -.025em; }
+    .load-stack { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+    .coach-origin { display: block; color: var(--green-2); font-size: 11px; line-height: 12px; letter-spacing: -.025em; white-space: nowrap; }
+    .coach-origin s { color: var(--muted); text-decoration-thickness: 1px; }
+    .load-stack .set-input { height: 29px; }
+    [data-frame="F4"] .upcoming { height: 88px; margin-top: 6px; padding-top: 6px; }
+    [data-frame="F4"] .upcoming .reason { margin-top: 2px; }
+    [data-frame="F4"] .screen-footer { height: 36px; padding-top: 1px; padding-bottom: 2px; }
+    .chosen-stamp { display: flex; align-items: center; justify-content: center; width: 27px; height: 27px; flex: none; background: var(--current-dark); color: var(--green-2); font-size: 19px; font-weight: 500; }
+
+    /* F5: a concrete future, with its next possible forks stated plainly. */
+    .chosen-rail { display: flex; align-items: center; justify-content: space-between; height: 92px; margin: 4px 16px 0; padding: 12px 15px; border-top: 3px solid var(--action); background: var(--text); color: var(--on-action); }
+    .chosen-rail .eyebrow { color: color-mix(in srgb, var(--on-action) 74%, var(--text)); }
+    .chosen-rail .big-load { display: block; margin-top: 3px; font-size: 45px; font-weight: 500; line-height: 45px; letter-spacing: -.075em; }
+    .chosen-date { padding-top: 4px; text-align: right; }
+    .chosen-date strong { display: block; margin: 4px 0; font-size: 22px; font-weight: 500; line-height: 24px; letter-spacing: -.06em; }
+    .chosen-date > span:last-child { color: color-mix(in srgb, var(--on-action) 78%, var(--text)); font-size: 12px; }
+    .future-heading { height: 80px; padding: 12px 20px 0; }
+    .future-heading h2 { font-size: 29px; font-weight: 500; line-height: 30px; letter-spacing: -.07em; }
+    .next-plan { height: 112px; margin: 0 20px; padding: 8px 0; border-bottom: 1px solid var(--line-strong); }
+    .next-plan > .eyebrow { color: var(--muted); }
+    .next-plan h3 { margin-top: 4px; font-size: 26px; font-weight: 500; line-height: 30px; letter-spacing: -.065em; }
+    .next-plan > p { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--green-2); font-size: 12px; line-height: 17px; }
+    .next-plan > p .icon { width: 15px; height: 15px; }
+    .next-plan .exercise-controls { height: 26px; margin: 0; }
+    .rule-intro { height: 30px; padding: 10px 20px 0; color: var(--muted); }
+    .fork-rule { display: grid; grid-template-columns: 31px minmax(0, 1fr); gap: 11px; height: 84px; margin: 0 20px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .fork-rule.contingency { border-bottom: 0; }
+    .rule-symbol { display: flex; align-items: center; justify-content: center; width: 31px; height: 31px; background: var(--current-dark); color: var(--green-2); }
+    .rule-symbol .icon { width: 19px; height: 19px; }
+    .watch .rule-symbol { background: var(--surface); color: var(--muted); }
+    .fork-rule .eyebrow { color: var(--muted); letter-spacing: .015em; }
+    .fork-rule h3 { margin-top: 3px; font-size: 15px; font-weight: 500; line-height: 20px; letter-spacing: -.045em; }
+    .fork-rule p { margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 17px; letter-spacing: -.025em; }
+    .fork-rule p strong { color: var(--green-2); font-weight: 500; }
+    .planned-injury { height: 92px; margin: 0 20px; padding: 5px 0 0; border-top: 1px solid var(--line-strong); }
+    .planned-injury button { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 30px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 500; }
+    .planned-injury button .icon { width: 16px; height: 16px; }
+    .planned-injury p { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 17px; }
+    .future-footer { height: 64px; margin-top: auto; padding: 10px 20px; border-top: 1px solid var(--line); background: var(--surface); font-size: 12px; line-height: 18px; }
+    .future-footer strong { display: block; font-weight: 500; }
+    .future-footer span { color: var(--muted); }
+
+    @media (max-width: 650px) {
+      .exploration { padding: 30px 18px 40px; }
+      .concept-header h1 { font-size: 76px; }
+      .thesis { font-size: 22px; }
+      .concept-notes p { display: block; }
+      .concept-notes strong { display: block; }
+      .frames { gap: 32px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="i-futures" viewBox="0 0 24 24"><path d="M3 18 10 6h4L7 18M12 18l7-12h3l-7 12"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="6" y="10" width="12" height="10" rx="1"/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3M12 14v2"/></symbol>
+      <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 18 18 6M7 6h11v11"/></symbol>
+      <symbol id="i-watch" viewBox="0 0 24 24"><path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></symbol>
+      <symbol id="i-adjust" viewBox="0 0 24 24"><path d="M5 7h14M5 17h14M9 4v6M15 14v6"/></symbol>
+      <symbol id="i-status" viewBox="0 0 57 16"><path d="M1 12V9m4 3V7m4 5V5m4 7V3M19 6c3.5-3.5 9.5-3.5 13 0m-10.5 3c2-2 6-2 8 0M25 12h1"/><rect x="38" y="3" width="15" height="10" rx="2"/><path d="M55 6v4M41 6h9v4h-9Z"/></symbol>
+    </defs>
+  </svg>
+
+  <main class="exploration">
+    <header class="concept-header">
+      <div class="concept-index">
+        <svg class="icon" aria-hidden="true"><use href="#i-futures"/></svg>
+        <span>03 · Coach concepts</span>
+      </div>
+      <h1>Futures</h1>
+      <p class="thesis">Every decision shows you the next session it creates.</p>
+      <div class="concept-notes">
+        <p><strong>How it feels</strong><span>Forward-leaning. Three futures; one deliberate choice.</span></p>
+        <p><strong>How the coach speaks</strong><span>“Here’s what this set means for Thursday.”</span></p>
+        <p><strong>The trade-off</strong><span>Comparing consequences takes space. Projections remain conditional.</span></p>
+      </div>
+      <p class="scenario-note">All workout data, recovery measurements and projections shown are synthetic. Interactive controls illustrate the scenario.</p>
+    </header>
+
+    <div class="frames">
+      <figure class="frame">
+        <figcaption><span>F1</span> Lifting</figcaption>
+        <section class="phone" data-frame="F1" id="lifting" aria-label="Lifting before the flag">
+          <div class="statusbar">
+            <span>10:24</span>
+            <svg class="icon status-icons" aria-hidden="true"><use href="#i-status"/></svg>
+          </div>
+          <div class="appbar">
+            <div class="app-brand"><svg class="icon" aria-hidden="true"><use href="#i-futures"/></svg>Upper A</div>
+            <span class="app-context">Week 4 / 6</span>
+          </div>
+          <div class="session-options" aria-label="Session controls">
+            <span class="session-label">Session</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-session" aria-label="This was a deload: today's session" title="Exclude this session from progression and the coach's normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div class="projection">
+            <div class="projection-copy">
+              <span class="eyebrow">Thursday · 5 Nov</span>
+              <strong>If sets 1–2 hit 9+</strong>
+              <p>At 185 lb · both RPE ≤ 9</p>
+            </div>
+            <div class="projected-load"><strong>190 lb</strong><span>conditional next load</span></div>
+            <span class="projection-notch" aria-hidden="true"></span>
+          </div>
+          <div class="session-meta"><span>Sat 31 Oct · Hypertrophy block 2</span><span>01 / 05</span></div>
+          <div class="exercise-heading">
+            <span class="eyebrow"><span data-working-count>4</span> working sets · target RPE 8</span>
+            <h2>Barbell Bench Press</h2>
+          </div>
+          <div class="exercise-controls">
+            <span>Per-set targets · lb × reps</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-bench" aria-label="This was a deload: Barbell Bench Press" title="Exclude this exercise's sets from progression and the coach's normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div class="log is-resting" id="log-f1" role="group" aria-label="Bench set logger. Check accepts the load and rep targets. Enter your own RPE.">
+            <div class="set-grid log-head"><span>Set</span><span title="Last session: October 24">Previous</span><span>lb</span><span>Reps</span><span>RPE</span><span>✓</span></div>
+            <div class="set-grid set-row warmup-row" aria-label="Warm-up completed">
+              <span class="set-number">W</span><span class="previous">95 × 8</span>
+              <span class="cell-value">95</span><span class="cell-value">8</span><span class="cell-value effort-value">—</span>
+              <span class="complete" aria-label="Warm-up logged"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+            </div>
+            <div class="set-grid set-row is-logged" data-order="1" data-logged="true">
+              <span class="set-number">1</span><span class="previous">185 × 10</span>
+              <span class="cell-value">185</span><span class="cell-value">9</span><span class="cell-value effort-value">8</span>
+              <span class="complete" aria-label="Set 1 logged: 185 pounds, 9 reps, RPE 8"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+            </div>
+            <div class="set-grid set-row is-active" data-order="2">
+              <select class="set-type" aria-label="Set 2 type"><option value="working">2</option><option value="W">W</option><option value="D">D</option><option value="F">F</option></select>
+              <span class="previous">185 × 10</span>
+              <input class="set-input load-input" id="set2-load" placeholder="185" inputmode="decimal" aria-label="Set 2 pounds; target 185">
+              <input class="set-input reps-input" id="set2-reps" placeholder="9" inputmode="numeric" aria-label="Set 2 reps; target 9">
+              <input class="set-input rpe" id="set2-rpe" placeholder="—" inputmode="decimal" aria-label="Set 2 actual RPE, empty; target RPE 8">
+              <button class="complete" type="button" data-log aria-label="Log set 2; accept placeholder load and reps, leave RPE empty if unentered"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="set-grid set-row is-pending" data-order="3">
+              <select class="set-type" aria-label="Set 3 type"><option value="working">3</option><option value="W">W</option><option value="D">D</option><option value="F">F</option></select>
+              <span class="previous">185 × 9</span>
+              <input class="set-input load-input" placeholder="185" inputmode="decimal" aria-label="Set 3 pounds; target 185">
+              <input class="set-input reps-input" placeholder="8" inputmode="numeric" aria-label="Set 3 reps; target 8">
+              <input class="set-input rpe" placeholder="—" inputmode="decimal" aria-label="Set 3 actual RPE, empty; target RPE 8">
+              <button class="complete" type="button" data-log disabled aria-label="Log set 2 before set 3"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="set-grid set-row is-pending" data-order="4">
+              <select class="set-type" aria-label="Set 4 type"><option value="working">4</option><option value="W">W</option><option value="D">D</option><option value="F">F</option></select>
+              <span class="previous">185 × 9</span>
+              <input class="set-input load-input" placeholder="185" inputmode="decimal" aria-label="Set 4 pounds; target 185">
+              <input class="set-input reps-input" placeholder="8" inputmode="numeric" aria-label="Set 4 reps; target 8">
+              <input class="set-input rpe" placeholder="—" inputmode="decimal" aria-label="Set 4 actual RPE, empty; target RPE 8">
+              <button class="complete" type="button" data-log disabled aria-label="Log earlier sets before set 4"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></button>
+            </div>
+          </div>
+          <div class="types-legend" aria-label="Set types">
+            <span><b>W</b> warm-up</span><span><b>1–4</b> working</span><span><b>D</b> drop</span><span><b>F</b> failure</span>
+          </div>
+          <div class="log-hint">
+            <span data-feedback aria-live="polite">Tap ✓ accepts lb + reps · enter your own RPE.</span>
+            <button class="inline-undo" id="undo-f1" type="button" hidden>Undo</button>
+          </div>
+
+          <div class="future-preview" aria-label="Today's opening sets project to Thursday">
+            <div><span class="eyebrow">Today · sets 1–2</span><strong id="opening-preview">9 / 9+</strong></div>
+            <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>
+            <div><span class="eyebrow">Thu · if qualified</span><strong>190 lb × 8–10</strong></div>
+          </div>
+
+          <div class="rest-panel" data-timer="log-f1" data-seconds="58" role="group" aria-label="Rest timer; minus 15 seconds, plus 15 seconds and Skip are your overrides">
+            <div class="rest-top"><span class="eyebrow" data-timer-status>Auto-started on set 1 check</span><strong data-clock role="timer" aria-label="Rest remaining">0:58</strong></div>
+            <div class="rest-bottom">
+              <span class="rest-target">Full 2:30 recommended<br>Skip to override</span>
+              <div class="timer-actions">
+                <button type="button" data-adjust="-15" aria-label="Override: subtract 15 seconds of rest">−15s</button>
+                <button type="button" data-adjust="15" aria-label="Override: add 15 seconds of rest">+15s</button>
+                <button type="button" data-skip-rest aria-label="Override: skip remaining rest">Skip</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="upcoming" aria-label="Next: Chest-Supported T-Bar Row, then Incline DB Press, Lat Pulldown, Cable Lateral Raise">
+            <h3>Chest-Supported T-Bar Row</h3>
+            <p class="prescription">4 working sets · 90 lb × 10–12</p>
+            <div class="exercise-controls">
+              <span>Next · 02 / 05</span>
+              <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-row" aria-label="This was a deload: Chest-Supported T-Bar Row" title="Exclude this exercise's sets from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="screen-footer">
+            <p><strong>Upper A</strong>~62 min planned</p>
+            <a class="text-action" href="#futures">Look ahead <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          </div>
+        </section>
+      </figure>
+
+      <figure class="frame">
+        <figcaption><span>F2</span> The flag</figcaption>
+        <section class="phone" data-frame="F2" id="flag" aria-label="Bench set 2 falls outside normal bounds">
+          <div class="statusbar"><span>10:24</span><svg class="icon status-icons" aria-hidden="true"><use href="#i-status"/></svg></div>
+          <div class="appbar">
+            <div class="app-brand"><svg class="icon" aria-hidden="true"><use href="#i-futures"/></svg>Upper A</div>
+            <span class="app-context">24:10 elapsed</span>
+          </div>
+          <div class="session-options" aria-label="Session controls">
+            <span class="session-label">Session</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-session" aria-label="This was a deload: today's session" title="Exclude this session from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="broken-rail" aria-label="Thursday projection: 190 before this set; now hold at 185, with more fatigue if you grind on">
+            <div class="obsolete">
+              <span class="eyebrow">Thursday · before</span>
+              <strong>190 lb</strong>
+              <small>if opening sets qualified</small>
+            </div>
+            <div class="revised">
+              <span class="eyebrow">Thursday · hold at</span>
+              <strong>185 lb</strong>
+              <small>More fatigue if you grind on</small>
+            </div>
+          </div>
+          <div class="flag-heading"><h2>This set moved<br>Thursday.</h2></div>
+          <div class="exercise-controls">
+            <span>Bench press · set 2</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-bench" aria-label="This was a deload: Barbell Bench Press" title="Exclude this exercise's sets from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="flag-numbers">
+            <div class="actual-result"><strong>6</strong><span>reps · 185 lb · <span data-flag-effort style="display: inline; margin: 0;">RPE 10</span></span></div>
+            <div class="expected-result">
+              <span class="eyebrow">Expected today</span>
+              <strong>8–9 reps</strong>
+              <p>Recovery-adjusted band: 7–9</p>
+              <span class="outside-tag">Outside normal bounds</span>
+            </div>
+          </div>
+
+          <div class="deviation">
+            <div class="deviation-number"><strong>3.4σ</strong><span>beyond your usual drop</span></div>
+            <p>Today: a 3-rep drop<br>Usual: 0.6 ± 0.7 reps<br>Last 12 sessions</p>
+          </div>
+
+          <div class="cause-list">
+            <span class="eyebrow">The coach’s read · ranked</span>
+            <div class="cause">
+              <span class="cause-rank">01</span>
+              <div><h3>Short rest is the main suspect.</h3><p>1:32 of 2:30 · 61% of recommended rest.</p></div>
+            </div>
+            <div class="cause">
+              <span class="cause-rank">02</span>
+              <div><h3>Low recovery may contribute.</h3><p>Short sleep and lower overnight recovery.</p></div>
+            </div>
+            <div class="cause">
+              <span class="cause-rank">03</span>
+              <div><h3>No sign of strength loss.</h3><p>Set-1 e1RM 253 lb · trend 249–254.</p></div>
+            </div>
+          </div>
+
+          <p class="last-night" aria-label="Last night's Fitbit measurements">
+            <span>Last night · sleep 5 h 48 m (avg 7 h 21 m)</span>
+            <span>HRV 38 ms (baseline 52) · resting HR 61 (baseline 55)</span>
+          </p>
+          <div class="flag-cta"><a class="primary" href="#futures">See the futures from here <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+          <div class="flag-bottom" data-feedback aria-live="polite">Rest auto-started on set 2 check · 2:30 recommended.<br>Thursday holds at 185 lb in every future.</div>
+        </section>
+      </figure>
+
+      <figure class="frame">
+        <figcaption><span>F3</span> Next best action · today</figcaption>
+        <section class="phone" data-frame="F3" id="futures" aria-label="Compare three futures for the rest of this session">
+          <div class="statusbar"><span>10:24</span><svg class="icon status-icons" aria-hidden="true"><use href="#i-status"/></svg></div>
+          <div class="appbar">
+            <div class="app-brand"><svg class="icon" aria-hidden="true"><use href="#i-futures"/></svg>Three futures</div>
+            <span class="app-context">From set 2</span>
+          </div>
+          <div class="session-options" aria-label="Session controls">
+            <span class="session-label">Session</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-session" aria-label="This was a deload: today's session" title="Exclude this session from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="choice-rail" aria-live="polite" aria-atomic="true">
+            <div><span class="eyebrow">Thursday’s starting point</span><p id="projection-summary">15/16 sets · less fatigue</p></div>
+            <strong id="rail-start">185 lb</strong>
+          </div>
+          <div class="choice-intro"><h2>Pick your next Thursday.</h2><p>Rest auto-started on set 2 check · 2:30 recommended.</p></div>
+          <div class="exercise-controls">
+            <span>Barbell Bench Press</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-bench" aria-label="This was a deload: Barbell Bench Press" title="Exclude this exercise's sets from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="future-columns" aria-label="Parallel future comparison">
+            <article class="future is-selected" data-choice="A" aria-label="Future A, recommended: back off">
+              <div class="future-top"><span class="eyebrow">A · Coach pick</span><h3>Back off</h3></div>
+              <div class="future-cell"><span class="future-label">Today · 2 sets</span><strong>165 × 8</strong><span class="detail">2:30 · RPE 8</span></div>
+              <div class="future-cell volume"><span class="future-label">Weekly chest</span><strong>15/16</strong></div>
+              <div class="future-cell fatigue"><span class="future-label">Carried to Thu</span><strong>Less fatigue</strong></div>
+              <div class="future-cell start"><span class="future-label">Thu · hold at</span><strong>185 lb</strong></div>
+              <div class="future-cell gate"><span class="future-label">190 · earliest</span><strong>Next session*</strong></div>
+              <div class="future-foot"><button class="select-future" type="button" data-select="A" aria-pressed="true">Selected A</button></div>
+            </article>
+            <article class="future" data-choice="B" aria-label="Future B: keep 185 today with full rest; Thursday holds 185 with more fatigue carried over">
+              <div class="future-top"><span class="eyebrow">B · Alternative</span><h3>Keep 185</h3></div>
+              <div class="future-cell"><span class="future-label">Today · 2 sets</span><strong>185 × 6–7</strong><span class="detail">2:30 · RPE 9</span></div>
+              <div class="future-cell volume"><span class="future-label">Weekly chest</span><strong>16/16</strong></div>
+              <div class="future-cell fatigue"><span class="future-label">Carried to Thu</span><strong>More fatigue</strong></div>
+              <div class="future-cell start"><span class="future-label">Thu · hold at</span><strong>185 lb</strong></div>
+              <div class="future-cell gate"><span class="future-label">190 · requires</span><strong>Qualifying sets*</strong></div>
+              <div class="future-foot"><button class="select-future" type="button" data-select="B" aria-pressed="false">Choose B</button></div>
+            </article>
+            <article class="future" data-choice="C" aria-label="Future C: stop bench; Thursday holds 185 with less stimulus today">
+              <div class="future-top"><span class="eyebrow">C · Alternative</span><h3>Stop bench</h3></div>
+              <div class="future-cell"><span class="future-label">Today · bench</span><strong>Stop here</strong><span class="detail">2 sets removed</span></div>
+              <div class="future-cell volume"><span class="future-label">Weekly chest</span><strong>14/16</strong></div>
+              <div class="future-cell fatigue"><span class="future-label">Today’s trade-off</span><strong>Less stimulus</strong></div>
+              <div class="future-cell start"><span class="future-label">Thu · hold at</span><strong>185 lb</strong></div>
+              <div class="future-cell gate"><span class="future-label">190 · requires</span><strong>Qualifying sets*</strong></div>
+              <div class="future-foot"><button class="select-future" type="button" data-select="C" aria-pressed="false">Choose C</button></div>
+            </article>
+          </div>
+
+          <div class="scrubber-panel" role="group" aria-label="Live load comparison">
+            <div class="scrubber-caption"><label id="scrubber-label" for="backoff-load">Compare today’s load</label><output id="load-output" for="backoff-load">165 lb</output></div>
+            <div class="scrubber-track">
+              <input class="load-scrubber" id="backoff-load" type="range" min="165" max="185" step="20" value="165" aria-label="Compare future A at 165 pounds with future B at 185 pounds" aria-valuetext="165 pounds, future A">
+              <div class="range-marks" aria-hidden="true"><span>A · 165</span><span>B · 185</span></div>
+            </div>
+            <div class="scrub-readouts" aria-live="polite" aria-atomic="true">
+              <div><span>Thursday start</span><strong id="live-start">185 lb</strong></div>
+              <div><span>Fatigue carried</span><strong id="live-fatigue">Less</strong></div>
+              <div><span>Weekly chest</span><strong id="live-volume">15/16</strong></div>
+            </div>
+          </div>
+
+          <div class="choice-primary"><button class="primary" id="accept-future" type="button"><span id="accept-label">Accept A · protect Thursday</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></div>
+          <p class="choice-note" id="choice-note" data-feedback aria-live="polite">Incline DB Press: 3 → 2 sets, 55 lb × 10–12.
+*Conditional on recovery and the next qualifying sets.</p>
+          <div class="quiet-actions">
+            <button class="another" id="choose-another" type="button">Choose another</button>
+            <span>Weekly target · 12–18 sets</span>
+            <button id="dismiss-flag" type="button">Dismiss</button>
+          </div>
+        </section>
+      </figure>
+
+      <figure class="frame">
+        <figcaption><span>F4</span> Plan applied</figcaption>
+        <section class="phone" data-frame="F4" id="applied" aria-label="Future A applied; only untouched bench sets 3 and 4 changed">
+          <div class="statusbar"><span>10:24</span><svg class="icon status-icons" aria-hidden="true"><use href="#i-status"/></svg></div>
+          <div class="appbar">
+            <div class="app-brand"><svg class="icon" aria-hidden="true"><use href="#i-futures"/></svg>Upper A</div>
+            <span class="app-context">Future A applied</span>
+          </div>
+          <div class="session-options" aria-label="Session controls">
+            <span class="session-label">Session</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-session" aria-label="This was a deload: today's session" title="Exclude this session from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="projection">
+            <div class="projection-copy"><span class="eyebrow">Thursday · 5 Nov</span><strong>Hold the load.</strong><p>Earn the next increase.</p></div>
+            <div class="projected-load"><strong>185 lb</strong><span>the future you chose</span></div>
+            <span class="projection-notch" aria-hidden="true"></span>
+          </div>
+          <div class="session-meta"><span>Logged sets stay as they happened.</span><span>Next · set 3</span></div>
+          <div class="exercise-heading">
+            <span class="eyebrow"><span data-working-count>4</span> working sets · target RPE 8</span>
+            <h2>Barbell Bench Press</h2>
+          </div>
+          <div class="exercise-controls">
+            <span>Remaining · 2 × 8 @ 165 lb</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-bench" aria-label="This was a deload: Barbell Bench Press" title="Exclude this exercise's sets from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+          <div class="coach-change">
+            <span id="applied-change-label">Coach · sets 3–4: 185 → 165 lb</span>
+            <button class="inline-undo" id="undo-applied" type="button" aria-label="Undo the coach's changes to untouched later sets">Undo</button>
+          </div>
+          <p class="change-reason" id="bench-change-reason">Short-rest grinder; keeps two productive sets.</p>
+
+          <div class="log is-resting" id="log-f4" role="group" aria-label="Adjusted bench logger. Check accepts targets. Actual RPE remains empty until entered.">
+            <div class="set-grid log-head"><span>Set</span><span title="Last session: October 24">Previous</span><span>lb</span><span>Reps</span><span>RPE</span><span>✓</span></div>
+            <div class="set-grid set-row warmup-row" aria-label="Warm-up completed">
+              <span class="set-number">W</span><span class="previous">95 × 8</span><span class="cell-value">95</span><span class="cell-value">8</span><span class="cell-value effort-value">—</span>
+              <span class="complete" aria-label="Warm-up logged"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+            </div>
+            <div class="set-grid set-row is-logged" data-order="1" data-logged="true">
+              <span class="set-number">1</span><span class="previous">185 × 10</span><span class="cell-value">185</span><span class="cell-value">9</span><span class="cell-value effort-value">8</span>
+              <span class="complete" aria-label="Set 1 logged: 185 pounds, 9 reps, RPE 8"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+            </div>
+            <div class="set-grid set-row is-logged" data-order="2" data-logged="true">
+              <span class="set-number">2</span><span class="previous">185 × 10</span><span class="cell-value">185</span><span class="cell-value flagged-value">6</span><span class="cell-value effort-value flagged-value" data-set2-effort>10</span>
+              <span class="complete" aria-label="Set 2 logged: 185 pounds, 6 reps, RPE 10"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+            </div>
+            <div class="set-grid set-row is-active" data-order="3" data-coach-changed="true">
+              <select class="set-type" aria-label="Set 3 type"><option value="working">3</option><option value="W">W</option><option value="D">D</option><option value="F">F</option></select>
+              <span class="previous">185 × 9</span>
+              <div class="load-stack"><span class="coach-origin"><s>185</s> → coach</span><input class="set-input load-input" placeholder="165" data-original="185" inputmode="decimal" aria-label="Set 3 pounds; coach changed target from 185 to 165"></div>
+              <input class="set-input reps-input" placeholder="8" inputmode="numeric" aria-label="Set 3 reps; target 8">
+              <input class="set-input rpe" placeholder="—" inputmode="decimal" aria-label="Set 3 actual RPE, empty; target RPE 8">
+              <button class="complete" type="button" data-log aria-label="Log set 3; accept placeholder targets of 165 pounds and 8 reps"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="set-grid set-row is-pending" data-order="4" data-coach-changed="true">
+              <select class="set-type" aria-label="Set 4 type"><option value="working">4</option><option value="W">W</option><option value="D">D</option><option value="F">F</option></select>
+              <span class="previous">185 × 9</span>
+              <div class="load-stack"><span class="coach-origin"><s>185</s> → coach</span><input class="set-input load-input" placeholder="165" data-original="185" inputmode="decimal" aria-label="Set 4 pounds; coach changed target from 185 to 165"></div>
+              <input class="set-input reps-input" placeholder="8" inputmode="numeric" aria-label="Set 4 reps; target 8">
+              <input class="set-input rpe" placeholder="—" inputmode="decimal" aria-label="Set 4 actual RPE, empty; target RPE 8">
+              <button class="complete" type="button" data-log disabled aria-label="Log set 3 before set 4"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></button>
+            </div>
+          </div>
+          <div class="types-legend" aria-label="Set types">
+            <span><b>W</b> warm-up</span><span><b>1–4</b> working</span><span><b>D</b> drop</span><span><b>F</b> failure</span>
+          </div>
+          <div class="log-hint"><span data-feedback aria-live="polite">Tap ✓ accepts targets · actual RPE is still empty.</span></div>
+
+          <div class="rest-panel" data-timer="log-f4" data-seconds="150" role="group" aria-label="Rest timer; minus 15 seconds, plus 15 seconds and Skip are your overrides">
+            <div class="rest-top"><span class="eyebrow" data-timer-status>Auto-started on set 2 check</span><strong data-clock role="timer" aria-label="Rest remaining">2:30</strong></div>
+            <div class="rest-bottom">
+              <span class="rest-target">Full 2:30 recommended<br>Skip to override</span>
+              <div class="timer-actions">
+                <button type="button" data-adjust="-15" aria-label="Override: subtract 15 seconds of rest">−15s</button>
+                <button type="button" data-adjust="15" aria-label="Override: add 15 seconds of rest">+15s</button>
+                <button type="button" data-skip-rest aria-label="Override: skip remaining rest">Skip</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="upcoming" aria-label="Next: Chest-Supported T-Bar Row, then Incline DB Press, Lat Pulldown, Cable Lateral Raise">
+            <div class="upcoming-top"><h3>Chest-Supported T-Bar Row</h3><span>Next · 02 / 05</span></div>
+            <p class="prescription">4 working sets · 90 lb × 10–12</p>
+            <p class="reason"><span id="incline-change">Then Incline DB Press · 3 → 2 sets</span> · 55 lb × 10–12</p>
+            <div class="exercise-controls">
+              <span id="incline-reason">Less pressing fatigue for Thursday.</span>
+              <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="today-row" aria-label="This was a deload: Chest-Supported T-Bar Row" title="Exclude this exercise's sets from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="screen-footer">
+            <p><strong>15 of 16 weekly chest sets</strong>12–18 target · session ≈ 1 min shorter</p>
+            <span class="chosen-stamp" aria-label="Future A">A</span>
+          </div>
+        </section>
+      </figure>
+
+      <figure class="frame">
+        <figcaption><span>F5</span> Next session</figcaption>
+        <section class="phone" data-frame="F5" id="thursday" aria-label="Planned Upper A session for Thursday November 5">
+          <div class="statusbar"><span>10:24</span><svg class="icon status-icons" aria-hidden="true"><use href="#i-status"/></svg></div>
+          <div class="appbar">
+            <div class="app-brand"><svg class="icon" aria-hidden="true"><use href="#i-futures"/></svg>Your next session</div>
+            <span class="app-context">Future A</span>
+          </div>
+          <div class="session-options" aria-label="Planned session controls">
+            <span class="session-label">Planned · not started</span>
+            <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="thursday-session" aria-label="This was a deload: Thursday's session" title="Exclude this session from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="chosen-rail">
+            <div><span class="eyebrow">The future you chose</span><strong class="big-load">185 lb</strong></div>
+            <div class="chosen-date"><span class="eyebrow">Thu 5 Nov</span><strong>Upper A</strong><span>Hold bench</span></div>
+          </div>
+          <div class="future-heading"><h2>Keep the load.<br>Change the conditions.</h2></div>
+          <div class="next-plan">
+            <span class="eyebrow">Barbell Bench Press</span>
+            <h3>4 × 8–10 @ 185 lb</h3>
+            <p><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>Target RPE 8 · full 2:30 rest recommended</p>
+            <div class="exercise-controls">
+              <span>Four working sets</span>
+              <button class="toggle" type="button" role="switch" aria-checked="false" data-scope="thursday-bench" aria-label="This was a deload: Thursday's Barbell Bench Press" title="Exclude this exercise's sets from progression and normal bounds."><span>This was a deload</span><span class="switch-track" aria-hidden="true"></span></button>
+            </div>
+          </div>
+          <div class="rule-intro"><span class="eyebrow">What could change this future</span></div>
+
+          <div class="fork-rule progression">
+            <div class="rule-symbol"><svg class="icon" aria-hidden="true"><use href="#i-up"/></svg></div>
+            <div><span class="eyebrow">Progression · earn 190</span><h3>Sets 1–2: both ≥ 9 at 185 lb.</h3><p>Both RPE ≤ 9? <strong>Next time: 190 lb.</strong></p></div>
+          </div>
+          <div class="fork-rule watch">
+            <div class="rule-symbol"><svg class="icon" aria-hidden="true"><use href="#i-watch"/></svg></div>
+            <div><span class="eyebrow">Thursday · second bench flag</span><h3>Another flag, normal recovery?</h3><p>Pressing deload: <strong>one week, −10% load, −1 set.</strong></p></div>
+          </div>
+          <div class="fork-rule contingency">
+            <div class="rule-symbol"><svg class="icon" aria-hidden="true"><use href="#i-adjust"/></svg></div>
+            <div><span class="eyebrow">Thursday morning · HRV</span><h3>Under 45 ms? Start at 175 lb.</h3><p>Full 2:30 rest recommended; reassess each set.</p></div>
+          </div>
+
+          <div class="planned-injury">
+            <button id="skip-thursday" type="button" aria-label="Injured, skip Thursday's planned session"><span>Injured, skip</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+            <p>A session skipped for injury does not count as a failure or a missed progression.</p>
+          </div>
+          <div class="future-footer">
+            <strong id="thursday-footer-title">Chosen today: 165 × 8 for bench sets 3–4.</strong>
+            <span data-feedback aria-live="polite">Set-1 e1RM 253 lb is on your 249–254 trend.</span>
+          </div>
+        </section>
+      </figure>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var feedbackNodes = document.querySelectorAll("[data-feedback]");
+      for (var f = 0; f < feedbackNodes.length; f++) {
+        feedbackNodes[f].defaultMessage = feedbackNodes[f].textContent;
+      }
+
+      function feedback(frame, message) {
+        var node = frame.querySelector("[data-feedback]");
+        if (node) node.textContent = message;
+      }
+
+      function visit(id) {
+        document.getElementById(id).scrollIntoView({ block: "nearest", inline: "center" });
+      }
+
+      /* Deload markers share a scope across snapshots of the same session. */
+      var toggles = document.querySelectorAll(".toggle");
+      for (var t = 0; t < toggles.length; t++) {
+        toggles[t].addEventListener("click", function () {
+          var scope = this.getAttribute("data-scope");
+          var checked = this.getAttribute("aria-checked") !== "true";
+          var matches = document.querySelectorAll('[data-scope="' + scope + '"]');
+          var isSession = scope.indexOf("session") !== -1;
+          for (var m = 0; m < matches.length; m++) {
+            matches[m].setAttribute("aria-checked", String(checked));
+            var frame = matches[m].closest(".phone");
+            var node = frame.querySelector("[data-feedback]");
+            if (checked) {
+              feedback(frame, isSession
+                ? "Deload session · excluded from progression and normal bounds."
+                : "Deload exercise · sets excluded from progression and normal bounds.");
+            } else if (node) {
+              node.textContent = node.defaultMessage;
+            }
+          }
+        });
+      }
+
+      /* Rest auto-starts on every check; the next check stays available. */
+      var timers = {};
+      var timerPanels = document.querySelectorAll("[data-timer]");
+
+      function paintTimer(timer) {
+        var remaining = Math.max(0, timer.seconds);
+        timer.panel.querySelector("[data-clock]").textContent =
+          Math.floor(remaining / 60) + ":" + String(remaining % 60).padStart(2, "0");
+        var log = document.getElementById(timer.panel.getAttribute("data-timer"));
+        if (log) log.classList.toggle("is-resting", remaining > 0);
+      }
+
+      function startRest(logId, setNumber) {
+        var timer = timers[logId];
+        if (!timer) return;
+        timer.seconds = 150;
+        timer.running = true;
+        timer.panel.querySelector("[data-timer-status]").textContent =
+          "Auto-started on set " + setNumber + " check";
+        paintTimer(timer);
+      }
+
+      for (var p = 0; p < timerPanels.length; p++) {
+        (function (panel) {
+          var timer = {
+            panel: panel,
+            seconds: Number(panel.getAttribute("data-seconds")),
+            running: true
+          };
+          timers[panel.getAttribute("data-timer")] = timer;
+          paintTimer(timer);
+          var adjusters = panel.querySelectorAll("[data-adjust]");
+          for (var a = 0; a < adjusters.length; a++) {
+            adjusters[a].addEventListener("click", function () {
+              timer.seconds = Math.max(0, Math.min(600,
+                timer.seconds + Number(this.getAttribute("data-adjust"))));
+              timer.running = timer.seconds > 0;
+              panel.querySelector("[data-timer-status]").textContent =
+                timer.seconds ? "Rest · your override" : "Rest complete · next set ready";
+              paintTimer(timer);
+            });
+          }
+          panel.querySelector("[data-skip-rest]").addEventListener("click", function () {
+            timer.seconds = 0;
+            timer.running = false;
+            panel.querySelector("[data-timer-status]").textContent = "Rest skipped · next set ready";
+            paintTimer(timer);
+          });
+        }(timerPanels[p]));
+      }
+
+      window.setInterval(function () {
+        Object.keys(timers).forEach(function (key) {
+          var timer = timers[key];
+          if (!timer.running || timer.seconds <= 0) return;
+          timer.seconds -= 1;
+          if (timer.seconds === 0) {
+            timer.running = false;
+            timer.panel.querySelector("[data-timer-status]").textContent = "Rest complete · next set ready";
+          }
+          paintTimer(timer);
+        });
+      }, 1000);
+
+      /* Futures remain parallel; the scrubber changes the projected consequences. */
+      var selected = "A";
+      var slider = document.getElementById("backoff-load");
+      var output = document.getElementById("load-output");
+      var summary = document.getElementById("projection-summary");
+      var railStart = document.getElementById("rail-start");
+      var note = document.getElementById("choice-note");
+      var acceptLabel = document.getElementById("accept-label");
+      var futures = document.querySelectorAll(".future");
+      var selectors = document.querySelectorAll("[data-select]");
+      var choices = {
+        A: {
+          load: "165", start: "185 lb", fatigue: "Less", volume: "15/16",
+          summary: "15/16 sets · less fatigue",
+          label: "Accept A · protect Thursday",
+          note: "Incline DB Press: 3 → 2 sets, 55 lb × 10–12.\n*Conditional on recovery and the next qualifying sets."
+        },
+        B: {
+          load: "185", start: "185 lb", fatigue: "More", volume: "16/16",
+          summary: "16/16 sets · more fatigue",
+          label: "Accept B · keep 185 today",
+          note: "More fatigue carried into Thursday · accessories unchanged.\n*190 needs recovery and the next qualifying sets."
+        },
+        C: {
+          load: null, start: "185 lb", fatigue: "Less", volume: "14/16",
+          summary: "14/16 sets · less stimulus",
+          label: "Accept C · stop bench",
+          note: "Remove the 2 remaining bench sets · pulling unchanged.\n*190 needs recovery and the next qualifying sets."
+        }
+      };
+
+      function choose(key) {
+        var choice = choices[key];
+        selected = key;
+        summary.textContent = choice.summary;
+        railStart.textContent = choice.start;
+        document.getElementById("live-start").textContent = choice.start;
+        document.getElementById("live-fatigue").textContent = choice.fatigue;
+        document.getElementById("live-volume").textContent = choice.volume;
+        acceptLabel.textContent = choice.label;
+        note.textContent = choice.note;
+        for (var i = 0; i < futures.length; i++) {
+          futures[i].classList.toggle("is-selected", futures[i].getAttribute("data-choice") === key);
+        }
+        for (var j = 0; j < selectors.length; j++) {
+          var selectorKey = selectors[j].getAttribute("data-select");
+          var active = selectorKey === key;
+          selectors[j].setAttribute("aria-pressed", String(active));
+          selectors[j].textContent = (active ? "Selected " : "Choose ") + selectorKey;
+        }
+        if (choice.load !== null) {
+          slider.value = choice.load;
+          output.value = choice.load + " lb";
+          output.textContent = choice.load + " lb";
+          document.getElementById("scrubber-label").textContent = "Compare today’s load";
+          slider.setAttribute("aria-valuetext", choice.load + " pounds, future " + key);
+        } else {
+          output.value = "Stopped";
+          output.textContent = "Stopped";
+          document.getElementById("scrubber-label").textContent = "Drag to compare A or B";
+          slider.setAttribute("aria-valuetext", "Bench stopped, future C. Drag to compare A or B.");
+        }
+      }
+
+      slider.addEventListener("input", function () {
+        choose(Number(slider.value) === 165 ? "A" : "B");
+      });
+      for (var s = 0; s < selectors.length; s++) {
+        selectors[s].addEventListener("click", function () {
+          choose(this.getAttribute("data-select"));
+        });
+      }
+      document.getElementById("choose-another").addEventListener("click", function () {
+        choose(selected === "A" ? "B" : selected === "B" ? "C" : "A");
+      });
+      document.getElementById("accept-future").addEventListener("click", function () {
+        if (!selected) {
+          choose("A");
+        } else if (selected === "A") {
+          visit("applied");
+        } else {
+          acceptLabel.textContent = selected === "B" ? "B chosen · full 2:30 recommended" : "C chosen · move to pulling";
+          note.textContent = choices[selected].note;
+        }
+      });
+      document.getElementById("dismiss-flag").addEventListener("click", function () {
+        selected = null;
+        for (var i = 0; i < futures.length; i++) futures[i].classList.remove("is-selected");
+        for (var j = 0; j < selectors.length; j++) {
+          selectors[j].setAttribute("aria-pressed", "false");
+          selectors[j].textContent = "Choose " + selectors[j].getAttribute("data-select");
+        }
+        summary.textContent = "Original targets · more fatigue";
+        railStart.textContent = "185 lb";
+        acceptLabel.textContent = "Reopen the three futures";
+        note.textContent = "Flag dismissed · original 185 lb targets retained.\nMore fatigue carried into Thursday; hold at 185 lb.";
+      });
+
+      /* A target is accepted only on the check; an empty RPE stays empty. */
+      var revisions = {};
+      var loggers = document.querySelectorAll(".log");
+
+      function untouched(row) {
+        return row.getAttribute("data-logged") !== "true" &&
+          row.getAttribute("data-touched") !== "true";
+      }
+
+      function deloaded(frame) {
+        return Boolean(frame.querySelector(
+          '[data-scope="today-session"][aria-checked="true"],' +
+          '[data-scope="today-bench"][aria-checked="true"]'
+        ));
+      }
+
+      function updateWorkingCount(log) {
+        var rows = log.querySelectorAll("[data-order]");
+        var count = 0;
+        for (var i = 0; i < rows.length; i++) {
+          var type = rows[i].querySelector(".set-type");
+          if (!type || type.value !== "W") count++;
+        }
+        var display = log.closest(".phone").querySelector("[data-working-count]");
+        if (display) display.textContent = String(count);
+      }
+
+      function reviseLater(log, completedRow, direction) {
+        var order = Number(completedRow.getAttribute("data-order"));
+        var rows = log.querySelectorAll("[data-order]");
+        var changes = [];
+        for (var i = 0; i < rows.length; i++) {
+          if (Number(rows[i].getAttribute("data-order")) <= order || !untouched(rows[i])) continue;
+          var input = rows[i].querySelector(".reps-input");
+          if (!input) continue;
+          var oldTarget = Number(input.placeholder);
+          var newTarget = Math.max(1, oldTarget + direction);
+          if (oldTarget === newTarget) continue;
+          changes.push({ row: rows[i], input: input, previous: input.placeholder, next: String(newTarget) });
+          input.placeholder = String(newTarget);
+          input.setAttribute("aria-label", "Set " + rows[i].getAttribute("data-order") + " reps; coach target " + newTarget);
+        }
+        if (changes.length) {
+          revisions[log.id] = changes;
+          var frame = log.closest(".phone");
+          if (log.id === "log-f1") {
+            document.getElementById("undo-f1").hidden = false;
+            feedback(frame, direction < 0
+              ? "Coach: later sets −1 rep after this effort."
+              : "Coach: later sets +1 rep after this effort.");
+          } else {
+            document.getElementById("bench-change-reason").textContent =
+              direction < 0 ? "Latest effort: later sets reduced by one rep." : "Latest effort: later sets increased by one rep.";
+            document.getElementById("undo-applied").disabled = false;
+            document.getElementById("undo-applied").textContent = "Undo";
+          }
+        }
+        return changes.length;
+      }
+
+      for (var l = 0; l < loggers.length; l++) {
+        (function (log) {
+          log.addEventListener("input", function (event) {
+            var row = event.target.closest("[data-order]");
+            if (row && row.getAttribute("data-logged") !== "true") row.setAttribute("data-touched", "true");
+          });
+          log.addEventListener("change", function (event) {
+            if (!event.target.matches(".set-type")) return;
+            var row = event.target.closest("[data-order]");
+            row.setAttribute("data-touched", "true");
+            updateWorkingCount(log);
+          });
+          log.addEventListener("click", function (event) {
+            var button = event.target.closest("[data-log]");
+            if (!button || button.disabled) return;
+            var row = button.closest("[data-order]");
+            if (row.getAttribute("data-logged") === "true") return;
+            var frame = log.closest(".phone");
+            var loadInput = row.querySelector(".load-input");
+            var repsInput = row.querySelector(".reps-input");
+            var rpeInput = row.querySelector(".rpe");
+            var loadText = loadInput.value.trim() || loadInput.placeholder;
+            var repsText = repsInput.value.trim() || repsInput.placeholder;
+            var rpeText = rpeInput.value.trim();
+            var load = Number(loadText);
+            var reps = Number(repsText);
+            var rpe = rpeText === "" ? null : Number(rpeText);
+            var targetReps = Number(repsInput.placeholder);
+            if (!isFinite(load) || load <= 0 ||
+                !isFinite(reps) || reps < 0 || Math.floor(reps) !== reps ||
+                (rpe !== null && (!isFinite(rpe) || rpe < 1 || rpe > 10 || rpe * 2 !== Math.floor(rpe * 2)))) {
+              feedback(frame, "Use a positive load, whole reps, and RPE 1–10 or blank.");
+              return;
+            }
+
+            loadInput.value = String(load);
+            repsInput.value = String(reps);
+            loadInput.disabled = true;
+            repsInput.disabled = true;
+            var typeSelect = row.querySelector(".set-type");
+            if (typeSelect) typeSelect.disabled = true;
+            row.setAttribute("data-logged", "true");
+            row.classList.remove("is-active", "is-pending");
+            row.classList.add("is-logged");
+            button.disabled = true;
+            var order = row.getAttribute("data-order");
+            button.setAttribute("aria-label", "Set " + order + " logged: " + load + " pounds, " + reps + " reps" +
+              (rpe === null ? "; RPE unentered" : ", RPE " + rpe));
+
+            var origin = row.querySelector(".coach-origin");
+            if (origin) origin.hidden = true;
+            var remaining = log.querySelectorAll('[data-order]:not([data-logged="true"])');
+            if (remaining.length) {
+              remaining[0].classList.remove("is-pending");
+              remaining[0].classList.add("is-active");
+              var nextButton = remaining[0].querySelector("[data-log]");
+              nextButton.disabled = false;
+              nextButton.setAttribute("aria-label", "Log set " + remaining[0].getAttribute("data-order") + "; accept placeholder load and reps");
+            }
+            startRest(log.id, order);
+            feedback(frame, "Set " + order + " logged · " + load + " × " + reps +
+              (rpe === null ? " · RPE unentered." : " · RPE " + rpe + "."));
+
+            if (deloaded(frame) || (typeSelect && typeSelect.value === "W")) {
+              feedback(frame, "Logged · excluded from progression and normal bounds.");
+              return;
+            }
+            if (log.id === "log-f1" && order === "2") {
+              document.getElementById("opening-preview").textContent = "9 / " + reps;
+              if (load === 185 && reps === 6) {
+                document.querySelector("[data-flag-effort]").textContent = rpe === null ? "RPE —" : "RPE " + rpe;
+                document.querySelector("[data-set2-effort]").textContent = rpe === null ? "—" : String(rpe);
+                visit("flag");
+                return;
+              }
+            }
+            if (reps < targetReps) {
+              reviseLater(log, row, -1);
+            } else if (reps >= targetReps + 2 && rpe !== null && rpe <= 8) {
+              reviseLater(log, row, 1);
+            }
+          });
+        }(loggers[l]));
+      }
+
+      function undoRevision(logId) {
+        var changes = revisions[logId] || [];
+        var restored = 0;
+        for (var i = 0; i < changes.length; i++) {
+          var change = changes[i];
+          if (!untouched(change.row) || change.input.placeholder !== change.next) continue;
+          change.input.placeholder = change.previous;
+          change.input.setAttribute("aria-label", "Set " + change.row.getAttribute("data-order") + " reps; target " + change.previous);
+          restored++;
+        }
+        delete revisions[logId];
+        return restored;
+      }
+
+      document.getElementById("undo-f1").addEventListener("click", function () {
+        var count = undoRevision("log-f1");
+        feedback(document.getElementById("lifting"), count
+          ? "Undone · untouched later targets restored."
+          : "Logged or edited sets kept; no untouched changes remain.");
+        this.hidden = true;
+      });
+
+      document.getElementById("undo-applied").addEventListener("click", function () {
+        var frame = document.getElementById("applied");
+        if (revisions["log-f4"]) {
+          var repCount = undoRevision("log-f4");
+          document.getElementById("bench-change-reason").textContent =
+            repCount ? "Latest rep change undone; back-off load retained." : "Logged or edited targets kept as entered.";
+          return;
+        }
+        var rows = document.querySelectorAll('#log-f4 [data-coach-changed="true"]');
+        var restored = [];
+        for (var i = 0; i < rows.length; i++) {
+          if (!untouched(rows[i])) continue;
+          var input = rows[i].querySelector(".load-input");
+          input.placeholder = input.getAttribute("data-original");
+          input.setAttribute("aria-label", "Set " + rows[i].getAttribute("data-order") + " pounds; restored target 185");
+          rows[i].querySelector(".coach-origin").hidden = true;
+          rows[i].removeAttribute("data-coach-changed");
+          restored.push(rows[i].getAttribute("data-order"));
+        }
+        document.getElementById("applied-change-label").textContent =
+          restored.length ? "Undone · set " + restored.join(" + ") + " targets restored" : "Logged or edited bench targets kept";
+        document.getElementById("bench-change-reason").textContent = "Only untouched targets restored; logged sets stay.";
+        document.getElementById("incline-change").textContent = "Then Incline DB Press · 3 sets restored";
+        document.getElementById("incline-reason").textContent = "Original accessory volume restored.";
+        frame.querySelector(".exercise-controls > span").textContent = "Untouched targets restored · 185 lb";
+        frame.querySelector(".projection-copy strong").textContent = "Choose the next future.";
+        frame.querySelector(".projection-copy p").textContent = "The previous projection needs a new choice.";
+        frame.querySelector(".projected-load strong").textContent = "—";
+        frame.querySelector(".projected-load span").textContent = "projection to revisit";
+        frame.querySelector(".screen-footer p").innerHTML = "<strong>Original accessory plan restored</strong>Logged bench work stays unchanged";
+        frame.querySelector(".chosen-stamp").textContent = "↗";
+        frame.querySelector(".chosen-stamp").setAttribute("aria-label", "Projection needs a new choice");
+        feedback(frame, "Coach change undone · actual RPE remains yours.");
+        this.disabled = true;
+        this.textContent = "Undone";
+      });
+
+      document.getElementById("skip-thursday").addEventListener("click", function () {
+        var frame = document.getElementById("thursday");
+        this.querySelector("span").textContent = "Skipped · injury";
+        this.disabled = true;
+        frame.querySelector(".app-context").textContent = "Skipped · injury";
+        frame.querySelector(".session-label").textContent = "Session skipped";
+        frame.querySelector(".chosen-rail .eyebrow").textContent = "Recovery comes first";
+        frame.querySelector(".big-load").textContent = "Rest";
+        frame.querySelector(".chosen-date > span:last-child").textContent = "Progression preserved";
+        document.getElementById("thursday-footer-title").textContent = "Thursday skipped for injury.";
+        feedback(frame, "No failure recorded. No missed progression.");
+      });
+    }());
+  </script>
+</body>
+</html>

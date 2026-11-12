@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coach concepts — pick one</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="palette.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--surface); color: var(--text); }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; }
+    a { color: inherit; }
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
+
+    header.hero { padding: 56px 0 32px; border-bottom: 1px solid var(--line); background: var(--bg); }
+    .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--current); }
+    h1 { font-size: clamp(40px, 6vw, 76px); line-height: .98; letter-spacing: -.035em; margin: 10px 0 18px; font-weight: 900; max-width: 14ch; }
+    .lede { font-size: 18px; color: var(--muted); max-width: 70ch; margin: 0; }
+    .story { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 28px; }
+    .story div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .story b { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .story .flag { background: var(--panel-3); border-color: color-mix(in srgb, var(--amber) 35%, transparent); }
+    .story .flag b { color: var(--amber); }
+    .same { margin-top: 14px; font-size: 14px; color: var(--muted); max-width: 120ch; border-left: 3px solid var(--current); padding: 4px 0 4px 14px; }
+    .same b { color: var(--text); }
+
+    section { padding: 40px 0; }
+    h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 20px; }
+
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+    .tabs button { font: inherit; font-weight: 700; font-size: 14px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--text); border-radius: 999px; padding: 10px 16px; min-height: 44px; cursor: pointer; }
+    .tabs button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .strip { display: grid; grid-auto-flow: column; grid-auto-columns: 214px; gap: 18px; overflow-x: auto; padding: 4px 4px 18px; scroll-snap-type: x proximity; }
+    .strip a { text-decoration: none; scroll-snap-align: start; }
+    .shot { width: 214px; aspect-ratio: 390 / 844; border-radius: 22px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); box-shadow: var(--el-2); display: grid; place-items: center; }
+    .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .shot .missing { color: var(--muted-2); font-size: 13px; padding: 16px; text-align: center; }
+    .strip .label { display: flex; gap: 8px; align-items: baseline; margin-top: 10px; font-weight: 800; }
+    .strip .label span { color: var(--muted-2); font-variant-numeric: tabular-nums; font-weight: 700; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+    .card { background: var(--bg); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; grid-template-columns: 120px 1fr; gap: 18px; text-decoration: none; transition: border-color .15s ease, transform .15s ease; }
+    .card:hover { border-color: var(--current); transform: translateY(-2px); }
+    .card .shot { width: 120px; border-radius: 14px; box-shadow: none; }
+    .card .num { font-size: 13px; font-weight: 800; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+    .card h3 { margin: 2px 0 6px; font-size: 22px; letter-spacing: -.02em; }
+    .card p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+    .card .by { font-size: 12px; font-weight: 700; color: var(--green-2); background: var(--current-dark); border-radius: 999px; padding: 4px 10px; display: inline-block; }
+    .card .open { display: block; margin-top: 10px; font-weight: 800; color: var(--current); font-size: 14px; }
+
+    footer { padding: 32px 0 64px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+    code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; background: var(--panel-2); padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Coach concepts · design exploration · synthetic data</div>
+      <h1>Ten coaches. Pick one.</h1>
+      <p class="lede">Ten complete reinterpretations of the app as a personal coach. Same colour palette as the shipped app, same workout, same flagged lift — everything else is different. Each one shows the coach catching a lift outside your normal and giving its next best action for today and for next session.</p>
+      <div class="story">
+        <div><b>The session</b>Upper A · week 4 of 6 · bench 4 × 8–10 @ 185 lb, RIR 2</div>
+        <div><b>Last night</b>Sleep 5 h 48 m (avg 7 h 21 m) · HRV 38 ms (baseline 52) · resting HR 61 (baseline 55)</div>
+        <div class="flag"><b>The flag</b>Set 2: 185 × 6 after a 1:32 rest. Expected 8–9 — about 3.4σ beyond your usual drop.</div>
+        <div><b>Next best action</b>Today: 165 × 8 for sets 3–4, full 2:30 rest, incline 3 → 2 sets. Thursday: hold 185.</div>
+      </div>
+      <div class="same">
+        <b>The same in all ten, so you're only choosing the look and feel:</b>
+        a Previous column · W / D / F set flags · tap the check to accept the coach's targets · rest timer that starts on the check with −15s / +15s / Skip · RPE left blank for you · coach changes to later sets shown with one reason line and Undo · a "This was a deload" switch on every exercise and on the session · "Injured, skip" only on a planned session · Fitbit as one quiet "Last night" line, no scores.
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="wrap">
+        <h2>Compare the same moment across all ten</h2>
+        <p class="sub">Pick a moment, then scroll sideways. Click any screen to open that concept.</p>
+        <div class="tabs" role="group" aria-label="Moment to compare">
+          <button type="button" data-show="F1" aria-pressed="false">1 · Lifting</button>
+          <button type="button" data-show="F2" aria-pressed="true">2 · The flag</button>
+          <button type="button" data-show="F3" aria-pressed="false">3 · Next best action today</button>
+          <button type="button" data-show="F4" aria-pressed="false">4 · Plan applied</button>
+          <button type="button" data-show="F5" aria-pressed="false">5 · Next session</button>
+        </div>
+        <div class="strip" id="strip">
+          <a href="01-control-chart.html"><div class="shot"><img data-id="01" src="shots/01-F2.png" alt="Control Chart, the flag"></div><div class="label"><span>01</span>Control Chart</div></a>
+          <a href="02-earpiece.html"><div class="shot"><img data-id="02" src="shots/02-F2.png" alt="Earpiece, the flag"></div><div class="label"><span>02</span>Earpiece</div></a>
+          <a href="03-futures.html"><div class="shot"><img data-id="03" src="shots/03-F2.png" alt="Futures, the flag"></div><div class="label"><span>03</span>Futures</div></a>
+          <a href="04-sentence.html"><div class="shot"><img data-id="04" src="shots/04-F2.png" alt="Sentence, the flag"></div><div class="label"><span>04</span>Sentence</div></a>
+          <a href="05-ambient.html"><div class="shot"><img data-id="05" src="shots/05-F2.png" alt="Ambient, the flag"></div><div class="label"><span>05</span>Ambient</div></a>
+          <a href="06-hypothesis.html"><div class="shot"><img data-id="06" src="shots/06-F2.png" alt="Hypothesis, the flag"></div><div class="label"><span>06</span>Hypothesis</div></a>
+          <a href="07-instrument.html"><div class="shot"><img data-id="07" src="shots/07-F2.png" alt="Instrument, the flag"></div><div class="label"><span>07</span>Instrument</div></a>
+          <a href="08-lint.html"><div class="shot"><img data-id="08" src="shots/08-F2.png" alt="Lint, the flag"></div><div class="label"><span>08</span>Lint</div></a>
+          <a href="09-engine.html"><div class="shot"><img data-id="09" src="shots/09-F2.png" alt="Engine, the flag"></div><div class="label"><span>09</span>Engine</div></a>
+          <a href="10-loaded-bar.html"><div class="shot"><img data-id="10" src="shots/10-F2.png" alt="Loaded Bar, the flag"></div><div class="label"><span>10</span>Loaded Bar</div></a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>The ten directions</h2>
+        <p class="sub">Each is a different answer to “what is a coach, on a phone?” Open one to see all five screens and its honest trade-off.</p>
+        <div class="grid">
+          <a class="card" href="01-control-chart.html"><div class="shot"><img src="shots/01-F2.png" alt=""></div><div><div class="num">01</div><h3>Control Chart</h3><p>Every lift lives inside its own normal band. Logging a set plots it; leaving the band is the flag.</p><span class="by">Built by Sol</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="02-earpiece.html"><div class="shot"><img src="shots/02-F2.png" alt=""></div><div><div class="num">02</div><h3>Earpiece</h3><p>The coach talks in your ear; the screen is one huge live caption and one huge button. The flag arrives like a call.</p><span class="by">Built by Sonnet</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="03-futures.html"><div class="shot"><img src="shots/03-F2.png" alt=""></div><div><div class="num">03</div><h3>Futures</h3><p>Every decision shows the next session it creates. The coach lays out parallel futures and you pick one.</p><span class="by">Built by Sol</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="04-sentence.html"><div class="shot"><img src="shots/04-F2.png" alt=""></div><div><div class="num">04</div><h3>Sentence</h3><p>The workout is one beautifully set paragraph. The coach coaches by rewriting it in front of you.</p><span class="by">Built by Sonnet</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="05-ambient.html"><div class="shot"><img src="shots/05-F2.png" alt=""></div><div><div class="num">05</div><h3>Ambient</h3><p>The coach lives on your lock screen, Dynamic Island, watch and widgets. You never have to open the app.</p><span class="by">Built by Sonnet</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="06-hypothesis.html"><div class="shot"><img src="shots/06-F2.png" alt=""></div><div><div class="num">06</div><h3>Hypothesis</h3><p>Every set is a prediction and every miss is a finding. The next best action is the next test.</p><span class="by">Built by Sonnet</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="07-instrument.html"><div class="shot"><img src="shots/07-F2.png" alt=""></div><div><div class="num">07</div><h3>Instrument</h3><p>A dedicated training device with one Effort knob. The coach turns it with you.</p><span class="by">Built by Sol</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="08-lint.html"><div class="shot"><img src="shots/08-F2.png" alt=""></div><div><div class="num">08</div><h3>Lint</h3><p>The coach lints your training like code: squiggles, rule IDs, and Quick Fixes scoped to today, next time, or both.</p><span class="by">Built by Sol</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="09-engine.html"><div class="shot"><img src="shots/09-F2.png" alt=""></div><div><div class="num">09</div><h3>Engine</h3><p>Chess-engine analysis for your sets: an eval bar, annotated moves, and the best line from here.</p><span class="by">Built by Sol</span><span class="open">Open concept →</span></div></a>
+          <a class="card" href="10-loaded-bar.html"><div class="shot"><img src="shots/10-F2.png" alt=""></div><div><div class="num">10</div><h3>Loaded Bar</h3><p>The interface is the real equipment, loaded with exact plates. The coach coaches by changing what’s on the bar.</p><span class="by">Built by Sonnet</span><span class="open">Open concept →</span></div></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Exploration only — nothing here is loaded by the app, its service worker, or the native payload. Every colour comes from <code>palette.css</code>, a verbatim copy of the shipped app’s tokens, and <code>node coach-concepts/check.js</code> proves it. Screens in this picker are rendered by <code>node coach-concepts/capture.js</code>. All workout and recovery numbers are synthetic.
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var buttons = document.querySelectorAll(".tabs button");
+      var images = document.querySelectorAll("#strip img");
+      var names = { F1: "lifting", F2: "the flag", F3: "next best action today", F4: "plan applied", F5: "next session" };
+      function show(frame) {
+        buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.show === frame)); });
+        images.forEach(function (img) {
+          img.src = "shots/" + img.dataset.id + "-" + frame + ".png";
+          img.alt = img.alt.replace(/,.*$/, ", " + names[frame]);
+        });
+      }
+      buttons.forEach(function (b) { b.addEventListener("click", function () { show(b.dataset.show); }); });
+      document.querySelectorAll("img").forEach(function (img) {
+        img.addEventListener("error", function () {
+          var holder = img.parentNode;
+          if (holder.querySelector(".missing")) return;
+          img.style.display = "none";
+          var note = document.createElement("div");
+          note.className = "missing";
+          note.textContent = "Run node coach-concepts/capture.js to render this screen.";
+          holder.appendChild(note);
+        });
+        img.addEventListener("load", function () {
+          img.style.display = "";
+          var note = img.parentNode.querySelector(".missing");
+          if (note) note.remove();
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

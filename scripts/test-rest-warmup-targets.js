@@ -27,7 +27,8 @@ assert.doesNotMatch(html, /\.timer-skip \{[^}]*(?:var\(--amber\)|var\(--rest-acc
 assert.match(html, /data-timer-progress-label/, "The integrated progress track must include readable remaining time");
 
 assert.match(html, /sequenceIndex: warmupIndex,[\s\S]*setTypeIndex: warmupIndex/, "Template warm-ups must receive stable canonical sequence positions");
-assert.match(html, /factualSetPrefillForWorkoutStart\([\s\S]{0,320}configuredWarmups\.length \+ setNumber - 1/, "Working-set factual prefills must follow every configured warm-up");
+assert.match(html, /function workoutStartRowPreviews\([\s\S]*factualSetPrefillForWorkoutStart\([\s\S]{0,320}configuredWarmups\.length \+ factualPrefills\.length/, "Shared preview/start working-set factual prefills must follow every configured warm-up");
+assert.match(html, /function buildWorkoutStartPlan\([\s\S]*workoutStartRowPreviews\(templateExercise, target, previousRoleSets, data\.settings\)[\s\S]*warmups\.forEach[\s\S]*factualPrefills\.forEach/, "Workout construction must consume warm-up and working rows from the shared projection in canonical order");
 assert.match(html, /function canonicalSetSequence\(set\)/, "Display, progression, and notification navigation need one canonical set order");
 assert.match(html, /return "Warm-Up " \+ \(Math\.max\(0, index\) \+ 1\) \+ " of " \+ warmups\.length/, "Warm-up progress must identify the current and total warm-up count");
 assert.match(html, /const next = data\.sets\.find\(\(set\) => set\.id === completedTimer\.pendingNextSetId\) \|\| nextIncompleteSet/, "Timer completion must advance through the canonical sequence, including warm-ups");

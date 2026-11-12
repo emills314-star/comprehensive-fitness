@@ -251,18 +251,99 @@
           showAppToast("Workout notes must be 4,096 characters or fewer.");
           return false;
         }
-        if (shouldRender) {
-          const draftMutation = session.id === activeWorkoutId && !isSessionSubmitted(session) && !isEditingHistorySession();
-          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
+        const draftMutation = session.id === activeWorkoutId && !isSessionSubmitted(session) && !isEditingHistorySession();
+        if (shouldRender || (draftMutation && session.coachingPrescription)) {
+          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) }, shouldRender, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
           return true;
         }
         const index = dataEntityIndex().sessionIndexById.get(session.id) ?? -1;
         if (index >= 0) {
           data.sessions[index] = { ...data.sessions[index], ...patch, updatedAt: isoNow() };
           if (isEditingHistorySession()) historyEditFlow.dirty = true;
-          else scheduleSave();
+          else scheduleSave({ ordinaryMutation: true });
         }
         return index >= 0;
+      }
+
+      function setSessionDeload(sessionId, isDeload) {
+        if (typeof isDeload !== "boolean") return false;
+        const authorization = guardWorkoutMutation("session-deload", { sessionId });
+        if (!authorization.allowed) return false;
+        const session = authorization.target.session;
+        if (Boolean(session.isDeload) === isDeload) return true;
+        commit({
+          ...data,
+          sessions: data.sessions.map((item) => item.id === session.id ? { ...item, isDeload, updatedAt: isoNow() } : item)
+        }, true, { invalidateAnalysis: true, deferPersistence: authorization.target.authorizationMode !== "history_edit" });
+        return true;
+      }
+
+      function setExerciseDeload(exerciseId, isDeload) {
+        if (typeof isDeload !== "boolean") return false;
+        const authorization = guardWorkoutMutation("exercise-deload", { exerciseId });
+        if (!authorization.allowed) return false;
+        const exercise = authorization.target.exercise;
+        if (Boolean(exercise.isDeload) === isDeload) return true;
+        patchExercise(exercise.id, { isDeload });
+        return true;
+      }
+
+      function nextScheduledWorkoutOccurrence(model, afterDate = new Date()) {
+        const date = new Date(afterDate.getFullYear(), afterDate.getMonth(), afterDate.getDate());
+        if (!Number.isFinite(date.getTime())) return null;
+        for (let offset = 1; offset <= 7; offset += 1) {
+          date.setDate(date.getDate() + 1);
+          const scheduled = scheduledTemplatesForToday(model, date);
+          if (!scheduled.length) continue;
+          return { date: localDateIso(date), routines: scheduled };
+        }
+        return null;
+      }
+
+      function guardInjurySkipMutation(action, identifiers = {}, notify = true) {
+        const blocked = (reason, message) => {
+          if (notify) showAppToast(message);
+          return { allowed: false, reason, message };
+        };
+        if (historyEditFlow) return blocked("history_edit_in_progress", "Finish editing workout history before changing an injury skip.");
+        const records = data.skippedSessions || [];
+        if (action === "record-injury-skip") {
+          if (records.length >= 100000) return blocked("skip_limit", "The injury skip record limit has been reached.");
+          if (identifiers.date !== todayIso()) return blocked("not_today", "An injury skip can be recorded only for today.");
+          const routine = data.templates.find((template) => template.id === identifiers.routineId);
+          if (!routine) return blocked("unknown_routine", "The requested routine no longer exists.");
+          if (typeof routine.name !== "string" || !routine.name.trim() || routine.name.length > 256) {
+            return blocked("invalid_routine_name", "The routine needs a name of 1 to 256 characters before recording a skip.");
+          }
+          if (records.some((record) => record.routineId === routine.id && record.date === identifiers.date)) {
+            return blocked("duplicate_occurrence", "This routine is already marked skipped for today.");
+          }
+          return { allowed: true, routine, date: identifiers.date };
+        }
+        if (action === "undo-injury-skip") {
+          const record = records.find((item) => item.id === identifiers.id);
+          if (!record) return blocked("unknown_skip", "The requested injury skip no longer exists.");
+          if (record.date !== todayIso()) return blocked("not_today", "An injury skip can be undone only on the day it was recorded.");
+          return { allowed: true, record };
+        }
+        return blocked("unknown_action", "The requested injury skip action is invalid.");
+      }
+
+      function recordInjurySkip(routineId, date) {
+        const authorization = guardInjurySkipMutation("record-injury-skip", { routineId, date });
+        if (!authorization.allowed) return false;
+        const localDate = new Date(date + "T12:00:00");
+        const scheduled = scheduledTemplatesForToday(data, localDate).some((routine) => routine.id === routineId);
+        const record = { id: id(), date, routineId, routineName: authorization.routine.name, dayId: scheduled ? localWeekdayKey(localDate) : "unscheduled", reason: "injury", createdAt: isoNow() };
+        commit({ ...data, skippedSessions: [...(data.skippedSessions || []), record] }, true, { invalidateAnalysis: false });
+        return record;
+      }
+
+      function undoInjurySkip(skipId) {
+        const authorization = guardInjurySkipMutation("undo-injury-skip", { id: skipId });
+        if (!authorization.allowed) return false;
+        commit({ ...data, skippedSessions: data.skippedSessions.filter((record) => record.id !== authorization.record.id) }, true, { invalidateAnalysis: false });
+        return true;
       }
 
       function patchRecovery(patch, shouldRender = true) {
@@ -281,15 +362,15 @@
           } : {}),
           updatedAt: isoNow()
         };
-        if (shouldRender) {
-          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? nextSession : item) }, true, { invalidateAnalysis: !activeDraft, deferPersistence: activeDraft });
+        if (shouldRender || (activeDraft && session.coachingPrescription)) {
+          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? nextSession : item) }, shouldRender, { invalidateAnalysis: !activeDraft, deferPersistence: activeDraft });
           return;
         }
         const index = dataEntityIndex().sessionIndexById.get(session.id) ?? -1;
         if (index < 0) return;
         data.sessions[index] = nextSession;
         if (isEditingHistorySession()) historyEditFlow.dirty = true;
-        else scheduleSave();
+        else scheduleSave({ ordinaryMutation: true });
       }
 
       function setExpectedTemplate(templateId) {
@@ -442,7 +523,7 @@
         const updateTarget = (existing, target, sequenceIndex, setNumber, setTypeIndex) => {
           const midpoint = Math.round((target.repMin + target.repMax) / 2);
           const base = existing || createSet(exercise.id, setNumber, target.existing || {});
-          return {
+          const updated = {
             ...base,
             setNumber,
             sequenceIndex,
@@ -452,8 +533,6 @@
             setType: target.type,
             isWarmup: target.type === "warmup",
             countsTowardProgression: target.type !== "warmup",
-            reps: midpoint,
-            rpe: target.targetRpeMax,
             targetReps: midpoint,
             targetRepMin: target.repMin,
             targetRepMax: target.repMax,
@@ -466,6 +545,7 @@
             completed: false,
             skipped: false
           };
+          return updated;
         };
 
         const nextWarmups = warmups.map((set, index) => set.completed
@@ -517,12 +597,13 @@
           overrideLocked: true
         };
 
-        commit({
+        const applied = commit({
           ...data,
           sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
           exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
           sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...nextWarmups.filter((set) => !set.completed), ...nextIncomplete]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
+        if (applied === false) return false;
         showAppToast("Exercise targets applied to unfinished sets in this workout.");
       }
 
@@ -532,17 +613,18 @@
           showAppToast("Exercise notes must be 4,096 characters or fewer.");
           return false;
         }
-        if (shouldRender) {
-          const exercise = exerciseById(exerciseId);
-          const draftMutation = exercise?.sessionId === activeWorkoutId && !isEditingHistorySession();
-          commit({ ...data, exercises: data.exercises.map((item) => item.id === exerciseId ? { ...item, ...patch } : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
+        const exercise = exerciseById(exerciseId);
+        const draftMutation = exercise?.sessionId === activeWorkoutId && !isEditingHistorySession();
+        const coachedDraft = draftMutation && data.sessions.some((session) => session.id === exercise.sessionId && session.coachingPrescription && !isSessionSubmitted(session));
+        if (shouldRender || coachedDraft) {
+          commit({ ...data, exercises: data.exercises.map((item) => item.id === exerciseId ? { ...item, ...patch } : item) }, shouldRender, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
           return true;
         }
         const index = dataEntityIndex().exerciseIndexById.get(exerciseId) ?? -1;
         if (index >= 0) {
           data.exercises[index] = { ...data.exercises[index], ...patch };
           if (isEditingHistorySession()) historyEditFlow.dirty = true;
-          else scheduleSave();
+          else scheduleSave({ ordinaryMutation: true });
         }
         return index >= 0;
       }
@@ -646,6 +728,7 @@
 
         let exercises;
         let sets;
+        const reparentedSetIds = new Map();
         if (!hasRecordedWork) {
           exercises = data.exercises.map((item) => item.id === exercise.id ? baseReplacement : item);
           sets = data.sets.map((set) => {
@@ -667,7 +750,12 @@
           sets = data.sets.map((set) => {
             if (!incompleteIds.has(set.id)) return set;
             const { previousComparableSet, ...current } = set;
-            return { ...current, exerciseId: replacementId, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+            // A frozen plan keeps its original ownership. Referenced rows moved
+            // to another exercise get fresh IDs; the old IDs become deletions.
+            const prescribed = session.coachingPrescription?.sets?.some((row) => row.setId === set.id);
+            const setId = prescribed ? id() : set.id;
+            if (setId !== set.id) reparentedSetIds.set(set.id, setId);
+            return { ...current, id: setId, exerciseId: replacementId, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
           });
           if (!incompleteIds.size) {
             const stable = exercise.stableTargetSnapshot || {};
@@ -689,9 +777,6 @@
               setType: normalizeSetTypeCode(source.setType, false) === "warmup" ? "straight" : normalizeSetTypeCode(source.setType, false),
               isWarmup: false,
               countsTowardProgression: true,
-              reps: source.targetReps ?? "",
-              weight: source.targetWeight ?? 0,
-              rpe: source.targetRpe ?? "",
               targetReps: source.targetReps,
               targetRepMin: source.targetRepMin,
               targetRepMax: source.targetRepMax,
@@ -700,7 +785,7 @@
               targetRpeMin: source.targetRpeMin,
               targetRpeMax: source.targetRpeMax,
               targetRpeTolerance: source.targetRpeTolerance,
-              targetRestSeconds: source.targetRestSeconds || exercise.restSeconds,
+              targetRestSeconds: source.targetRestSeconds ?? exercise.restSeconds,
               originalTargetReps: source.originalTargetReps ?? source.targetReps,
               originalTargetWeight: source.originalTargetWeight ?? source.targetWeight,
               originalTargetRpe: source.originalTargetRpe ?? source.targetRpe,
@@ -713,14 +798,16 @@
           }
         }
 
-        entityStructureRevision += 1;
-        entityIndexCache = null;
-        commit({
+        activeSetId = reparentedSetIds.get(activeSetId) || activeSetId;
+        pendingNextSetId = reparentedSetIds.get(pendingNextSetId) || pendingNextSetId;
+        if (timer && reparentedSetIds.has(timer.pendingNextSetId)) timer = { ...timer, pendingNextSetId: reparentedSetIds.get(timer.pendingNextSetId) };
+        const applied = commit({
           ...data,
           sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
           exercises,
           sets
         }, true, { invalidateAnalysis: false, deferPersistence: true });
+        if (applied === false) return false;
         showAppToast(hasRecordedWork
           ? `${name} added next; completed work remains under ${exercise.name}.`
           : `${name} will be logged for this workout. The routine is unchanged.`);
@@ -748,16 +835,21 @@
       function patchSet(setId, patch, shouldRender = true) {
         const applyPatch = (set) => {
           const updated = { ...set, ...patch };
+          for (const field of ["loadSource", "repsSource", "rpeSource"]) {
+            if (Object.prototype.hasOwnProperty.call(patch, field) && patch[field] == null) delete updated[field];
+          }
+          if (set.completionOrder !== undefined) updated.completionOrder = set.completionOrder;
           if (!Object.prototype.hasOwnProperty.call(patch, "setType")) return updated;
           delete updated.countsTowardScore;
           delete updated.countsTowardVolume;
           return updated;
         };
-        if (shouldRender) {
-          const set = setById(setId);
-          const exercise = set ? exerciseById(set.exerciseId) : null;
-          const draftMutation = exercise?.sessionId === activeWorkoutId && !isEditingHistorySession();
-          commit({ ...data, sets: data.sets.map((item) => item.id === setId ? applyPatch(item) : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
+        const set = setById(setId);
+        const exercise = set ? exerciseById(set.exerciseId) : null;
+        const draftMutation = exercise?.sessionId === activeWorkoutId && !isEditingHistorySession();
+        const coachedDraft = draftMutation && data.sessions.some((session) => session.id === exercise.sessionId && session.coachingPrescription && !isSessionSubmitted(session));
+        if (shouldRender || coachedDraft) {
+          commit({ ...data, sets: data.sets.map((item) => item.id === setId ? applyPatch(item) : item) }, shouldRender, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
           return;
         }
         const index = dataEntityIndex().setIndexById.get(setId) ?? -1;
@@ -771,7 +863,7 @@
             invalidateCompletedAnalysis();
           } else {
             data.sets[index] = updatedSet;
-            scheduleSave();
+            scheduleSave({ ordinaryMutation: true });
           }
         }
       }
@@ -831,7 +923,8 @@
         const exercise = set ? exerciseById(set.exerciseId) : null;
         if (!set || !exercise) return false;
         const resistanceType = resistanceTypeFor(exercise, set);
-        const numeric = Number(value);
+        const blank = value == null || (typeof value === "string" && value.trim() === "");
+        const numeric = blank ? "" : Number(value);
         const domains = {
           reps: { min: 0, integer: true, label: "Reps" },
           weight: { min: 0, label: "Load" },
@@ -842,11 +935,11 @@
         const domain = domains[field];
         const steps = domain?.step == null ? 0 : (numeric - domain.min) / domain.step;
         const invalid = !domain
-          || !Number.isFinite(numeric)
-          || numeric < domain.min
-          || (domain.max != null && numeric > domain.max)
-          || (domain.integer && !Number.isInteger(numeric))
-          || (domain.step != null && Math.abs(steps - Math.round(steps)) > 1e-9);
+          || (!blank && (!Number.isFinite(numeric)
+            || numeric < domain.min
+            || (domain.max != null && numeric > domain.max)
+            || (domain.integer && !Number.isInteger(numeric))
+            || (domain.step != null && Math.abs(steps - Math.round(steps)) > 1e-9)));
         if (invalid) {
           const range = domain?.max == null ? `${domain?.min ?? 0} or greater` : `${domain.min} to ${domain.max}`;
           const increment = domain?.step == null ? "" : ` in ${domain.step} increments`;
@@ -854,21 +947,31 @@
           return false;
         }
         if (!editingHistory) acknowledgeActiveSet(setId);
-        if (editingHistory && Number(set?.[field]) === numeric) return;
+        const repObservation = ["reps", "durationSeconds", "distance"].includes(field);
+        const sourceField = field === "weight" ? "loadSource" : repObservation ? "repsSource" : field === "rpe" ? "rpeSource" : "";
+        const touchedField = field === "weight" ? "loadTouched" : repObservation ? "repsTouched" : field === "rpe" ? "rpeTouched" : "";
+        const source = blank ? undefined : field === "rpe" ? "typed" : "entered";
+        if (editingHistory && set[field] === numeric && (!sourceField || (set[sourceField] === source && set[touchedField] === true))) return true;
         if (editingHistory) shouldRender = false;
         if (shouldRender) logWorkoutOverride(exercise, field === "weight" ? "load" : field, set?.[`target${field.charAt(0).toUpperCase() + field.slice(1)}`] ?? set?.[field], numeric, { setId });
         const patch = { [field]: numeric, edited: true };
-        if (field === "weight") patch.weightUnit = data.settings.weightUnit;
+        if (sourceField) patch[sourceField] = source ?? null;
+        if (touchedField) patch[touchedField] = true;
+        if (field === "weight") patch.weightUnit = ["lb", "kg"].includes(set.weightUnit) ? set.weightUnit : data.settings.weightUnit;
         if (field === "weight" && resistanceType === "bodyweight_plus_load") patch.addedLoad = numeric;
         if (field === "weight" && resistanceType === "assisted_bodyweight") patch.assistanceLoad = numeric;
         patchSet(setId, patch, shouldRender);
+        if (!blank) clearLoadedBarPrompt(setId, field);
         return true;
       }
 
       function completedSetReconcileState(set, exercise) {
-        if (!set || !exercise || setTypeSemantics(set).isWarmup) return null;
+        if (!set || !exercise || !set.completed || set.skipped || setTypeSemantics(set).isWarmup) return null;
+        if (coachingTargetsForSession(sessionById(exercise.sessionId)).visible) return null;
         const remainingSets = setsForExercise(exercise.id).filter((item) =>
-          item.id !== set.id && isWorkingSet(item) && !item.completed && !item.skipped
+          item.id !== set.id && isWorkingSet(item) && !item.completed && !item.skipped && !item.edited
+            && !item.loadTouched && !item.repsTouched && !item.rpeTouched
+            && ![item.loadSource, item.repsSource].includes("entered")
         );
         if (!remainingSets.length) return null;
         const fields = [];
@@ -881,8 +984,6 @@
         const targetRepMin = Number(set.targetRepMin || set.targetReps || 0);
         const targetRepMax = Number(set.targetRepMax || set.targetReps || 0);
         if (targetRepMin > 0 && targetRepMax > 0 && (Number(set.reps || 0) < targetRepMin || Number(set.reps || 0) > targetRepMax)) fields.push("reps");
-        const targetRpe = Number(set.targetRpe || set.targetRpeMax || set.targetRpeMin || 0);
-        if (targetRpe > 0 && Number(set.rpe || 0) > 0 && Math.abs(Number(set.rpe) - targetRpe) > 1) fields.push("rpe");
         return fields.length ? { setId: set.id, fields, remainingSetCount: remainingSets.length } : null;
       }
 
@@ -890,7 +991,9 @@
         const exercise = exerciseById(exerciseId);
         const pending = exercise?.pendingReconcile;
         const sourceSet = pending ? setById(pending.setId) : null;
-        if (!exercise || !pending || !sourceSet) return;
+        if (!exercise || !pending || !sourceSet || !sourceSet.completed || sourceSet.skipped) return;
+        if (!guardWorkoutMutation(applyToRemaining ? "reconcile-apply" : "reconcile-dismiss", { exerciseId }).allowed
+          || coachingTargetsForSession(sessionById(exercise.sessionId)).visible) return;
         if (!applyToRemaining) {
           patchSet(sourceSet.id, { deviationIntent: "one_off" }, false);
           patchExercise(exercise.id, { pendingReconcile: null }, false);
@@ -900,33 +1003,20 @@
         }
         const fields = new Set(pending.fields || []);
         const resistanceType = resistanceTypeFor(exercise, sourceSet);
-        const sourceSetPatch = { deviationIntent: "accepted" };
         const targetPatch = {};
         if (fields.has("load")) {
-          const load = resistanceLoad(sourceSet, resistanceType);
-          sourceSetPatch.targetWeight = load;
-          targetPatch.targetWeight = load;
+          targetPatch.targetWeight = storedResistanceLoad(sourceSet, resistanceType);
         }
         if (fields.has("reps")) {
           const reps = Number(sourceSet.reps || 0);
-          sourceSetPatch.targetReps = reps;
-          sourceSetPatch.targetRepMin = reps;
-          sourceSetPatch.targetRepMax = reps;
           targetPatch.targetReps = reps;
           targetPatch.targetRepMin = reps;
           targetPatch.targetRepMax = reps;
         }
-        if (fields.has("rpe")) {
-          const rpe = Number(sourceSet.rpe || 0);
-          sourceSetPatch.targetRpe = rpe;
-          sourceSetPatch.targetRpeMin = rpe;
-          sourceSetPatch.targetRpeMax = rpe;
-          targetPatch.targetRpe = rpe;
-          targetPatch.targetRpeMin = rpe;
-          targetPatch.targetRpeMax = rpe;
-        }
         const remainingSets = setsForExercise(exercise.id).filter((set) =>
-          set.id !== sourceSet.id && isWorkingSet(set) && !set.completed && !set.skipped
+          set.id !== sourceSet.id && isWorkingSet(set) && !set.completed && !set.skipped && !set.edited
+            && !set.loadTouched && !set.repsTouched && !set.rpeTouched
+            && ![set.loadSource, set.repsSource].includes("entered")
         );
         const beforeTargets = remainingSets.map((set) => ({
           setId: set.id,
@@ -936,27 +1026,18 @@
           targetRpeMin: Number(set.targetRpeMin ?? set.targetRpe ?? 0),
           targetRpeMax: Number(set.targetRpeMax ?? set.targetRpe ?? 0)
         }));
-        const afterTargets = remainingSets.map((set) => ({ setId: set.id, ...targetPatch }));
+        const patchForRow = (set) => ({ ...targetPatch, ...(Object.prototype.hasOwnProperty.call(targetPatch, "targetWeight")
+          ? { targetWeight: Number(convertWeightValue(targetPatch.targetWeight, sourceSet.weightUnit || data.settings.weightUnit, set.weightUnit || data.settings.weightUnit)) } : {}) });
+        const afterTargets = remainingSets.map((set) => ({ setId: set.id, ...patchForRow(set) }));
         logWorkoutOverride(exercise, "remainingSetTargets", beforeTargets, afterTargets, {
           setId: sourceSet.id,
           reason: "Apply completed set values to remaining targets"
         });
         const remainingIds = new Set(remainingSets.map((set) => set.id));
         const sets = data.sets.map((set) => {
-          if (set.id === sourceSet.id) return { ...set, ...sourceSetPatch, manualOverride: true };
+          if (set.id === sourceSet.id) return { ...set, deviationIntent: "accepted", manualOverride: true };
           if (!remainingIds.has(set.id)) return set;
-          const inputPatch = {};
-          if (!set.edited) {
-            if (fields.has("load")) {
-              const load = resistanceLoad(sourceSet, resistanceType);
-              inputPatch.weight = load;
-              if (resistanceType === "bodyweight_plus_load") inputPatch.addedLoad = load;
-              if (resistanceType === "assisted_bodyweight") inputPatch.assistanceLoad = load;
-            }
-            if (fields.has("reps")) inputPatch.reps = Number(sourceSet.reps || 0);
-            if (fields.has("rpe")) inputPatch.rpe = Number(sourceSet.rpe || 0);
-          }
-          return { ...set, ...targetPatch, ...inputPatch, manualOverride: true };
+          return { ...set, ...patchForRow(set) };
         });
         commit({
           ...data,
@@ -966,6 +1047,56 @@
         showAppToast("Remaining set targets updated from the completed set.");
       }
 
+      function firstSetCompletionPatch(set, sessionId) {
+        const patch = {};
+        if (set.completionOrder === undefined) {
+          const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === sessionId).map((exercise) => exercise.id));
+          const maximum = data.sets.reduce((current, row) => exerciseIds.has(row.exerciseId) && Number.isSafeInteger(row.completionOrder)
+            ? Math.max(current, row.completionOrder) : current, 0);
+          patch.completionOrder = maximum + 1;
+        }
+        return patch;
+      }
+
+      function acceptedSetObservationPatch(set, exercise) {
+        const type = resistanceTypeFor(exercise, set);
+        const targets = loadedBarTargetsForSet(set, exercise);
+        const blank = (value) => value == null || (typeof value === "string" && value.trim() === "");
+        const patch = {};
+        const accept = (field, actual, target, sourceField, coach, prompt, required = true) => {
+          if (!blank(actual)) return true;
+          const validTarget = !blank(target) && Number.isFinite(Number(target)) && Number(target) >= 0
+            && (!["reps", "durationSeconds"].includes(field) || Number.isInteger(Number(target)));
+          if (!validTarget) {
+            if (!required) return true;
+            promptLoadedBarField(set, field, prompt);
+            return false;
+          }
+          patch[field] = Number(target);
+          if (sourceField) patch[sourceField] = coach ? "accepted_target" : "prefill_previous";
+          return true;
+        };
+        if (type === "duration") {
+          if (!accept("durationSeconds", set.durationSeconds, targets.durationSeconds, "repsSource", false, "Enter duration")) return null;
+        } else if (type === "distance") {
+          if (!accept("distance", set.distance, targets.distance, "repsSource", false, "Enter distance")) return null;
+        } else {
+          const actualLoad = type === "bodyweight_plus_load" ? set.addedLoad ?? set.weight
+            : type === "assisted_bodyweight" ? set.assistanceLoad ?? set.weight : set.weight;
+          if (type !== "bodyweight") {
+            if (!accept("weight", actualLoad, targets.weight, "loadSource", targets.coachLoad === true, "Enter load", type !== "assisted_bodyweight")) return null;
+            if (Object.prototype.hasOwnProperty.call(patch, "weight")) {
+              if (type === "bodyweight_plus_load") patch.addedLoad = patch.weight;
+              if (type === "assisted_bodyweight") patch.assistanceLoad = patch.weight;
+            }
+          }
+          if (!accept("reps", set.reps, targets.reps, "repsSource", targets.coachReps === true, "Enter reps")) return null;
+        }
+        // RPE is an observation supplied by the owner, never part of acceptance.
+        clearLoadedBarPrompt(set.id);
+        return patch;
+      }
+
       function toggleSetCompletion(setId) {
         if (completingSetIds.has(setId)) return;
         const interactionStartedAt = performanceNow();
@@ -973,8 +1104,11 @@
         if (!authorization.allowed) return;
         const set = authorization.target.set;
         const completing = !set.completed;
+        const exercise = authorization.target.exercise || exerciseById(set.exerciseId);
+        const observations = completing ? acceptedSetObservationPatch(set, exercise) : {};
+        if (observations === null) return false;
         if (authorization.target.authorizationMode === "history_edit") {
-          patchSet(set.id, { completed: completing, skipped: false, edited: true });
+          patchSet(set.id, { ...observations, ...(completing ? firstSetCompletionPatch(set, authorization.target.session.id) : {}), completed: completing, skipped: false, edited: true });
           return;
         }
         if (!completing) {
@@ -989,18 +1123,19 @@
         completingSetIds.add(setId);
         try {
           const next = nextIncompleteSet(set.id);
-          const exercise = exerciseById(set.exerciseId);
-          const pendingReconcile = completedSetReconcileState(set, exercise);
+          const pendingReconcile = completedSetReconcileState({ ...set, ...observations, completed: true, skipped: false }, exercise);
           const completedAt = isoNow();
+          const completionPatch = firstSetCompletionPatch(set, exercise.sessionId);
           commit({
             ...data,
-            sets: data.sets.map((item) => item.id === set.id ? { ...item, completed: true, skipped: false, completedAt } : item),
+            sets: data.sets.map((item) => item.id === set.id ? { ...item, ...observations, ...completionPatch, completed: true, skipped: false, completedAt } : item),
             exercises: pendingReconcile ? data.exercises.map((item) => item.id === exercise.id ? { ...item, pendingReconcile } : item) : data.exercises
           }, false, { invalidateAnalysis: false, deferPersistence: true });
+          workoutFocusExerciseId = next?.exerciseId || exercise.id;
           applyCompletedSetVisual(set.id);
           if (pendingReconcile) syncReconcilePromptDom(exercise.id);
-          if (next && data.settings.autoStartRestTimer !== false) {
-            startTimer(exercise?.id || set.exerciseId, set.id, { pendingNextSetId: next.id, deferRender: true });
+          if (data.settings.autoStartRestTimer !== false) {
+            startTimer(exercise?.id || set.exerciseId, set.id, { pendingNextSetId: next?.id || "", deferRender: true });
             persistActiveWorkoutDraft();
             renderAfterInteractionFrame();
             recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: true });
@@ -1064,6 +1199,18 @@
         const repMaxes = workSets.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         const repMin = repMins.length ? Math.min(...repMins) : Number(representative.targetRepMin || representative.targetReps || representative.reps || 1);
         const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(representative.targetRepMax || representative.targetReps || representative.reps || repMin);
+        const roleMetadataFields = ["increment", "incrementUnit", "defaultLoad", "targetLoad", "defaultReps", "weight", "weightUnit", "reps"];
+        const existingRoles = templateExercise.setTypes || [];
+        const setTypes = templateSetTypesFromHistory(workSets, exercise.restSeconds).map((role) => {
+          const sameIdentity = existingRoles.filter((existing) => existing.id && existing.id === role.id
+            && normalizeSetTypeCode(existing.type || existing.setType) === normalizeSetTypeCode(role.type));
+          const sameType = existingRoles.filter((existing) => normalizeSetTypeCode(existing.type || existing.setType) === normalizeSetTypeCode(role.type));
+          const matches = sameIdentity.length ? sameIdentity : sameType;
+          if (matches.length !== 1) return role;
+          const metadata = Object.fromEntries(roleMetadataFields.filter((field) => Object.prototype.hasOwnProperty.call(matches[0], field))
+            .map((field) => [field, matches[0][field]]));
+          return { ...role, ...metadata };
+        });
         patchTemplateExercise(template.id, templateExercise.id, {
           name: exercise.name,
           ...exerciseIdentityFields(exercise),
@@ -1073,7 +1220,7 @@
           repMax,
           targetRpe: Number(representative.targetRpe ?? representative.targetRpeMax) || Number(representative.rpe) || Number(templateExercise.targetRpe) || 8,
           restSeconds: exercise.restSeconds,
-          setTypes: templateSetTypesFromHistory(workSets, exercise.restSeconds),
+          setTypes,
           warmups: warmupSets.map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe })),
           customExerciseProfile: exercise.customExerciseProfile ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : undefined
         });
@@ -1357,7 +1504,7 @@
         });
       }
 
-      function stableSetTypesForWorkoutStart(templateExercise, target) {
+      function stableSetTypesForWorkoutStart(templateExercise, target, settings = data.settings) {
         const sourceTypes = (templateExercise.setTypes || [])
           .filter((type) => type.countsTowardProgression !== false && !type.isWarmup)
           .map((type) => ({ ...type, type: normalizeSetTypeCode(type.type || type.setType) }));
@@ -1369,7 +1516,7 @@
           repMax: Math.max(1, Number(templateExercise.repMax || templateExercise.reps || 1)),
           rpeMin: Math.max(1, Number(templateExercise.targetRpe || 8) - 1),
           rpeMax: Math.max(1, Number(templateExercise.targetRpe || 8)),
-          restSeconds: Math.max(0, Number(templateExercise.restSeconds || data.settings.defaultRestSeconds || 90)),
+          restSeconds: Math.max(0, Number(templateExercise.restSeconds || settings.defaultRestSeconds || 90)),
           countsTowardProgression: true
         };
         const stableTypes = sourceTypes.length ? sourceTypes : [fallback];
@@ -1392,21 +1539,25 @@
             repMax: Math.max(1, Number(type.repMax || templateExercise.repMax || templateExercise.reps || 1)),
             rpeMin: rpeCeiling ? Math.min(stableRpeMin, Math.max(1, rpeCeiling - 1)) : stableRpeMin,
             rpeMax,
-            restSeconds: Math.max(0, Number(type.restSeconds || templateExercise.restSeconds || data.settings.defaultRestSeconds || 90)),
+            restSeconds: Math.max(0, Number(type.restSeconds ?? templateExercise.restSeconds ?? settings.defaultRestSeconds ?? 90)),
             countsTowardProgression: type.countsTowardProgression !== false
           };
         }).filter((type) => type.setCount > 0);
       }
 
-      function factualSetPrefillForWorkoutStart(templateExercise, target, setType, setTypeIndex, sequenceIndex, previousSets) {
+      function factualSetPrefillForWorkoutStart(templateExercise, target, setType, setTypeIndex, sequenceIndex, previousSets, settings = data.settings) {
         const role = normalizeSetTypeCode(setType.type || setType.setType);
         const sameRole = (previousSets || []).filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role);
         const previousComparableSet = sameRole.find((set) => Number(set.setTypeIndex || 0) === Number(setTypeIndex || 0))
           || sameRole[Number(setTypeIndex || 0)]
           || null;
         const resistanceType = target.resistanceType || templateExercise.resistanceType || "external";
-        const routineLoad = Number(setType.defaultLoad ?? setType.targetLoad ?? templateExercise.defaultLoad ?? templateExercise.targetLoad ?? templateExercise.weight ?? 0);
-        const priorLoad = previousComparableSet ? resistanceLoad(previousComparableSet, resistanceType) : 0;
+        const available = (value) => value != null && value !== "" && Number.isFinite(Number(value));
+        const configuredLoad = setType.targetLoad ?? templateExercise.defaultLoad ?? templateExercise.targetLoad ?? templateExercise.weight;
+        const routineLoad = setType.defaultLoad != null
+          ? Number(convertWeightValue(setType.defaultLoad.value, setType.defaultLoad.unit, settings.weightUnit))
+          : available(configuredLoad) ? Number(configuredLoad) : "";
+        const priorLoad = previousComparableSet ? Number(convertWeightValue(storedResistanceLoad(previousComparableSet, resistanceType), previousComparableSet.weightUnit || settings.weightUnit, settings.weightUnit)) : 0;
         const factualLoad = previousComparableSet ? priorLoad : routineLoad;
         const reductionPercent = target.adjusted ? Math.max(0, Math.min(100, Number(target.loadReductionPercent || 0))) : 0;
         const weight = factualLoad > 0 && reductionPercent > 0
@@ -1415,28 +1566,24 @@
               Number(setType.increment || templateExercise.increment || 1)
             )
           : factualLoad;
-        const routineReps = Number(setType.defaultReps ?? templateExercise.defaultReps ?? templateExercise.reps ?? 0);
-        const reps = Number(previousComparableSet?.reps || 0) || routineReps || "";
+        const routineReps = setType.defaultReps ?? templateExercise.defaultReps ?? templateExercise.reps;
+        const previousReps = resistanceType === "duration" ? previousComparableSet?.durationSeconds ?? previousComparableSet?.reps
+          : resistanceType === "distance" ? previousComparableSet?.distance ?? previousComparableSet?.reps : previousComparableSet?.reps;
+        const reps = available(previousReps) ? Number(previousReps) : available(routineReps) ? Number(routineReps) : "";
         const stableRpeMax = Math.max(1, Number(setType.rpeMax || templateExercise.targetRpe || 8));
         const stableRpeMin = Math.max(1, Number(setType.rpeMin || stableRpeMax - 1));
-        const priorRpe = Number(previousComparableSet?.rpe || 0);
-        const routineRpe = Number(setType.defaultRpe ?? templateExercise.defaultRpe ?? templateExercise.targetRpe ?? 0);
-        const factualRpe = priorRpe || routineRpe || "";
-        const rpe = target.adjusted && Number(target.rpe || 0) > 0 && Number(factualRpe || 0) > 0
-          ? Math.min(Number(factualRpe), Number(target.rpe))
-          : factualRpe;
         return {
           sequenceIndex,
           setTypeIndex,
           setType: role,
           weight,
           reps,
-          rpe,
+          rpe: "",
           repMin: Math.max(1, Number(setType.repMin || templateExercise.repMin || templateExercise.reps || 1)),
           repMax: Math.max(1, Number(setType.repMax || templateExercise.repMax || templateExercise.reps || 1)),
           rpeMin: Math.max(1, Number(setType.rpeMin || stableRpeMin)),
           rpeMax: Math.max(1, Number(setType.rpeMax || stableRpeMax)),
-          restSeconds: Math.max(0, Number(setType.restSeconds || templateExercise.restSeconds || data.settings.defaultRestSeconds || 90)),
+          restSeconds: Math.max(0, Number(setType.restSeconds ?? templateExercise.restSeconds ?? settings.defaultRestSeconds ?? 90)),
           previousComparableSet
         };
       }
@@ -1467,38 +1614,31 @@
         invalidateCompletedAnalysis();
       }
 
-      function startTemplate(templateId, recovery = defaultRecovery(), readinessMode = "usual", options = {}) {
-        const template = data.templates.find((item) => item.id === templateId);
-        if (!template) return;
-        if (!Array.isArray(template.exercises) || template.exercises.length === 0) {
-          templateStartFlow = null;
-          optionalReadinessFlow = null;
-          showAppToast("Add at least one exercise before starting this template.");
-          render();
-          return;
-        }
-        if (hasActiveWorkout()) {
-          const running = activeWorkoutSession();
-          if (running?.templateId !== templateId && !activeWorkoutHasLoggedProgress(running)) {
-            removeEmptyActiveWorkoutForReplacement(running);
-          } else {
-          captureDialogFocusOrigin("template");
-          templateStartFlow = { templateId, step: "active-conflict", draft: cleanRecovery(recovery) };
-          render();
-          return;
+      // Pure row-target projection: explicit inputs only; no IDs, engine, storage or observations written.
+      // Both the real start and Today/preview construction consume this result.
+      function workoutStartRowPreviews(templateExercise, target, previousRoleSets, settings) {
+        const resolvedTypes = stableSetTypesForWorkoutStart(templateExercise, target, settings);
+        const configuredWarmups = templateExercise.warmups || [];
+        const previousWarmups = previousRoleSets.filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === "warmup");
+        const warmups = configuredWarmups.map((warmup, warmupIndex) => ({ ...warmup,
+          sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex,
+          sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex,
+          resistanceType: target.resistanceType || templateExercise.resistanceType,
+          completed: false, isWarmup: true, setType: "warmup", countsTowardProgression: false,
+          previousComparableSet: previousWarmups.find((set) => Number(set.setTypeIndex || 0) === warmupIndex) || previousWarmups[warmupIndex] || null
+        }));
+        const factualPrefills = [];
+        resolvedTypes.forEach((setType) => {
+          for (let typeSetIndex = 0; typeSetIndex < setType.setCount; typeSetIndex += 1) {
+            factualPrefills.push(factualSetPrefillForWorkoutStart(templateExercise, target, setType, typeSetIndex,
+              configuredWarmups.length + factualPrefills.length, previousRoleSets, settings));
           }
-        }
-        const currentSession = activeSession();
-        const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong" && !isSessionSubmitted(currentSession);
-        const session = replaceCurrent
-          ? { ...currentSession, title: template.name, templateId: template.id, recovery: cleanRecovery(recovery), readinessMode, submitted: false, submittedAt: "", workoutStarted: true, workoutState: "active", prs: [], updatedAt: isoNow() }
-          : createSession(template.name, { started: true });
-        session.templateId = template.id;
-        session.workoutStarted = true;
-        session.workoutState = "active";
-        session.recovery = cleanRecovery(recovery);
-        session.readinessMode = readinessMode;
-        session.resolvedActions = measurePerformance("workoutStart:exceptionResolver", () => resolveWorkoutExceptions(session, recovery), { templateId: template.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) });
+        });
+        return { warmups, factualPrefills };
+      }
+
+      // Prepares unpersisted rows. Start and the read-only preview use the same construction.
+      function buildWorkoutStartPlan(template, session) {
         const exercises = [];
         const sets = [];
         let adjustedLiftCount = 0;
@@ -1528,27 +1668,51 @@
             includeWarmups: true
           });
           const configuredWarmups = templateExercise.warmups || [];
-          const previousWarmups = previousRoleSets.filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === "warmup");
-          configuredWarmups.forEach((warmup, warmupIndex) => {
-            const previousComparableSet = previousWarmups.find((set) => Number(set.setTypeIndex || 0) === warmupIndex)
-              || previousWarmups[warmupIndex]
-              || null;
-            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardProgression: false, previousComparableSet }));
-          });
-          let setNumber = 0;
-          const factualPrefills = [];
-          resolvedTypes.forEach((setType) => {
-            for (let typeSetIndex = 0; typeSetIndex < setType.setCount; typeSetIndex += 1) {
-              setNumber += 1;
-              factualPrefills.push(factualSetPrefillForWorkoutStart(templateExercise, target, setType, typeSetIndex, configuredWarmups.length + setNumber - 1, previousRoleSets));
-            }
-          });
+          const { warmups, factualPrefills } = workoutStartRowPreviews(templateExercise, target, previousRoleSets, data.settings);
+          warmups.forEach((warmup, warmupIndex) => sets.push(createSet(exercise.id, warmupIndex + 1, warmup)));
           factualPrefills.forEach((prefill, prefillIndex) => {
             const setNumber = prefillIndex + 1;
             const setType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === prefill.setType) || {};
-            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prefill.sequenceIndex, sequence: prefill.sequenceIndex, setTypeIndex: prefill.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prefill.setType + "-" + prefill.setTypeIndex, reps: prefill.reps, weight: prefill.weight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? prefill.weight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? prefill.weight : target.assistanceLoad, rpe: prefill.rpe, completed: false, isWarmup: false, setType: prefill.setType, countsTowardProgression: setType.countsTowardProgression !== false, targetReps: prefill.reps, targetRepMin: prefill.repMin, targetRepMax: prefill.repMax, targetWeight: prefill.weight, targetRpe: prefill.rpeMax, targetRpeMin: prefill.rpeMin, targetRpeMax: prefill.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prefill.restSeconds, originalTargetReps: prefill.reps, originalTargetWeight: prefill.weight, originalTargetRpe: prefill.rpeMax, previousComparableSet: prefill.previousComparableSet }));
+            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prefill.sequenceIndex, sequence: prefill.sequenceIndex, setTypeIndex: prefill.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prefill.setType + "-" + prefill.setTypeIndex, reps: prefill.reps, weight: prefill.weight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? prefill.weight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? prefill.weight : target.assistanceLoad, completed: false, isWarmup: false, setType: prefill.setType, countsTowardProgression: setType.countsTowardProgression !== false, targetReps: prefill.reps, targetRepMin: prefill.repMin, targetRepMax: prefill.repMax, targetWeight: prefill.weight, targetRpe: prefill.rpeMax, targetRpeMin: prefill.rpeMin, targetRpeMax: prefill.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prefill.restSeconds, originalTargetReps: prefill.reps, originalTargetWeight: prefill.weight, originalTargetRpe: prefill.rpeMax, previousComparableSet: prefill.previousComparableSet }));
           });
         });
+        return { exercises, sets, adjustedLiftCount };
+      }
+
+      function startTemplate(templateId, recovery = defaultRecovery(), readinessMode = "usual", options = {}) {
+        const template = data.templates.find((item) => item.id === templateId);
+        if (!template) return;
+        if (!Array.isArray(template.exercises) || template.exercises.length === 0) {
+          templateStartFlow = null;
+          optionalReadinessFlow = null;
+          showAppToast("Add at least one exercise before starting this template.");
+          render();
+          return;
+        }
+        if (hasActiveWorkout()) {
+          const running = activeWorkoutSession();
+          if (running?.templateId !== templateId && !activeWorkoutHasLoggedProgress(running)) {
+            removeEmptyActiveWorkoutForReplacement(running);
+          } else {
+          captureDialogFocusOrigin("template");
+          templateStartFlow = { templateId, step: "active-conflict", draft: cleanRecovery(recovery) };
+          render();
+          return;
+          }
+        }
+        recovery = readinessMode === "daily" ? cleanRecovery(recovery) : recoveryForWorkoutStart(templateId, recovery);
+        const currentSession = activeSession();
+        const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong" && !isSessionSubmitted(currentSession);
+        const session = replaceCurrent
+          ? { ...currentSession, title: template.name, templateId: template.id, recovery: cleanRecovery(recovery), readinessMode, submitted: false, submittedAt: "", workoutStarted: true, workoutState: "active", prs: [], updatedAt: isoNow() }
+          : createSession(template.name, { started: true });
+        session.templateId = template.id;
+        session.workoutStarted = true;
+        session.workoutState = "active";
+        session.recovery = cleanRecovery(recovery);
+        session.readinessMode = readinessMode;
+        session.resolvedActions = measurePerformance("workoutStart:exceptionResolver", () => resolveWorkoutExceptions(session, recovery), { templateId: template.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) });
+        const { exercises, sets, adjustedLiftCount } = buildWorkoutStartPlan(template, session);
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted by the resolved exception action." : "";
         session.usedOriginalTargets = Boolean(options.useOriginal);
         delete session.readinessAdjustments;
@@ -1561,20 +1725,30 @@
         setActiveTab("workout", { renderNow: false });
         templateStartFlow = null;
         optionalReadinessFlow = null;
-        activeSetId = [...sets].sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b)).find((set) => !set.completed && !set.skipped)?.id || "";
-        activeSetAcknowledged = false;
-        activeSetNotice = activeSetId ? "First set is ready" : "";
+        todayWorkoutChoice = null;
+        todayWorseThanUsual = null;
+        todayPreview = null;
+        let nextData;
         if (replaceCurrent) {
           const oldExerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
-          commit({
+          nextData = {
             ...data,
             sessions: data.sessions.map((item) => item.id === session.id ? session : item),
             exercises: [...data.exercises.filter((exercise) => exercise.sessionId !== session.id), ...exercises],
             sets: [...data.sets.filter((set) => !oldExerciseIds.has(set.exerciseId)), ...sets]
-          }, true, { invalidateAnalysis: false });
+          };
         } else {
-          commit({ ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets] }, true, { invalidateAnalysis: false });
+          nextData = { ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets] };
         }
+        // Runtime identities now exist. Shadow stores only the prescription;
+        // gated show mode may reconcile its planned working-row count here.
+        nextData = prescribeSessionCoaching(nextData, session.id, template);
+        const startedExerciseIds = new Set(exercises.map((exercise) => exercise.id));
+        activeSetId = nextData.sets.filter((set) => startedExerciseIds.has(set.exerciseId))
+          .sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b)).find((set) => !set.completed && !set.skipped)?.id || "";
+        activeSetAcknowledged = false;
+        activeSetNotice = activeSetId ? "First set is ready" : "";
+        commit(nextData, true, { invalidateAnalysis: false });
       }
 
       function addSet(exerciseId, duplicate) {
@@ -1591,12 +1765,12 @@
         }
         logWorkoutOverride(exercise, "setCount", workingSetCount, workingSetCount + 1, { action: duplicate ? "duplicate_set" : "add_set" });
         const sequenceIndex = sets.length ? Math.max(...sets.map(canonicalSetSequence)) + 1 : 0;
-        const previous = duplicate ? sets[sets.length - 1] : undefined;
+        const previous = duplicate ? sets[sets.length - 1] : sets.filter((set) => !setTypeSemantics(set).isWarmup).at(-1);
         commit({ ...data, sets: [...data.sets, createSet(targetExerciseId, sets.filter((set) => !setTypeSemantics(set).isWarmup).length + 1, { ...(previous || {}), sequenceIndex, sequence: sequenceIndex, completed: false, skipped: false, edited: false })] }, true, { invalidateAnalysis: authorization.target.authorizationMode === "history_edit", deferPersistence: authorization.target.authorizationMode !== "history_edit" });
       }
 
-      function addWarmupSet(exerciseId) {
-        const authorization = guardWorkoutMutation("add-warmup-set", { exerciseId });
+      function addWarmupSet(exerciseId, beforeSetId = "") {
+        const authorization = guardWorkoutMutation("add-warmup-set", { exerciseId, ...(beforeSetId ? { setId: beforeSetId } : {}) });
         if (!authorization.allowed) return;
         const targetExerciseId = authorization.target.exercise.id;
         const sets = setsForExercise(targetExerciseId);
@@ -1605,10 +1779,11 @@
           showAppToast("An exercise can contain at most 100 warm-up sets.");
           return;
         }
-        const sequenceIndex = warmups.length;
+        const beforeSet = beforeSetId ? setById(beforeSetId) : null;
+        const sequenceIndex = beforeSet ? canonicalSetSequence(beforeSet) : warmups.length;
         const priorWarmup = warmups.at(-1);
         const shifted = data.sets.map((set) => set.exerciseId === targetExerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
-        const warmupSet = createSet(targetExerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardProgression: false, rpe: 5 });
+        const warmupSet = createSet(targetExerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardProgression: false });
         const current = data.sets.find((set) => set.id === activeSetId);
         const nextWarmup = warmups.find((set) => !set.completed && !set.skipped) || warmupSet;
         const nextWarmupIndex = nextWarmup.id === warmupSet.id ? warmups.length : warmups.findIndex((set) => set.id === nextWarmup.id);

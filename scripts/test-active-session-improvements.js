@@ -17,9 +17,13 @@ assert.match(sync, /startTimer[\s\S]*measurePerformance\("timer:renderHeader", r
 assert.match(sync, /window\.clearInterval\(timerInterval\);\s*timerInterval = 0;\s*timerInterval = window\.setInterval/, "Each running timer owns exactly one interval");
 assert.match(workout, /completingSetIds\.has\(setId\)/, "Rapid duplicate completion must be idempotently rejected");
 assert.match(workout, /persistActiveWorkoutDraft\(\)/, "The completed set and replacement timer must be persisted together in the active draft");
-assert.match(views, /function renderActiveSessionHeader[\s\S]*active-session-timer-status[\s\S]*data-timer-progress-label/, "The shared timer must render once in the pinned active-session header");
+const sessionHeader = views.slice(views.indexOf("function renderActiveSessionHeader("), views.indexOf("function liftHomeIsVisible("));
+const restClamp = views.slice(views.indexOf("function renderLoadedBarRestClamp("), views.indexOf("function setCompletionClock("));
+assert.match(restClamp, /timer-bar loaded-bar-rest-clamp[\s\S]*data-timer-progress-label/, "The shared timer renders through the logging-row clamp");
+assert.doesNotMatch(sessionHeader, /data-timer-id|data-timer-progress-label/, "The pinned session header must not duplicate the clamp timer");
 assert.match(views, /data-action="set-rest-seconds"/, "An incomplete active set must expose its own rest duration");
-assert.match(views, /meaningfully_poor", "Worse than usual"[\s\S]*usual", "About usual"[\s\S]*unusually_good", "Better than usual"/, "Readiness display order must be low to high without changing semantic values");
+assert.match(views, /meaningfully_poor", "Worse than usual"[\s\S]*usual", "About usual"/, "Offered readiness display order must remain low to usual without changing semantic values");
+assert.doesNotMatch(views, /unusually_good", "Better than usual"/, "Coach v1 does not offer a better-than-usual control");
 assert.match(foundation, /function scheduledTemplatesForToday[\s\S]*hasCanonicalSchedule[\s\S]*legacyTemplateWeekdays/, "Today must prefer canonical weekday metadata and narrowly fall back to legacy weekday tokens");
 assert.match(foundation, /return scheduled\.length === 1 \? scheduled\[0\] : null/, "Today must not choose when zero or multiple routines match");
 assert.doesNotMatch(foundation, /model\.settings\.expectedTemplateId = model\.templates\[0\]/, "Normalization must never assign the first unrelated routine");

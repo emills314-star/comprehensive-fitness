@@ -1,0 +1,1801 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01 · Control Chart</title>
+  <link rel="stylesheet" href="palette.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      color: var(--text);
+      background: var(--surface);
+      font-synthesis: none;
+    }
+    body { margin: 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--current);
+      outline-offset: 2px;
+    }
+    svg { display: block; fill: transparent; }
+    [hidden] { display: none !important; }
+    .symbol-bank { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon {
+      width: 20px;
+      height: 20px;
+      fill: transparent;
+      stroke: currentColor;
+      stroke-width: 1.7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: none;
+    }
+    .solid { fill: currentColor; stroke: transparent; }
+    .mono {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .exploration { padding: 48px 40px 72px; }
+    .concept-header {
+      max-width: 1480px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr);
+      align-items: end;
+      gap: 64px;
+      padding-bottom: 32px;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--line-strong);
+    }
+    .concept-number {
+      margin: 0 0 12px;
+      font: 500 12px/18px "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--current);
+    }
+    h1 {
+      margin: 0 0 18px;
+      font-size: 72px;
+      font-weight: 500;
+      letter-spacing: -.07em;
+      line-height: 1;
+    }
+    .thesis { margin: 0; font-size: 22px; line-height: 1.4; max-width: 650px; }
+    .concept-notes { margin: 0; }
+    .concept-notes > div {
+      display: grid;
+      grid-template-columns: 146px 1fr;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .concept-notes dt { color: var(--muted); }
+    .concept-notes dd { margin: 0; }
+    .scenario-note {
+      margin: 16px 0 0;
+      font: 400 11px/16px "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: .04em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .gallery { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 36px 26px; }
+    .frame { width: 390px; margin: 0; flex: 0 0 390px; }
+    .frame-caption {
+      height: 35px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .frame-caption .mono { color: var(--muted); font-size: 11px; line-height: 20px; }
+    .phone {
+      width: 390px;
+      min-width: 390px;
+      max-width: 390px;
+      height: 844px;
+      min-height: 844px;
+      max-height: 844px;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--el-2);
+      font-size: 14px;
+      line-height: 1.4;
+      text-align: left;
+    }
+    .phone > * { flex-shrink: 0; }
+    .status {
+      height: 26px;
+      padding: 6px 20px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 15px;
+    }
+    .status .icon { width: 55px; height: 13px; stroke-width: 1.3; }
+    .appbar {
+      height: 40px;
+      margin: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line-strong);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -.04em;
+    }
+    .brand-mark {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      color: var(--on-action);
+      background: var(--text);
+    }
+    .brand-mark .icon { width: 19px; height: 19px; stroke-width: 1.4; }
+    .appbar-context {
+      font: 500 11px/14px "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: .025em;
+      color: var(--muted);
+    }
+    .appbar-context.live { color: var(--current); }
+    .appbar-context.exception { color: var(--amber); }
+    .session-bar {
+      height: 32px;
+      margin: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .session-label {
+      font: 400 11px/14px "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--muted);
+    }
+    .deload {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
+      min-height: 22px;
+      padding: 2px 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 14px;
+      white-space: nowrap;
+    }
+    .switch-track {
+      position: relative;
+      width: 22px;
+      height: 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .switch-track::after {
+      content: "";
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      top: 2px;
+      left: 2px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .switch-state { width: 17px; text-align: left; font-size: 11px; }
+    .deload[aria-checked="true"] { color: var(--current); }
+    .deload[aria-checked="true"] .switch-track {
+      background: var(--current-dark);
+      border-color: var(--current);
+    }
+    .deload[aria-checked="true"] .switch-track::after {
+      left: 12px;
+      background: var(--current);
+    }
+    .screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .screen > * { flex-shrink: 0; }
+    .inset { padding: 12px 20px 0; }
+    .eyebrow {
+      margin: 0;
+      font: 500 11px/14px "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 34px;
+      margin-top: 3px;
+    }
+    .lift-intro h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 34px;
+      font-weight: 500;
+      letter-spacing: -.045em;
+    }
+    .meta { margin: 3px 0 0; font-size: 12px; line-height: 18px; color: var(--muted); }
+    .chart-area { margin-top: 10px; }
+    .chart-caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      height: 16px;
+      font-size: 12px;
+      line-height: 16px;
+      font-weight: 500;
+    }
+    .chart-caption > .mono { font-size: 11px; color: var(--current); }
+    .control-chart { width: 100%; height: 160px; margin-top: 4px; }
+    .plot-grid, .plot-guide { stroke: var(--line); stroke-width: .75; fill: transparent; }
+    .active-column { fill: color-mix(in srgb, var(--current) 5%, transparent); }
+    .band-two { fill: color-mix(in srgb, var(--current) 13%, var(--bg)); }
+    .band-one { fill: color-mix(in srgb, var(--current) 27%, var(--bg)); }
+    .historical-two { fill: color-mix(in srgb, var(--current) 5%, var(--bg)); }
+    .historical-one { fill: color-mix(in srgb, var(--current) 11%, var(--bg)); }
+    .control-limit {
+      fill: transparent;
+      stroke: color-mix(in srgb, var(--current) 55%, var(--bg));
+      stroke-width: 1;
+    }
+    .inner-limit {
+      fill: transparent;
+      stroke: color-mix(in srgb, var(--current) 35%, var(--bg));
+      stroke-width: .75;
+    }
+    .center-line { fill: transparent; stroke: var(--current); stroke-width: 1.3; }
+    .historical-line, .regime-divider { fill: transparent; stroke: var(--line-strong); stroke-width: 1; }
+    .regime-outline { fill: transparent; stroke: var(--current); stroke-width: 1.25; }
+    .regime-arrow { fill: transparent; stroke: var(--current); stroke-width: 1.5; }
+    .point-success { fill: var(--success); stroke: var(--bg); stroke-width: 3; }
+    .point-open { fill: var(--bg); stroke: var(--current); stroke-width: 2.5; }
+    .point-quiet { fill: var(--bg); stroke: var(--muted-2); stroke-width: 2; }
+    .point-future { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1.25; }
+    .target-slot { fill: var(--bg); stroke: var(--current); stroke-width: 2; }
+    .target-slot-quiet { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1.25; }
+    .plot-tick { fill: var(--muted); font: 400 11px "IBM Plex Mono", ui-monospace, monospace; }
+    .plot-label { fill: var(--muted); font: 400 11px "IBM Plex Sans", system-ui, sans-serif; }
+    .plot-label-strong { fill: var(--text); font: 500 12px "IBM Plex Mono", ui-monospace, monospace; }
+    .plot-action { fill: var(--current); font: 500 11px "IBM Plex Mono", ui-monospace, monospace; }
+    .plot-success { fill: var(--success); font: 500 13px "IBM Plex Mono", ui-monospace, monospace; }
+    .limit-label {
+      fill: var(--current);
+      font: 500 11px "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: .03em;
+    }
+    .projection-value { fill: var(--current); font: 500 14px "IBM Plex Mono", ui-monospace, monospace; }
+    .chart-key {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      height: 16px;
+      margin-top: 3px;
+      font-size: 11px;
+      line-height: 16px;
+      color: var(--muted);
+    }
+    .band-keys {
+      display: inline-flex;
+      gap: 9px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 400;
+    }
+    .band-keys > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .swatch {
+      display: inline-block;
+      width: 11px;
+      height: 11px;
+      border: 1px solid color-mix(in srgb, var(--current) 45%, var(--bg));
+    }
+    .swatch.one { background: color-mix(in srgb, var(--current) 27%, var(--bg)); }
+    .swatch.two { background: color-mix(in srgb, var(--current) 13%, var(--bg)); }
+    .rest-block {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+      color: var(--rest-text);
+    }
+    .timer-top { height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .timer-reading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .timer-label { font: 500 11px/14px "IBM Plex Mono", ui-monospace, monospace; }
+    .rest-clock { font: 500 25px/28px "IBM Plex Mono", ui-monospace, monospace; letter-spacing: -.05em; }
+    .timer-actions { display: flex; align-items: center; gap: 4px; }
+    .timer-actions button {
+      min-width: 37px;
+      height: 26px;
+      padding: 0 5px;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--rest-text);
+      font: 400 11px/14px "IBM Plex Mono", ui-monospace, monospace;
+    }
+    .timer-actions .skip { border-color: transparent; }
+    .rest-svg { width: 100%; height: 26px; }
+    .rest-band { fill: color-mix(in srgb, var(--rest-accent) 22%, var(--bg)); }
+    .rest-limit { stroke: color-mix(in srgb, var(--rest-accent) 55%, var(--bg)); stroke-width: .8; }
+    .rest-line { stroke: var(--rest-accent); stroke-width: 1; }
+    .rest-stem { stroke: var(--rest-text); stroke-width: 1; }
+    .rest-actual { fill: var(--rest-text); stroke: var(--bg); stroke-width: 2; }
+    .rest-label { fill: var(--rest-text); font: 500 11px "IBM Plex Mono", ui-monospace, monospace; }
+    .rest-note { margin: 0; font-size: 11px; line-height: 14px; color: var(--muted); }
+    .logger { margin-top: 8px; }
+    .log-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      height: 18px;
+      margin-bottom: 4px;
+      font-size: 12px;
+      line-height: 18px;
+    }
+    .log-head strong { font-weight: 600; }
+    .log-head .mono { font-size: 11px; color: var(--muted); }
+    .log-grid {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) 54px 42px 42px 34px;
+      gap: 5px;
+      align-items: center;
+    }
+    .col-head {
+      height: 18px;
+      font: 400 11px/14px "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--muted);
+    }
+    .col-head > :nth-child(n+3) { text-align: center; }
+    .log-row { height: 36px; border-bottom: 1px solid var(--line); }
+    .log-row.current {
+      background: var(--current-dark);
+      margin: 0 -20px;
+      padding: 0 20px;
+      border-bottom-color: color-mix(in srgb, var(--current) 25%, var(--bg));
+    }
+    .set-flag {
+      width: 26px;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      appearance: none;
+      background: transparent;
+      color: var(--muted);
+      text-align: center;
+      text-align-last: center;
+      font: 500 12px/16px "IBM Plex Mono", ui-monospace, monospace;
+      cursor: pointer;
+    }
+    .set-flag option { background: var(--bg); color: var(--text); font-size: 12px; }
+    .set-flag:disabled { opacity: 1; cursor: default; }
+    .current .set-flag { color: var(--current); }
+    .previous {
+      font: 400 12px/18px "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .field {
+      width: 100%;
+      min-width: 0;
+      height: 30px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: var(--input-bg);
+      color: var(--text);
+      font: 500 17px/28px "IBM Plex Mono", ui-monospace, monospace;
+      text-align: center;
+      appearance: textfield;
+      -moz-appearance: textfield;
+    }
+    .field::-webkit-inner-spin-button, .field::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .field::placeholder { color: var(--text); opacity: 1; }
+    .field.rpe::placeholder { color: var(--muted-2); }
+    .current .field { border-color: color-mix(in srgb, var(--current) 42%, var(--bg)); }
+    .current .field:not(.rpe)::placeholder { color: var(--green-2); }
+    .logged .field, .field.plain {
+      border-color: transparent;
+      background: transparent;
+      font-size: 16px;
+      font-weight: 400;
+    }
+    span.field { display: grid; place-items: center; }
+    .complete {
+      width: 34px;
+      height: 32px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: var(--bg);
+      color: var(--muted-2);
+    }
+    .complete .icon { width: 20px; height: 20px; stroke-width: 2; }
+    .complete.active { border-color: var(--action); background: var(--action); color: var(--on-action); }
+    .complete.done { border-color: transparent; background: transparent; color: var(--success); }
+    .type-key { margin: 5px 0 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .upcoming { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+    .exercise-line { min-height: 20px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .exercise-line > span { font-size: 12px; line-height: 16px; }
+    .exercise-line .eyebrow { font-size: 11px; }
+    .upcoming p { margin: 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+    .screen-footer {
+      margin-top: auto;
+      min-height: 26px;
+      padding: 6px 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font: 400 11px/14px "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--muted);
+    }
+    .screen-footer > span { white-space: nowrap; }
+    .btn-primary {
+      border: 1px solid var(--action);
+      background: var(--action);
+      color: var(--on-action);
+      border-radius: 2px;
+      height: 48px;
+      width: 100%;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .btn-primary:hover { background: var(--green-2); border-color: var(--green-2); }
+    .btn-primary .icon { width: 20px; height: 20px; }
+    .flag-zone { background: var(--panel-3); padding: 10px 20px; }
+    .flag-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 22px; }
+    .flag-zone .eyebrow { color: var(--amber); }
+    .flag-heading {
+      margin: 4px 0 0;
+      font-size: 28px;
+      line-height: 32px;
+      font-weight: 500;
+      letter-spacing: -.045em;
+    }
+    .flag-record {
+      margin-top: 4px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      height: 18px;
+      font: 500 13px/18px "IBM Plex Mono", ui-monospace, monospace;
+    }
+    .flag-record span:last-child { font-size: 11px; font-weight: 400; color: var(--muted); }
+    .flag-chart { width: 100%; height: 204px; margin-top: 4px; }
+    .flag-chart .plot-grid { stroke: color-mix(in srgb, var(--amber) 18%, var(--panel-3)); }
+    .flag-chart .control-limit { stroke: var(--amber); }
+    .flag-chart .limit-label { fill: var(--amber); }
+    .breach-column { fill: color-mix(in srgb, var(--amber) 6%, transparent); }
+    .breach-line { stroke: var(--amber); stroke-width: 2.5; fill: transparent; }
+    .breach-halo { fill: color-mix(in srgb, var(--amber) 9%, transparent); stroke: var(--amber); stroke-width: 1.5; }
+    .breach-point { fill: var(--amber); stroke: var(--panel-3); stroke-width: 3; }
+    .breach-label { fill: var(--amber); font: 600 22px "IBM Plex Mono", ui-monospace, monospace; }
+    .flag-ink { fill: var(--amber); font: 500 11px "IBM Plex Mono", ui-monospace, monospace; }
+    .plot-sigma { fill: var(--amber); font: 600 54px "IBM Plex Sans", system-ui, sans-serif; letter-spacing: -.065em; }
+    .sigma-caption { fill: var(--amber); font: 500 11px "IBM Plex Sans", system-ui, sans-serif; }
+    .flag-rule {
+      border-top: 1px solid color-mix(in srgb, var(--amber) 32%, var(--panel-3));
+      margin-top: 6px;
+      padding-top: 7px;
+    }
+    .rule-tag { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; }
+    .flag-rule-detail { margin: 2px 0 0; font-size: 12px; line-height: 17px; }
+    .causes { padding: 10px 20px 0; }
+    .causes-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      height: 18px;
+      font-size: 13px;
+      line-height: 18px;
+      font-weight: 600;
+    }
+    .causes-heading span { font: 400 11px/14px "IBM Plex Mono", ui-monospace, monospace; color: var(--muted); }
+    .cause { display: grid; grid-template-columns: 18px 1fr; gap: 7px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+    .cause:last-child { border-bottom: 0; }
+    .cause-number { color: var(--muted); font: 500 11px/18px "IBM Plex Mono", ui-monospace, monospace; }
+    .cause h3 { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; }
+    .cause p { margin: 2px 0 0; font-size: 12px; line-height: 17px; color: var(--muted); }
+    .cause .last-night { font-size: 11px; line-height: 16px; }
+    .evidence-grid { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 8px; align-items: center; height: 36px; }
+    .evidence-grid p { margin: 0; }
+    .evidence-grid svg { width: 140px; height: 36px; }
+    .estimate-band { fill: var(--success-dark); }
+    .estimate-line { stroke: var(--line-strong); stroke-width: 1; }
+    .estimate-point { fill: var(--success); stroke: var(--bg); stroke-width: 2; }
+    .estimate-ghost { fill: var(--bg); stroke: var(--muted-2); stroke-width: 1.25; }
+    .flag-action { margin-top: auto; padding: 10px 20px 0; }
+    .decision-screen { padding: 12px 20px 0; }
+    .decision-intro h2 { margin: 3px 0 0; font-size: 28px; line-height: 32px; font-weight: 500; letter-spacing: -.045em; }
+    .projection { margin-top: 8px; }
+    .projection svg { width: 100%; height: 174px; margin-top: 4px; }
+    .recommendation {
+      margin-top: 6px;
+      padding: 8px 10px;
+      border-left: 3px solid var(--current);
+      background: var(--current-dark);
+    }
+    .recommendation-heading {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      height: 16px;
+      font: 500 11px/16px "IBM Plex Mono", ui-monospace, monospace;
+      color: var(--green-2);
+    }
+    .option-letter { font: 500 12px/18px "IBM Plex Mono", ui-monospace, monospace; }
+    .recommendation h3 {
+      margin: 3px 0 4px;
+      font: 500 25px/28px "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: -.05em;
+      color: var(--green-2);
+    }
+    .recommendation h3 span { font-size: 13px; letter-spacing: -.02em; }
+    .recommendation p { margin: 0; font-size: 12px; line-height: 17px; }
+    .recommendation .incline-line { margin-top: 3px; }
+    .recommendation .quiet { color: var(--muted); }
+    .volume { margin-top: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--current) 22%, var(--bg)); }
+    .volume-copy { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 16px; }
+    .volume-copy span:last-child { color: var(--muted); font-size: 11px; }
+    .volume-band {
+      height: 6px;
+      position: relative;
+      margin-top: 4px;
+      background: color-mix(in srgb, var(--current) 15%, var(--bg));
+      border-left: 1px solid var(--line-strong);
+      border-right: 1px solid var(--line-strong);
+    }
+    .volume-band::before {
+      content: "";
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      top: -2px;
+      left: calc(50% - 4px);
+      border-radius: 50%;
+      background: var(--current);
+    }
+    .volume-band::after {
+      content: "";
+      position: absolute;
+      width: 1px;
+      height: 10px;
+      top: -2px;
+      left: 66.666%;
+      background: var(--line-strong);
+    }
+    .alternatives { margin-top: 4px; }
+    .alternative {
+      width: 100%;
+      min-height: 50px;
+      padding: 6px 0;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      display: grid;
+      grid-template-columns: 22px 1fr 18px;
+      align-items: center;
+      gap: 7px;
+      text-align: left;
+    }
+    .alternative .option-letter { color: var(--muted); }
+    .alternative strong { display: block; font-size: 13px; line-height: 18px; font-weight: 500; }
+    .alternative small { display: block; font-size: 12px; line-height: 17px; color: var(--muted); }
+    .alternative .icon { width: 17px; height: 17px; color: var(--muted); }
+    .alternative[aria-pressed="true"] .option-letter,
+    .alternative[aria-pressed="true"] strong { color: var(--current); }
+    .accept-action { margin-top: 8px; }
+    .secondary-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    .text-button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      min-height: 36px;
+      padding: 6px 0;
+      font-size: 12px;
+    }
+    .text-button.choose { text-align: left; color: var(--current); }
+    .text-button.dismiss { text-align: right; }
+    .decision-screen .screen-footer { padding-left: 0; padding-right: 0; }
+    .coach-change {
+      margin-top: 8px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      border-bottom: 1px solid var(--line);
+      color: var(--current);
+      font: 500 11px/16px "IBM Plex Mono", ui-monospace, monospace;
+    }
+    .undo {
+      border: 0;
+      background: transparent;
+      color: var(--current);
+      padding: 3px 0 3px 8px;
+      font-size: 12px;
+      line-height: 16px;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .undo:disabled { color: var(--muted); text-decoration: none; }
+    .change-reason { margin: 4px 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+    .applied .chart-area { margin-top: 8px; }
+    .applied .control-chart { height: 146px; }
+    .load-cell { width: 54px; height: 34px; display: flex; flex-direction: column; justify-content: center; }
+    .load-cell .was { color: var(--current); text-align: center; font: 400 11px/11px "IBM Plex Mono", ui-monospace, monospace; }
+    .load-cell .field { height: 22px; line-height: 20px; font-size: 16px; }
+    .load-cell .was[hidden] + .field { height: 30px; line-height: 28px; }
+    .changed:not(.current):not(.logged) { background: color-mix(in srgb, var(--current) 4%, transparent); }
+    .future-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 22px; }
+    .future-intro h2 { margin: 4px 0 0; font-size: 36px; line-height: 40px; letter-spacing: -.055em; }
+    .future-prescription {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .future-prescription strong { font: 500 17px/22px "IBM Plex Mono", ui-monospace, monospace; }
+    .future-prescription span { color: var(--muted); font-size: 12px; line-height: 18px; }
+    .future-chart { margin-top: 10px; }
+    .future-chart svg { width: 100%; height: 174px; margin-top: 4px; }
+    .progression-line { stroke: var(--current); stroke-width: 1.8; }
+    .future-rule { padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .future-rule p { margin: 4px 0 0; font-size: 14px; line-height: 18px; }
+    .future-rule .eyebrow { margin: 0; font-size: 11px; line-height: 14px; }
+    .future-rule p strong { font-weight: 600; }
+    .future-rule .rule-detail { font: 400 11px/16px "IBM Plex Mono", ui-monospace, monospace; color: var(--muted); margin-top: 4px; }
+    .watch-rule .eyebrow { color: var(--amber); }
+    .contingency { margin-top: 10px; padding: 9px 10px; border-left: 3px solid var(--current); background: var(--current-dark); }
+    .contingency .eyebrow { color: var(--green-2); }
+    .contingency p { margin: 4px 0 0; font-size: 14px; line-height: 18px; }
+    .contingency strong { font-weight: 600; color: var(--green-2); }
+    .injury-session { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+    .injury-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      padding: 2px 0;
+      border: 0;
+      background: transparent;
+      color: var(--red);
+      font-size: 12px;
+      line-height: 18px;
+    }
+    .injury-action .icon { width: 15px; height: 15px; }
+    .injury-session p { margin: 4px 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+    .future-footer { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; }
+    @media (max-width: 900px) {
+      .exploration { padding: 30px 20px 48px; }
+      .concept-header { grid-template-columns: 1fr; gap: 22px; }
+      h1 { font-size: 52px; }
+      .thesis { font-size: 20px; }
+      .concept-notes > div { grid-template-columns: 135px 1fr; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .btn-primary { transition: background .15s ease, border-color .15s ease; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="symbol-bank" aria-hidden="true">
+    <defs>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="m5 12 4.5 4.5L19 7"></path>
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path d="M4 12h15m-6-6 6 6-6 6"></path>
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24">
+        <path d="m9 5 7 7-7 7"></path>
+      </symbol>
+      <symbol id="i-injury" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 7v6m0 4h.01"></path>
+      </symbol>
+      <symbol id="i-control" viewBox="0 0 24 24">
+        <path d="M3 6h18M3 18h18M3 12h18"></path>
+        <circle cx="8" cy="12" r="2.5" class="solid"></circle>
+        <circle cx="17" cy="5" r="2.5" class="solid"></circle>
+      </symbol>
+      <symbol id="i-status" viewBox="0 0 55 13">
+        <path d="M1 11V8m4 3V6m4 5V3m4 8V1" stroke-width="2"></path>
+        <path d="M19 4c4-4 10-4 14 0m-12 3c3-3 7-3 10 0m-7 3c1-1 3-1 4 0"></path>
+        <rect x="38" y="2" width="14" height="9" rx="1.5"></rect>
+        <path d="M54 5v3"></path>
+        <rect class="solid" x="40" y="4" width="10" height="5" rx=".5"></rect>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="exploration">
+    <header class="concept-header">
+      <div>
+        <p class="concept-number">01 / A personal coach, drawn in limits</p>
+        <h1>Control Chart</h1>
+        <p class="thesis">Every lift lives inside its own normal.<br>The coach knows the instant you leave it.</p>
+        <p class="scenario-note">Design exploration · all training data is synthetic</p>
+      </div>
+      <dl class="concept-notes">
+        <div><dt>How it feels</dt><dd>Calm precision. An unmistakable exception.</dd></div>
+        <div><dt>How the coach speaks</dt><dd>“This drop is outside your normal. Here’s my read.”</dd></div>
+        <div><dt>The trade-off</dt><dd>You learn to read a band before you read advice.</dd></div>
+      </dl>
+    </header>
+
+    <section class="gallery" aria-label="Five moments in the coaching experience">
+
+      <figure class="frame">
+        <figcaption class="frame-caption"><span>Lifting</span><span class="mono">F1 / BEFORE THE FLAG</span></figcaption>
+        <div class="phone" data-frame="F1">
+          <div class="status"><span>10:24</span><svg class="icon" aria-hidden="true"><use href="#i-status"></use></svg></div>
+          <header class="appbar">
+            <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-control"></use></svg></span>control</div>
+            <span class="appbar-context">UPPER A · SAT 31 OCT</span>
+          </header>
+          <div class="session-bar">
+            <span class="session-label">Session · Upper A</span>
+            <button class="deload" type="button" role="switch" aria-checked="false" data-scope="session" aria-label="Upper A session: This was a deload" title="When on, this session's sets do not count toward progression or normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+            </button>
+          </div>
+          <div class="screen">
+            <div class="inset">
+              <div class="lift-intro">
+                <p class="eyebrow">01 / 05 · Barbell</p>
+                <div class="title-row">
+                  <h2>Bench Press</h2>
+                  <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="Bench" aria-label="Bench Press: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                    <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                  </button>
+                </div>
+                <p class="meta">4 working sets · target RPE 8 · rest 2:30</p>
+              </div>
+
+              <div class="chart-area">
+                <div class="chart-caption"><span>Your normal, set by set</span><span class="mono" data-next-caption>SET 2 · EXPECT 8–9</span></div>
+                <svg class="control-chart" viewBox="0 0 348 160" role="img" aria-label="Four bench working sets at 185 pounds. Set 1 is logged at 9 reps. Set 2 has an open 8 to 9 rep target. The centre is 8, with symmetric inner one-sigma and outer two-sigma bands between the 7 and 9 rep control limits.">
+                  <rect class="active-column" x="93" y="12" width="50" height="124"></rect>
+                  <path class="plot-grid" d="M26 20H300M26 46H300M26 72H300M26 98H300M26 124H300"></path>
+                  <rect class="band-two" x="26" y="46" width="274" height="52"></rect>
+                  <rect class="band-one" x="26" y="59" width="274" height="26"></rect>
+                  <path class="plot-guide" d="M46 12V136M118 12V136M208 12V136M280 12V136"></path>
+                  <path class="control-limit" d="M26 46H300M26 98H300"></path>
+                  <path class="center-line" d="M26 72H300"></path>
+                  <text class="plot-tick" x="2" y="24">10</text>
+                  <text class="plot-tick" x="9" y="50">9</text>
+                  <text class="plot-tick" x="9" y="76">8</text>
+                  <text class="plot-tick" x="9" y="102">7</text>
+                  <text class="plot-tick" x="9" y="128">6</text>
+                  <text class="limit-label" x="309" y="50">UCL</text>
+                  <text class="limit-label" x="309" y="76">CL</text>
+                  <text class="limit-label" x="309" y="102">LCL</text>
+                  <circle class="point-success" cx="46" cy="46" r="6"></circle>
+                  <text class="plot-success" x="46" y="29" text-anchor="middle">9</text>
+                  <g data-point="2">
+                    <rect class="target-slot" x="104" y="41" width="28" height="36" rx="14"></rect>
+                    <text class="plot-action" x="118" y="29" text-anchor="middle">8–9</text>
+                  </g>
+                  <g data-point="3"><circle class="point-future" cx="208" cy="72" r="4"></circle></g>
+                  <g data-point="4"><circle class="point-future" cx="280" cy="72" r="4"></circle></g>
+                  <text class="plot-tick" x="46" y="155" text-anchor="middle">SET 1</text>
+                  <text class="plot-action" x="118" y="155" text-anchor="middle">SET 2</text>
+                  <text class="plot-tick" x="208" y="155" text-anchor="middle">SET 3</text>
+                  <text class="plot-tick" x="280" y="155" text-anchor="middle">SET 4</text>
+                </svg>
+                <div class="chart-key">
+                  <span>7–9 reps · recovery-adjusted</span>
+                  <span class="band-keys"><span><i class="swatch one"></i>±1σ</span><span><i class="swatch two"></i>±2σ</span></span>
+                </div>
+              </div>
+
+              <section class="rest-block" data-timer="F1" data-seconds="58" data-elapsed="92" data-after-set="1" aria-label="Rest timer, automatically started by the set 1 check">
+                <div class="timer-top">
+                  <div class="timer-reading"><span class="timer-label" data-timer-label>AUTO-STARTED<br>ON SET 1 ✓</span><span class="rest-clock" data-clock role="timer" aria-label="Rest remaining">0:58</span></div>
+                  <div class="timer-actions">
+                    <button type="button" data-adjust="-15" aria-label="Subtract 15 seconds from rest">−15s</button>
+                    <button type="button" data-adjust="15" aria-label="Add 15 seconds to rest">+15s</button>
+                    <button class="skip" type="button" data-skip>Skip</button>
+                  </div>
+                </div>
+                <svg class="rest-svg" viewBox="0 0 348 26" role="img" aria-label="Rest target band at 2 minutes 30 seconds. So far, 1 minute 32 seconds have elapsed.">
+                  <rect class="rest-band" x="26" y="2" width="274" height="10"></rect>
+                  <path class="rest-limit" d="M26 2H300M26 12H300"></path>
+                  <path class="rest-line" d="M26 7H300"></path>
+                  <path class="rest-stem" data-rest-stem d="M194.05 7V22"></path>
+                  <circle class="rest-actual" data-rest-point cx="194.05" cy="22" r="4"></circle>
+                  <text class="rest-label" x="208.05" y="25" data-rest-elapsed>1:32 / 2:30</text>
+                  <text class="rest-label" x="307" y="10" data-rest-target>2:30</text>
+                </svg>
+                <p class="rest-note" data-rest-note>Full 2:30 recommended · Skip to override</p>
+              </section>
+
+              <section class="logger" aria-label="Bench press set logger">
+                <div class="log-head"><strong>Tap ✓ to accept lb + reps.</strong><span class="mono">RPE: YOU ENTER</span></div>
+                <div class="log-grid col-head"><span>SET</span><span>PREVIOUS</span><span>LB</span><span>REPS</span><span title="Actual RPE is entered by you. Target RPE 8.">RPE</span><span>LOG</span></div>
+
+                <div class="log-grid log-row logged" data-set="warmup" data-logged="true">
+                  <select class="set-flag" aria-label="Warm-up set type" disabled><option selected>W</option><option>D</option><option>F</option></select>
+                  <span class="previous">95 × 8</span>
+                  <span class="field plain">95</span><span class="field plain">8</span><span class="field plain" aria-label="RPE not entered">—</span>
+                  <button class="complete done" type="button" disabled aria-label="Warm-up logged"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row logged" data-set="1" data-logged="true">
+                  <select class="set-flag" aria-label="Set 1 type: working" disabled><option>W</option><option selected>1</option><option>D</option><option>F</option></select>
+                  <span class="previous">185 × 10</span>
+                  <span class="field plain">185</span><span class="field plain">9</span><span class="field plain">8</span>
+                  <button class="complete done" type="button" disabled aria-label="Set 1 logged, 185 pounds for 9 reps, RPE 8 entered"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row current" data-set="2">
+                  <select class="set-flag" aria-label="Set 2 type: choose warm-up, working, drop or failure">
+                    <option value="W">W</option><option value="2" selected>2</option><option value="D">D</option><option value="F">F</option>
+                  </select>
+                  <span class="previous">185 × 10</span>
+                  <input class="field" data-field="load" type="number" inputmode="decimal" min="1" step="any" placeholder="185" aria-label="Set 2 load target 185 pounds; tap check to accept">
+                  <input class="field" data-field="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="9" aria-label="Set 2 rep target 9; tap check to accept">
+                  <input class="field rpe" data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set 2 actual RPE, empty; target RPE 8 is a hint only">
+                  <button class="complete" type="button" data-log aria-label="Log set 2, accepting placeholder load and reps, and start rest"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row" data-set="3">
+                  <select class="set-flag" aria-label="Set 3 type: choose warm-up, working, drop or failure">
+                    <option value="W">W</option><option value="3" selected>3</option><option value="D">D</option><option value="F">F</option>
+                  </select>
+                  <span class="previous">185 × 9</span>
+                  <input class="field" data-field="load" type="number" inputmode="decimal" min="1" step="any" placeholder="185" aria-label="Set 3 load target 185 pounds">
+                  <input class="field" data-field="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="8" aria-label="Set 3 rep target 8">
+                  <input class="field rpe" data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set 3 actual RPE, empty; target RPE 8">
+                  <button class="complete" type="button" data-log aria-label="Log set 3, accepting placeholder targets, and start rest"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row" data-set="4">
+                  <select class="set-flag" aria-label="Set 4 type: choose warm-up, working, drop or failure">
+                    <option value="W">W</option><option value="4" selected>4</option><option value="D">D</option><option value="F">F</option>
+                  </select>
+                  <span class="previous">185 × 9</span>
+                  <input class="field" data-field="load" type="number" inputmode="decimal" min="1" step="any" placeholder="185" aria-label="Set 4 load target 185 pounds">
+                  <input class="field" data-field="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="8" aria-label="Set 4 rep target 8">
+                  <input class="field rpe" data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set 4 actual RPE, empty; target RPE 8">
+                  <button class="complete" type="button" data-log aria-label="Log set 4, accepting placeholder targets, and start rest"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+              </section>
+              <p class="type-key">Tap set number to change · W warm-up · D drop · F failure</p>
+
+              <section class="upcoming" aria-label="Next exercise: Chest-Supported T-Bar Row">
+                <div class="exercise-line">
+                  <span class="eyebrow" style="letter-spacing: -.025em">Next / Chest-Supported T-Bar Row</span>
+                  <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="T-Bar Row" aria-label="Chest-Supported T-Bar Row: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                    <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                  </button>
+                </div>
+                <p>Then Incline DB Press · Lat Pulldown · Cable Lateral Raise.</p>
+              </section>
+            </div>
+            <footer class="screen-footer" data-feedback aria-live="polite"><span>BLOCK 2 · WEEK 4/6</span><span>~62 MIN PLANNED</span></footer>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="frame">
+        <figcaption class="frame-caption"><span>The flag</span><span class="mono">F2 / OUTSIDE YOUR NORMAL</span></figcaption>
+        <div class="phone" data-frame="F2">
+          <div class="status"><span>10:24</span><svg class="icon" aria-hidden="true"><use href="#i-status"></use></svg></div>
+          <header class="appbar">
+            <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-control"></use></svg></span>control</div>
+            <span class="appbar-context exception">UPPER A · EXCEPTION</span>
+          </header>
+          <div class="session-bar">
+            <span class="session-label">Session · Upper A</span>
+            <button class="deload" type="button" role="switch" aria-checked="false" data-scope="session" aria-label="Upper A session: This was a deload" title="When on, this session's sets do not count toward progression or normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+            </button>
+          </div>
+          <div class="screen">
+            <section class="flag-zone" aria-label="Bench press outside normal bounds">
+              <div class="flag-top">
+                <p class="eyebrow">Bench · set 2 logged</p>
+                <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="Bench" aria-label="Bench Press: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                  <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                </button>
+              </div>
+              <h2 class="flag-heading">Outside your normal.</h2>
+              <div class="flag-record"><span>185 lb × 6 · RPE 10</span><span>CL SHIFT −0.4 REPS</span></div>
+              <svg class="flag-chart" viewBox="0 0 348 204" role="img" aria-label="Set 2 is 6 reps, below the lower control limit of 7. A symmetric inner band extends one sigma above and below the centre line at 8; the outer band extends two sigma to the upper and lower limits at 9 and 7. The three-rep drop is 3.4 sigma beyond the usual drop.">
+                <text class="plot-label" x="26" y="14">EXPECTED 8–9 · RECOVERY BAND 7–9</text>
+                <rect class="breach-column" x="91" y="24" width="54" height="140"></rect>
+                <path class="plot-grid" d="M26 34H300M26 70H300M26 106H300M26 142H300"></path>
+                <rect class="band-two" x="26" y="34" width="274" height="72"></rect>
+                <rect class="band-one" x="26" y="52" width="274" height="36"></rect>
+                <path class="plot-guide" d="M46 24V164M118 24V164M208 24V106M280 24V106"></path>
+                <path class="control-limit" d="M26 34H300M26 106H300"></path>
+                <path class="inner-limit" d="M26 52H300M26 88H300"></path>
+                <path class="center-line" d="M26 70H300"></path>
+                <text class="plot-tick" x="9" y="38">9</text>
+                <text class="plot-tick" x="9" y="74">8</text>
+                <text class="plot-tick" x="9" y="110">7</text>
+                <text class="plot-tick" x="9" y="146">6</text>
+                <text class="limit-label" x="309" y="38">UCL</text>
+                <text class="limit-label" x="309" y="74">CL</text>
+                <text class="limit-label" x="309" y="110">LCL</text>
+                <text class="plot-action" x="250" y="47">+2σ</text>
+                <text class="plot-action" x="250" y="65">+1σ</text>
+                <text class="plot-action" x="250" y="83">−1σ</text>
+                <text class="plot-action" x="250" y="101">−2σ</text>
+                <path class="breach-line" d="M46 34 118 142"></path>
+                <circle class="point-success" cx="46" cy="34" r="6"></circle>
+                <circle class="point-future" cx="208" cy="70" r="4"></circle>
+                <circle class="point-future" cx="280" cy="70" r="4"></circle>
+                <circle class="breach-halo" cx="118" cy="142" r="23"></circle>
+                <circle class="breach-point" cx="118" cy="142" r="7"></circle>
+                <text class="breach-label" x="77" y="150">6</text>
+                <text class="plot-sigma" x="177" y="166">3.4σ</text>
+                <text class="sigma-caption" x="179" y="183">beyond your usual drop</text>
+                <text class="plot-tick" x="46" y="200" text-anchor="middle">SET 1</text>
+                <text class="flag-ink" x="118" y="200" text-anchor="middle">SET 2</text>
+                <text class="plot-tick" x="208" y="200" text-anchor="middle">SET 3</text>
+                <text class="plot-tick" x="280" y="200" text-anchor="middle">SET 4</text>
+              </svg>
+              <div class="flag-rule">
+                <p class="rule-tag">Rule 1 · point beyond the lower limit.</p>
+                <p class="flag-rule-detail">Drop 3 · usual 0.6 ± 0.7 over 12 sessions.</p>
+              </div>
+            </section>
+
+            <section class="causes" aria-label="Ranked likely causes and strength evidence">
+              <div class="causes-heading">The coach’s read<span>RANKED · EVIDENCE</span></div>
+              <div class="cause">
+                <span class="cause-number">01</span>
+                <div>
+                  <h3>Short rest · most likely main driver.</h3>
+                  <div class="evidence-grid">
+                    <p>1:32 of 2:30.<br>61% of the interval.</p>
+                    <svg viewBox="0 0 140 36" role="img" aria-label="Actual rest of 1:32 is at 61% of the recommended 2:30 interval.">
+                      <rect class="rest-band" x="5" y="4" width="130" height="12"></rect>
+                      <path class="rest-limit" d="M5 4H135M5 16H135"></path>
+                      <path class="rest-line" d="M5 10H135"></path>
+                      <path class="rest-stem" d="M84.73 10V28"></path>
+                      <circle class="rest-actual" cx="84.73" cy="28" r="4.5"></circle>
+                      <text class="rest-label" x="98" y="32">SHORT</text>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <div class="cause">
+                <span class="cause-number">02</span>
+                <div>
+                  <h3>Recovery · centre moved −0.4 reps.</h3>
+                  <p>HRV −27% shifts today’s expected centre.</p>
+                  <p class="last-night">Last night · sleep 5 h 48 m (avg 7 h 21 m) · HRV 38 ms (baseline 52) · resting HR 61 (baseline 55).</p>
+                </div>
+              </div>
+              <div class="cause">
+                <span class="cause-number">03</span>
+                <div>
+                  <h3>No sign of strength loss.</h3>
+                  <div class="evidence-grid">
+                    <p>Set-1 e1RM: 253 lb.<br>On your 249–254 trend.</p>
+                    <svg viewBox="0 0 140 36" role="img" aria-label="Set-1 e1RM of 253 pounds is inside the four-week 249 to 254 trend band. Set 2 implies 222 pounds, down 12 percent.">
+                      <path class="estimate-line" d="M5 12H135"></path>
+                      <rect class="estimate-band" x="113" y="3" width="22" height="18"></rect>
+                      <circle class="estimate-ghost" cx="5" cy="12" r="3.5"></circle>
+                      <circle class="estimate-point" cx="131" cy="12" r="5"></circle>
+                      <text class="plot-tick" x="0" y="34">222 (−12%)</text>
+                      <text class="plot-tick" x="117" y="34">253</text>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <div class="flag-action"><button class="btn-primary" type="button" data-go="F3">See the next best action<svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></button></div>
+            <footer class="screen-footer" data-feedback aria-live="polite">Set 2 ✓ · rest auto-started · 2:30 recommended</footer>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="frame">
+        <figcaption class="frame-caption"><span>Next best action · today</span><span class="mono">F3 / PROJECT THE NEXT POINT</span></figcaption>
+        <div class="phone" data-frame="F3">
+          <div class="status"><span>10:24</span><svg class="icon" aria-hidden="true"><use href="#i-status"></use></svg></div>
+          <header class="appbar">
+            <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-control"></use></svg></span>control</div>
+            <span class="appbar-context live">UPPER A · NEXT ACTION</span>
+          </header>
+          <div class="session-bar">
+            <span class="session-label">Session · Upper A</span>
+            <button class="deload" type="button" role="switch" aria-checked="false" data-scope="session" aria-label="Upper A session: This was a deload" title="When on, this session's sets do not count toward progression or normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+            </button>
+          </div>
+          <div class="screen decision-screen">
+            <div class="decision-intro">
+              <p class="eyebrow">Bench / rest of today</p>
+              <h2>Aim for the centre.</h2>
+            </div>
+
+            <div class="projection">
+              <div class="chart-caption">
+                <span>Hollow points = projected</span>
+                <span class="band-keys"><span><i class="swatch one"></i>±1σ</span><span><i class="swatch two"></i>±2σ</span></span>
+              </div>
+              <svg viewBox="0 0 348 174" role="img" aria-label="Sets 1 and 2 are logged at 9 and 6 reps. Option A re-centres the remaining two sets at 165 pounds and 8 reps. Option B keeps 185 pounds with 3 minutes rest and projects 6 to 7 reps at the lower limit. Option C leaves both remaining slots empty.">
+                <text class="plot-tick" x="26" y="13">185 LB</text>
+                <text class="plot-action" x="169" y="13">165 LB / RE-CENTRED</text>
+                <path class="plot-grid" d="M26 36H300M26 64H300M26 92H300M26 120H300"></path>
+                <rect class="historical-two" x="26" y="36" width="127" height="56"></rect>
+                <rect class="historical-one" x="26" y="50" width="127" height="28"></rect>
+                <path class="historical-line" d="M26 36H153M26 64H153M26 92H153"></path>
+                <rect class="band-two" x="168" y="36" width="132" height="56"></rect>
+                <rect class="band-one" x="168" y="50" width="132" height="28"></rect>
+                <rect class="regime-outline" x="168" y="36" width="132" height="56"></rect>
+                <path class="center-line" d="M168 64H300"></path>
+                <path class="regime-divider" d="M160 19V149"></path>
+                <path class="regime-arrow" d="M153 64h10m-4-4 4 4-4 4"></path>
+                <path class="plot-guide" d="M46 19V149M118 19V149M208 19V149M280 19V149"></path>
+                <text class="plot-tick" x="9" y="40">9</text>
+                <text class="plot-tick" x="9" y="68">8</text>
+                <text class="plot-tick" x="9" y="96">7</text>
+                <text class="plot-tick" x="9" y="124">6</text>
+                <text class="limit-label" x="309" y="40">UCL</text>
+                <text class="limit-label" x="309" y="68">CL</text>
+                <text class="limit-label" x="309" y="96">LCL</text>
+                <circle class="point-success" cx="46" cy="36" r="6"></circle>
+                <circle class="breach-halo" cx="118" cy="120" r="10"></circle>
+                <circle class="breach-point" cx="118" cy="120" r="5"></circle>
+                <circle class="point-open" cx="208" cy="64" r="14"></circle>
+                <circle class="point-open" cx="280" cy="64" r="14"></circle>
+                <text class="projection-value" x="208" y="69" text-anchor="middle">8</text>
+                <text class="projection-value" x="280" y="69" text-anchor="middle">8</text>
+                <circle class="point-quiet" cx="208" cy="92" r="9"></circle>
+                <text class="plot-label-strong" x="230" y="111">B · 6–7</text>
+                <text class="plot-tick" x="88" y="146">C / STOP</text>
+                <rect class="target-slot-quiet" x="202" y="136" width="12" height="12" rx="2"></rect>
+                <rect class="target-slot-quiet" x="274" y="136" width="12" height="12" rx="2"></rect>
+                <text class="plot-tick" x="46" y="170" text-anchor="middle">SET 1</text>
+                <text class="plot-tick" x="118" y="170" text-anchor="middle">SET 2</text>
+                <text class="plot-action" x="208" y="170" text-anchor="middle">SET 3</text>
+                <text class="plot-action" x="280" y="170" text-anchor="middle">SET 4</text>
+              </svg>
+            </div>
+
+            <section class="recommendation" aria-label="Recommended adjustment">
+              <div class="recommendation-heading"><span class="option-letter">A</span>RECOMMENDED · RE-CENTRE AT 165</div>
+              <h3>165 lb × 8 <span>−11% load</span></h3>
+              <div class="exercise-line">
+                <span>Bench sets 3–4 · target RPE 8</span>
+                <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="Bench" aria-label="Bench Press: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                  <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                </button>
+              </div>
+              <p>Full 2:30 recommended · Skip to override.</p>
+              <div class="exercise-line incline-line">
+                <span>Incline DB Press · later</span>
+                <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="Incline" aria-label="Incline Dumbbell Press: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                  <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                </button>
+              </div>
+              <p>3 → 2 sets · 55 lb × 10–12 · preserve quality.</p>
+              <p class="quiet">Pulling unchanged · session ≈ 1 min shorter.</p>
+              <div class="volume">
+                <div class="volume-copy"><span><strong>15 of 16</strong> weekly chest sets</span><span>Target 12–18</span></div>
+                <div class="volume-band" aria-label="Weekly chest volume remains inside the 12 to 18 set target."></div>
+              </div>
+            </section>
+
+            <div class="alternatives" aria-label="Choose another adjustment">
+              <button class="alternative" id="option-b" type="button" data-choice="B" aria-pressed="false">
+                <span class="option-letter">B</span>
+                <span><strong>185 lb · rest 3:00 · cap at RPE 9</strong><small>Expect 6–7 reps. More fatigue Thursday.</small></span>
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+              </button>
+              <button class="alternative" type="button" data-choice="C" aria-pressed="false">
+                <span class="option-letter">C</span>
+                <span><strong>Stop bench here. Move on.</strong><small>Lose 2 chest sets · 14/16; incline stays 3.</small></span>
+                <svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg>
+              </button>
+            </div>
+
+            <div class="accept-action"><button class="btn-primary" id="accept-plan" type="button"><span id="accept-label">Accept A · adjust today</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"></use></svg></button></div>
+            <div class="secondary-actions">
+              <button class="text-button choose" type="button" id="choose-another">Choose another</button>
+              <button class="text-button dismiss" type="button" data-go="F1">Dismiss</button>
+            </div>
+            <footer class="screen-footer" data-feedback aria-live="polite"><span>ONLY UNTOUCHED SETS CHANGE.</span><span>ALWAYS UNDOABLE.</span></footer>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="frame">
+        <figcaption class="frame-caption"><span>Plan applied</span><span class="mono">F4 / LOGGING CONTINUES</span></figcaption>
+        <div class="phone applied" data-frame="F4">
+          <div class="status"><span>10:24</span><svg class="icon" aria-hidden="true"><use href="#i-status"></use></svg></div>
+          <header class="appbar">
+            <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-control"></use></svg></span>control</div>
+            <span class="appbar-context live">UPPER A · PLAN APPLIED</span>
+          </header>
+          <div class="session-bar">
+            <span class="session-label">Session · Upper A</span>
+            <button class="deload" type="button" role="switch" aria-checked="false" data-scope="session" aria-label="Upper A session: This was a deload" title="When on, this session's sets do not count toward progression or normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+            </button>
+          </div>
+          <div class="screen">
+            <div class="inset">
+              <div class="lift-intro">
+                <p class="eyebrow">New load. Same intent.</p>
+                <div class="title-row">
+                  <h2>Bench Press</h2>
+                  <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="Bench" aria-label="Bench Press: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                    <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                  </button>
+                </div>
+                <p class="meta">4 working sets · target RPE 8 · rest 2:30</p>
+              </div>
+
+              <div class="coach-change">
+                <span id="change-summary">COACH · SETS 3–4: 185 → 165 lb</span>
+                <button class="undo" id="undo-plan" type="button" aria-label="Undo coach changes to untouched sets 3 and 4">Undo</button>
+              </div>
+              <p class="change-reason" id="bench-reason">Backed off after a short-rest grinder; keeps two productive sets.</p>
+
+              <div class="chart-area">
+                <div class="chart-caption"><span id="f4-chart-title">Normal re-centred at 165 lb</span><span class="mono" data-next-caption>SET 3 NEXT</span></div>
+                <svg class="control-chart" viewBox="0 0 348 146" role="img" aria-label="Sets 1 and 2 remain logged at 185 pounds for 9 and 6 reps. Only untouched sets 3 and 4 have changed to 165 pounds, targeting 8 reps in the re-centred band.">
+                  <text class="plot-tick" x="26" y="12">185 LB / LOGGED</text>
+                  <text class="plot-action" x="173" y="12" id="f4-regime-label">165 LB / RE-CENTRED</text>
+                  <rect class="active-column" x="183" y="20" width="50" height="100"></rect>
+                  <path class="plot-grid" d="M26 34H300M26 58H300M26 82H300M26 106H300"></path>
+                  <rect class="historical-two" x="26" y="34" width="127" height="48"></rect>
+                  <rect class="historical-one" x="26" y="46" width="127" height="24"></rect>
+                  <path class="historical-line" d="M26 34H153M26 58H153M26 82H153"></path>
+                  <rect class="band-two" x="168" y="34" width="132" height="48"></rect>
+                  <rect class="band-one" x="168" y="46" width="132" height="24"></rect>
+                  <path class="control-limit" d="M168 34H300M168 82H300"></path>
+                  <path class="center-line" d="M168 58H300"></path>
+                  <path class="regime-divider" d="M160 20V120"></path>
+                  <path class="plot-guide" d="M46 20V120M118 20V120M208 20V120M280 20V120"></path>
+                  <text class="plot-tick" x="9" y="38">9</text>
+                  <text class="plot-tick" x="9" y="62">8</text>
+                  <text class="plot-tick" x="9" y="86">7</text>
+                  <text class="plot-tick" x="9" y="110">6</text>
+                  <text class="limit-label" x="309" y="38">UCL</text>
+                  <text class="limit-label" x="309" y="62">CL</text>
+                  <text class="limit-label" x="309" y="86">LCL</text>
+                  <circle class="point-success" cx="46" cy="34" r="6"></circle>
+                  <circle class="breach-halo" cx="118" cy="106" r="10"></circle>
+                  <circle class="breach-point" cx="118" cy="106" r="5"></circle>
+                  <text class="flag-ink" x="132" y="110">6</text>
+                  <g data-point="3">
+                    <circle class="point-open" cx="208" cy="58" r="14"></circle>
+                    <text class="projection-value" x="208" y="63" text-anchor="middle">8</text>
+                  </g>
+                  <g data-point="4">
+                    <circle class="point-open" cx="280" cy="58" r="12"></circle>
+                    <text class="projection-value" x="280" y="63" text-anchor="middle">8</text>
+                  </g>
+                  <text class="plot-tick" x="46" y="141" text-anchor="middle">SET 1</text>
+                  <text class="plot-tick" x="118" y="141" text-anchor="middle">SET 2</text>
+                  <text class="plot-action" x="208" y="141" text-anchor="middle">SET 3</text>
+                  <text class="plot-tick" x="280" y="141" text-anchor="middle">SET 4</text>
+                </svg>
+                <div class="chart-key">
+                  <span>Hollow = target · logged sets stay fixed</span>
+                  <span class="band-keys"><span><i class="swatch one"></i>±1σ</span><span><i class="swatch two"></i>±2σ</span></span>
+                </div>
+              </div>
+
+              <section class="rest-block" data-timer="F4" data-seconds="150" data-elapsed="0" data-after-set="2" aria-label="Rest timer, automatically started by the set 2 check">
+                <div class="timer-top">
+                  <div class="timer-reading"><span class="timer-label" data-timer-label>AUTO-STARTED<br>ON SET 2 ✓</span><span class="rest-clock" data-clock role="timer" aria-label="Rest remaining">2:30</span></div>
+                  <div class="timer-actions">
+                    <button type="button" data-adjust="-15" aria-label="Subtract 15 seconds from rest">−15s</button>
+                    <button type="button" data-adjust="15" aria-label="Add 15 seconds to rest">+15s</button>
+                    <button class="skip" type="button" data-skip>Skip</button>
+                  </div>
+                </div>
+                <svg class="rest-svg" viewBox="0 0 348 26" role="img" aria-label="The full recommended rest is 2 minutes 30 seconds. The timer automatically started when set 2 was checked; 0 seconds have elapsed.">
+                  <rect class="rest-band" x="26" y="2" width="274" height="10"></rect>
+                  <path class="rest-limit" d="M26 2H300M26 12H300"></path>
+                  <path class="rest-line" d="M26 7H300"></path>
+                  <path class="rest-stem" data-rest-stem d="M26 7V23"></path>
+                  <circle class="rest-actual" data-rest-point cx="26" cy="23" r="4"></circle>
+                  <text class="rest-label" x="40" y="25" data-rest-elapsed>0:00 / 2:30</text>
+                  <text class="rest-label" x="307" y="10" data-rest-target>2:30</text>
+                </svg>
+                <p class="rest-note" data-rest-note>Full 2:30 recommended · Skip to override</p>
+              </section>
+
+              <section class="logger" aria-label="Adjusted bench press set logger">
+                <div class="log-head"><strong>Tap ✓ to accept targets.</strong><span class="mono">4 WORKING SETS</span></div>
+                <div class="log-grid col-head"><span>SET</span><span>PREVIOUS</span><span>LB</span><span>REPS</span><span title="Actual RPE stays empty until you enter it. Target RPE 8.">RPE</span><span>LOG</span></div>
+
+                <div class="log-grid log-row logged" data-set="1" data-logged="true">
+                  <select class="set-flag" aria-label="Set 1 type: working" disabled><option>W</option><option selected>1</option><option>D</option><option>F</option></select>
+                  <span class="previous">185 × 10</span>
+                  <span class="field plain">185</span><span class="field plain">9</span><span class="field plain">8</span>
+                  <button class="complete done" type="button" disabled aria-label="Set 1 logged, 185 pounds for 9 reps, RPE 8 entered"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row logged" data-set="2" data-logged="true">
+                  <select class="set-flag" aria-label="Set 2 type: working" disabled><option>W</option><option selected>2</option><option>D</option><option>F</option></select>
+                  <span class="previous">185 × 10</span>
+                  <span class="field plain">185</span><span class="field plain">6</span><span class="field plain">10</span>
+                  <button class="complete done" type="button" disabled aria-label="Set 2 logged, 185 pounds for 6 reps, RPE 10 entered"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row current changed" data-set="3">
+                  <select class="set-flag" aria-label="Set 3 type: choose warm-up, working, drop or failure">
+                    <option value="W">W</option><option value="3" selected>3</option><option value="D">D</option><option value="F">F</option>
+                  </select>
+                  <span class="previous">185 × 9</span>
+                  <div class="load-cell"><span class="was" aria-label="Coach changed load from 185 pounds">185 →</span><input class="field" data-field="load" type="number" inputmode="decimal" min="1" step="any" placeholder="165" aria-label="Set 3 load target changed by coach from 185 to 165 pounds"></div>
+                  <input class="field" data-field="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="8" aria-label="Set 3 rep target 8; tap check to accept">
+                  <input class="field rpe" data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set 3 actual RPE, empty; target RPE 8 is a hint only">
+                  <button class="complete" type="button" data-log aria-label="Log set 3, accepting placeholder targets, and automatically start rest"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+
+                <div class="log-grid log-row changed" data-set="4">
+                  <select class="set-flag" aria-label="Set 4 type: choose warm-up, working, drop or failure">
+                    <option value="W">W</option><option value="4" selected>4</option><option value="D">D</option><option value="F">F</option>
+                  </select>
+                  <span class="previous">185 × 9</span>
+                  <div class="load-cell"><span class="was" aria-label="Coach changed load from 185 pounds">185 →</span><input class="field" data-field="load" type="number" inputmode="decimal" min="1" step="any" placeholder="165" aria-label="Set 4 load target changed by coach from 185 to 165 pounds"></div>
+                  <input class="field" data-field="reps" type="number" inputmode="numeric" min="1" step="1" placeholder="8" aria-label="Set 4 rep target 8">
+                  <input class="field rpe" data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set 4 actual RPE, empty; target RPE 8">
+                  <button class="complete" type="button" data-log aria-label="Log set 4, accepting placeholder targets, and automatically start rest"><svg class="icon" aria-hidden="true"><use href="#i-check"></use></svg></button>
+                </div>
+              </section>
+              <p class="type-key">Tap set number to change · W warm-up · D drop · F failure</p>
+
+              <section class="upcoming" aria-label="Next exercise: Chest-Supported T-Bar Row; adjusted incline dumbbell press comes later">
+                <div class="exercise-line">
+                  <span class="eyebrow" style="letter-spacing: -.025em">Next / Chest-Supported T-Bar Row</span>
+                  <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="T-Bar Row" aria-label="Chest-Supported T-Bar Row: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                    <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                  </button>
+                </div>
+                <p id="incline-target">Later / Incline DB Press · 2 sets · 55 lb × 10–12</p>
+                <p id="incline-reason">Then Lat Pulldown → Cable Lateral Raise.</p>
+              </section>
+            </div>
+            <footer class="screen-footer" data-feedback aria-live="polite"><span>PLATES / SIDE: 45 + 10 + 5</span><span>PULLING UNCHANGED</span></footer>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="frame">
+        <figcaption class="frame-caption"><span>Next session</span><span class="mono">F5 / THE NEXT CONTROL RULE</span></figcaption>
+        <div class="phone" data-frame="F5">
+          <div class="status"><span>10:24</span><svg class="icon" aria-hidden="true"><use href="#i-status"></use></svg></div>
+          <header class="appbar">
+            <div class="brand"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-control"></use></svg></span>control</div>
+            <span class="appbar-context live" id="planned-status">NEXT UPPER A · PLANNED</span>
+          </header>
+          <div class="session-bar">
+            <span class="session-label">Session · Thursday</span>
+            <button class="deload" type="button" role="switch" aria-checked="false" data-scope="session" aria-label="Thursday session: This was a deload" title="When on, this session's sets do not count toward progression or normal bounds.">
+              <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+            </button>
+          </div>
+          <div class="screen">
+            <div class="inset">
+              <div class="lift-intro future-intro">
+                <div class="future-top">
+                  <p class="eyebrow">Thu 5 Nov / Bench</p>
+                  <button class="deload" type="button" role="switch" aria-checked="false" data-scope="exercise" data-exercise="Bench" aria-label="Thursday Bench Press: This was a deload" title="When on, this exercise's sets do not count toward progression or normal bounds.">
+                    <span>This was a deload</span><span class="switch-track" aria-hidden="true"></span><span class="switch-state" aria-hidden="true">Off</span>
+                  </button>
+                </div>
+                <h2>Hold the line.</h2>
+                <p class="meta">185 lb again. Let the next two sets tell us.</p>
+              </div>
+              <div class="future-prescription">
+                <strong>185 lb · 4 × 8–10</strong><span>2:30 recommended</span>
+              </div>
+
+              <div class="future-chart">
+                <div class="chart-caption"><span>Next session’s targets</span><span class="mono">NOT YET LOGGED</span></div>
+                <svg viewBox="0 0 348 174" role="img" aria-label="Next session has four bench sets at 185 pounds. The progression threshold is at least 9 reps on both sets 1 and 2, with actual RPE no higher than 9, before increasing to 190 pounds. No effort rating has been entered.">
+                  <text class="plot-action" x="26" y="13">≥9 ON SETS 1–2 · RPE ≤9 → 190 LB</text>
+                  <path class="plot-grid" d="M26 38H300M26 66H300M26 94H300M26 122H300"></path>
+                  <rect class="band-two" x="26" y="38" width="274" height="56"></rect>
+                  <rect class="band-one" x="26" y="52" width="274" height="28"></rect>
+                  <path class="plot-guide" d="M46 25V149M118 25V149M208 25V149M280 25V149"></path>
+                  <path class="control-limit" d="M26 38H300M26 94H300"></path>
+                  <path class="progression-line" d="M26 66H300"></path>
+                  <text class="plot-tick" x="2" y="42">10</text>
+                  <text class="plot-action" x="9" y="70">9</text>
+                  <text class="plot-tick" x="9" y="98">8</text>
+                  <text class="plot-tick" x="9" y="126">7</text>
+                  <text class="limit-label" x="309" y="42">UCL</text>
+                  <text class="limit-label" x="309" y="70">CL</text>
+                  <text class="limit-label" x="309" y="98">LCL</text>
+                  <circle class="point-open" cx="46" cy="66" r="12"></circle>
+                  <circle class="point-open" cx="118" cy="66" r="12"></circle>
+                  <text class="projection-value" x="46" y="71" text-anchor="middle">9</text>
+                  <text class="projection-value" x="118" y="71" text-anchor="middle">9</text>
+                  <path class="center-line" d="M46 84V111H118V84"></path>
+                  <text class="plot-action" x="82" y="133" text-anchor="middle">→ 190 LB</text>
+                  <rect class="target-slot-quiet" x="197" y="38" width="22" height="56" rx="11"></rect>
+                  <rect class="target-slot-quiet" x="269" y="38" width="22" height="56" rx="11"></rect>
+                  <text class="plot-tick" x="46" y="169" text-anchor="middle">SET 1</text>
+                  <text class="plot-tick" x="118" y="169" text-anchor="middle">SET 2</text>
+                  <text class="plot-tick" x="208" y="169" text-anchor="middle">SET 3</text>
+                  <text class="plot-tick" x="280" y="169" text-anchor="middle">SET 4</text>
+                </svg>
+              </div>
+
+              <section class="future-rule">
+                <p class="eyebrow">Progression rule</p>
+                <p>At <strong>185 lb</strong>, sets <strong>1–2 both ≥9 reps at RPE ≤9</strong> → increase to <strong>190 lb</strong>.</p>
+              </section>
+
+              <section class="future-rule watch-rule">
+                <p class="eyebrow">Run rule / watch Thursday</p>
+                <p>Flag again with normal recovery → a <strong>one-week pressing deload</strong>.</p>
+                <p class="rule-detail">PRESSING: −10% LOAD · −1 SET · ONE WEEK</p>
+              </section>
+
+              <section class="contingency">
+                <p class="eyebrow">Morning contingency</p>
+                <p>If Thursday HRV is <strong>under 45 ms</strong>, start bench at <strong>175 lb</strong>.</p>
+              </section>
+
+              <section class="injury-session" aria-label="Planned Thursday session injury action">
+                <button class="injury-action" id="skip-injury" type="button"><svg class="icon" aria-hidden="true"><use href="#i-injury"></use></svg><span>Skip - injury</span></button>
+                <p id="injury-note" aria-live="polite">A session skipped for injury does not count as a failure or a missed progression.</p>
+              </section>
+            </div>
+            <footer class="screen-footer future-footer" data-feedback aria-live="polite">Keep the load. Earn the next increase.</footer>
+          </div>
+        </div>
+      </figure>
+
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var timers = {};
+      var selectedChoice = 'A';
+      var f4 = document.querySelector('.phone[data-frame="F4"]');
+      var undoButton = document.getElementById('undo-plan');
+      var undoEntries = [
+        { row: f4.querySelector('[data-set="3"]'), load: '185', reps: '8' },
+        { row: f4.querySelector('[data-set="4"]'), load: '185', reps: '8' }
+      ];
+      var inclineUndo = true;
+
+      function revealFrame(name) {
+        var frame = document.querySelector('.phone[data-frame="' + name + '"]');
+        if (frame) frame.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+      }
+
+      function feedback(phone, message) {
+        var region = phone.querySelector('[data-feedback]');
+        if (region) region.textContent = message;
+      }
+
+      function formatTime(seconds) {
+        var value = Math.max(0, Math.round(seconds));
+        return Math.floor(value / 60) + ':' + String(value % 60).padStart(2, '0');
+      }
+
+      function drawTimer(timer) {
+        timer.element.querySelector('[data-clock]').textContent = formatTime(timer.remaining);
+        var point = timer.element.querySelector('[data-rest-point]');
+        var stem = timer.element.querySelector('[data-rest-stem]');
+        var x = 26 + 274 * Math.max(0, Math.min(1, timer.elapsed / timer.target));
+        var y = point.getAttribute('cy');
+        point.setAttribute('cx', String(x));
+        stem.setAttribute('d', 'M' + x + ' 7V' + y);
+        var elapsedLabel = timer.element.querySelector('[data-rest-elapsed]');
+        elapsedLabel.setAttribute('x', String(Math.min(x + 14, 226)));
+        elapsedLabel.textContent = formatTime(timer.elapsed) + ' / ' + formatTime(timer.target);
+        timer.element.querySelector('[data-rest-target]').textContent = formatTime(timer.target);
+        timer.element.querySelector('.rest-svg').setAttribute('aria-label', 'Rest elapsed ' + formatTime(timer.elapsed) + '. ' + formatTime(timer.target) + ' ' + (timer.target === 150 ? 'recommended.' : 'selected.'));
+        timer.element.querySelector('[data-rest-note]').textContent = 'Full ' + formatTime(timer.target) + (timer.target === 150 ? ' recommended' : ' selected') + ' · Skip to override';
+        var label = timer.element.querySelector('[data-timer-label]');
+        if (timer.remaining === 0) {
+          label.textContent = timer.skipped ? 'REST SKIPPED' : 'REST COMPLETE';
+        } else {
+          label.textContent = 'AUTO-STARTED';
+          label.appendChild(document.createElement('br'));
+          label.appendChild(document.createTextNode('ON SET ' + timer.afterSet + ' ✓'));
+        }
+        timer.element.closest('.phone').querySelectorAll('.log-row.current [data-log]').forEach(function (button) {
+          button.classList.toggle('active', timer.remaining === 0);
+        });
+      }
+
+      document.querySelectorAll('[data-timer]').forEach(function (element) {
+        var key = element.getAttribute('data-timer');
+        var timer = {
+          element: element,
+          remaining: Number(element.getAttribute('data-seconds')),
+          elapsed: Number(element.getAttribute('data-elapsed')),
+          target: 150,
+          afterSet: element.getAttribute('data-after-set'),
+          skipped: false,
+          running: Number(element.getAttribute('data-seconds')) > 0
+        };
+        timers[key] = timer;
+        drawTimer(timer);
+
+        element.querySelectorAll('[data-adjust]').forEach(function (button) {
+          button.addEventListener('click', function () {
+            timer.remaining = Math.max(0, timer.remaining + Number(button.getAttribute('data-adjust')));
+            timer.running = timer.remaining > 0;
+            timer.skipped = false;
+            drawTimer(timer);
+          });
+        });
+
+        element.querySelector('[data-skip]').addEventListener('click', function () {
+          timer.remaining = 0;
+          timer.running = false;
+          timer.skipped = true;
+          drawTimer(timer);
+          feedback(element.closest('.phone'), 'Rest skipped. Log the next set when ready.');
+        });
+      });
+
+      window.setInterval(function () {
+        Object.keys(timers).forEach(function (key) {
+          var timer = timers[key];
+          if (!timer.running || timer.remaining <= 0) return;
+          timer.remaining -= 1;
+          timer.elapsed += 1;
+          if (timer.remaining === 0) timer.running = false;
+          drawTimer(timer);
+        });
+      }, 1000);
+
+      function startRest(phone, setNumber, seconds) {
+        var timer = timers[phone.getAttribute('data-frame')];
+        if (!timer) return;
+        timer.target = seconds || 150;
+        timer.remaining = timer.target;
+        timer.elapsed = 0;
+        timer.afterSet = setNumber;
+        timer.skipped = false;
+        timer.running = true;
+        timer.element.setAttribute('aria-label', 'Rest timer, automatically started by the set ' + setNumber + ' check');
+        drawTimer(timer);
+      }
+
+      document.querySelectorAll('[data-go]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          revealFrame(button.getAttribute('data-go'));
+        });
+      });
+
+      document.querySelectorAll('.deload').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var checked = button.getAttribute('aria-checked') !== 'true';
+          var scope = button.getAttribute('data-scope');
+          var exercise = button.getAttribute('data-exercise');
+          var phone = button.closest('.phone');
+          var targets = scope === 'session'
+            ? phone.querySelectorAll('.deload[data-scope="session"]')
+            : phone.querySelectorAll('.deload[data-exercise="' + exercise + '"]');
+
+          if (phone.getAttribute('data-frame') !== 'F5') {
+            targets = scope === 'session'
+              ? document.querySelectorAll('.phone:not([data-frame="F5"]) .deload[data-scope="session"]')
+              : document.querySelectorAll('.phone:not([data-frame="F5"]) .deload[data-exercise="' + exercise + '"]');
+          }
+
+          targets.forEach(function (target) {
+            target.setAttribute('aria-checked', String(checked));
+            target.querySelector('.switch-state').textContent = checked ? 'On' : 'Off';
+          });
+
+          var label = scope === 'session' ? 'Session' : exercise;
+          feedback(phone, checked
+            ? label + ' deload: sets excluded from progression and normal bounds.'
+            : label + ' deload off: normal progression and bounds apply.');
+        });
+      });
+
+      function untouched(row) {
+        return row.getAttribute('data-logged') !== 'true' && row.getAttribute('data-touched') !== 'true';
+      }
+
+      function setTarget(row, load, reps) {
+        var loadInput = row.querySelector('[data-field="load"]');
+        var repsInput = row.querySelector('[data-field="reps"]');
+        var was = row.querySelector('.was');
+        var oldLoad = loadInput.placeholder;
+        if (was) {
+          was.textContent = oldLoad + ' →';
+          was.hidden = false;
+          was.setAttribute('aria-label', 'Coach changed load from ' + oldLoad + ' pounds');
+        }
+        loadInput.placeholder = String(load);
+        repsInput.placeholder = String(reps);
+        loadInput.setAttribute('aria-label', 'Set ' + row.getAttribute('data-set') + ' load target changed by coach to ' + load + ' pounds');
+        repsInput.setAttribute('aria-label', 'Set ' + row.getAttribute('data-set') + ' rep target ' + reps);
+        row.classList.add('changed');
+      }
+
+      function updateUndoAvailability() {
+        var available = undoEntries.some(function (entry) { return untouched(entry.row); }) || inclineUndo;
+        undoButton.disabled = !available;
+        undoButton.textContent = available ? 'Undo' : 'Logged';
+      }
+
+      undoButton.addEventListener('click', function () {
+        var restored = 0;
+        undoEntries.forEach(function (entry) {
+          if (!untouched(entry.row)) return;
+          entry.row.querySelector('[data-field="load"]').placeholder = entry.load;
+          entry.row.querySelector('[data-field="reps"]').placeholder = entry.reps;
+          entry.row.classList.remove('changed');
+          var was = entry.row.querySelector('.was');
+          if (was) was.hidden = true;
+          restored += 1;
+        });
+
+        if (inclineUndo) {
+          document.getElementById('incline-target').textContent = 'Later / Incline DB Press · 3 sets · 55 lb × 10–12';
+          document.getElementById('incline-reason').textContent = 'Then Lat Pulldown → Cable Lateral Raise.';
+        }
+
+        document.getElementById('change-summary').textContent = 'COACH CHANGE UNDONE';
+        document.getElementById('bench-reason').textContent = 'Original targets restored for untouched sets; logged sets stay fixed.';
+        if (restored) {
+          var remaining = f4.querySelector('.log-row:not(.logged) [data-field="load"]');
+          if (remaining) {
+            document.getElementById('f4-chart-title').textContent = 'Targets restored at ' + remaining.placeholder + ' lb';
+            document.getElementById('f4-regime-label').textContent = remaining.placeholder + ' LB / RESTORED';
+          }
+        }
+        undoEntries = [];
+        inclineUndo = false;
+        undoButton.disabled = true;
+        undoButton.textContent = 'Undone';
+        feedback(f4, 'Undo applied to untouched targets. Completed sets were preserved.');
+      });
+
+      function plotSet(phone, setNumber, reps) {
+        var group = phone.querySelector('[data-point="' + setNumber + '"]');
+        if (!group) return;
+        var namespace = 'http://www.w3.org/2000/svg';
+        var x = { 1: 46, 2: 118, 3: 208, 4: 280 }[setNumber];
+        var isF1 = phone.getAttribute('data-frame') === 'F1';
+        var y = isF1 ? 280 - 26 * reps : 250 - 24 * reps;
+        y = Math.max(isF1 ? 20 : 24, Math.min(isF1 ? 124 : 112, y));
+        while (group.firstChild) group.removeChild(group.firstChild);
+        var point = document.createElementNS(namespace, 'circle');
+        point.setAttribute('cx', String(x));
+        point.setAttribute('cy', String(y));
+        point.setAttribute('r', '6');
+        point.setAttribute('class', reps >= 7 && reps <= 9 ? 'point-success' : 'breach-point');
+        var label = document.createElementNS(namespace, 'text');
+        label.setAttribute('x', String(x + 12));
+        label.setAttribute('y', String(y + 4));
+        label.setAttribute('class', reps >= 7 && reps <= 9 ? 'plot-success' : 'flag-ink');
+        label.textContent = String(reps);
+        group.appendChild(point);
+        group.appendChild(label);
+      }
+
+      function reviewLaterSet(phone, completedRow, load, reps, rpe) {
+        if (phone !== f4 || rpe === null || rpe < 9) return;
+        var next = Array.prototype.find.call(phone.querySelectorAll('.log-row[data-set]'), function (row) {
+          return Number(row.getAttribute('data-set')) > Number(completedRow.getAttribute('data-set')) && untouched(row);
+        });
+        if (!next) return;
+        var oldLoad = next.querySelector('[data-field="load"]').placeholder;
+        var oldReps = next.querySelector('[data-field="reps"]').placeholder;
+        var nextLoad = Math.max(5, Number(oldLoad) - 5);
+        undoEntries = [{ row: next, load: oldLoad, reps: oldReps }];
+        inclineUndo = false;
+        setTarget(next, nextLoad, oldReps);
+        document.getElementById('change-summary').textContent = 'COACH · SET ' + next.getAttribute('data-set') + ': ' + oldLoad + ' → ' + nextLoad + ' lb';
+        document.getElementById('bench-reason').textContent = 'One load step down after high effort; preserves the next productive set.';
+        document.getElementById('f4-chart-title').textContent = 'Next target re-centred at ' + nextLoad + ' lb';
+        document.getElementById('f4-regime-label').textContent = nextLoad + ' LB / NEXT TARGET';
+        updateUndoAvailability();
+      }
+
+      document.querySelectorAll('.logger input, .logger select').forEach(function (input) {
+        input.addEventListener('input', function () {
+          var row = input.closest('.log-row');
+          if (row.getAttribute('data-logged') !== 'true') row.setAttribute('data-touched', 'true');
+        });
+        input.addEventListener('change', function () {
+          var row = input.closest('.log-row');
+          if (row.getAttribute('data-logged') !== 'true') row.setAttribute('data-touched', 'true');
+        });
+      });
+
+      document.querySelectorAll('[data-log]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var row = button.closest('.log-row');
+          if (row.getAttribute('data-logged') === 'true') return;
+          var phone = button.closest('.phone');
+          var loadInput = row.querySelector('[data-field="load"]');
+          var repsInput = row.querySelector('[data-field="reps"]');
+          var rpeInput = row.querySelector('[data-field="rpe"]');
+          var inputs = [loadInput, repsInput, rpeInput];
+
+          for (var i = 0; i < inputs.length; i += 1) {
+            if (inputs[i].value !== '' && !inputs[i].checkValidity()) {
+              inputs[i].reportValidity();
+              inputs[i].focus();
+              return;
+            }
+          }
+
+          var load = Number(loadInput.value || loadInput.placeholder);
+          var reps = Number(repsInput.value || repsInput.placeholder);
+          var rpe = rpeInput.value === '' ? null : Number(rpeInput.value);
+          if (!Number.isFinite(load) || load <= 0 || !Number.isInteger(reps) || reps <= 0) return;
+
+          loadInput.value = String(load);
+          repsInput.value = String(reps);
+          inputs.forEach(function (input) { input.readOnly = true; });
+          row.querySelector('.set-flag').disabled = true;
+          row.setAttribute('data-logged', 'true');
+          row.classList.add('logged');
+          row.classList.remove('current');
+          button.classList.remove('active');
+          button.classList.add('done');
+          button.disabled = true;
+          button.setAttribute('aria-label', 'Set ' + row.getAttribute('data-set') + ' logged: ' + load + ' pounds for ' + reps + ' reps' + (rpe === null ? ', RPE not entered' : ', RPE ' + rpe));
+
+          var setNumber = Number(row.getAttribute('data-set'));
+          plotSet(phone, setNumber, reps);
+          startRest(phone, setNumber, selectedChoice === 'B' && phone === f4 ? 180 : 150);
+
+          var next = phone.querySelector('.log-row:not(.logged)');
+          if (next) {
+            phone.querySelectorAll('.log-row.current').forEach(function (current) { current.classList.remove('current'); });
+            next.classList.add('current');
+          }
+          var timer = timers[phone.getAttribute('data-frame')];
+          if (timer) drawTimer(timer);
+          var caption = phone.querySelector('[data-next-caption]');
+          if (caption) caption.textContent = next ? 'SET ' + next.getAttribute('data-set') + ' NEXT' : 'BENCH COMPLETE';
+
+          reviewLaterSet(phone, row, load, reps, rpe);
+          updateUndoAvailability();
+          feedback(phone, 'Set ' + setNumber + ' logged · ' + load + ' × ' + reps + (rpe === null ? ' · RPE left blank.' : ' · RPE ' + rpe + '.') + ' Rest auto-started.');
+
+          if (phone.getAttribute('data-frame') === 'F1' && setNumber === 2 && load === 185 && reps === 6 && rpe === 10) revealFrame('F2');
+        });
+      });
+
+      document.getElementById('choose-another').addEventListener('click', function () {
+        document.getElementById('option-b').focus();
+      });
+
+      document.querySelectorAll('[data-choice]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          var choice = button.getAttribute('data-choice');
+          selectedChoice = selectedChoice === choice ? 'A' : choice;
+          document.querySelectorAll('[data-choice]').forEach(function (option) {
+            option.setAttribute('aria-pressed', String(option.getAttribute('data-choice') === selectedChoice));
+          });
+          document.getElementById('accept-label').textContent = selectedChoice === 'A'
+            ? 'Accept A · adjust today'
+            : selectedChoice === 'B' ? 'Accept B · keep 185' : 'Accept C · finish bench';
+        });
+      });
+
+      document.getElementById('accept-plan').addEventListener('click', function () {
+        var decisionPhone = document.querySelector('.phone[data-frame="F3"]');
+        if (selectedChoice === 'C') {
+          feedback(decisionPhone, 'Bench finished at 2 sets. Incline stays at 3; weekly chest 14/16.');
+          document.getElementById('accept-label').textContent = 'C applied · bench finished';
+          return;
+        }
+
+        var targetLoad = selectedChoice === 'B' ? 185 : 165;
+        var targetReps = selectedChoice === 'B' ? 7 : 8;
+        var changedRows = [];
+        f4.querySelectorAll('.log-row[data-set]').forEach(function (row) {
+          if (Number(row.getAttribute('data-set')) < 3 || !untouched(row)) return;
+          changedRows.push({ row: row, load: '185', reps: '8' });
+          setTarget(row, targetLoad, targetReps);
+          var was = row.querySelector('.was');
+          if (was) {
+            was.textContent = '185 →';
+            was.hidden = targetLoad === 185;
+          }
+        });
+
+        if (changedRows.length) {
+          undoEntries = changedRows;
+          inclineUndo = selectedChoice === 'A';
+          document.getElementById('change-summary').textContent = selectedChoice === 'A'
+            ? 'COACH · SETS 3–4: 185 → 165 lb'
+            : 'COACH · SETS 3–4: 8 → 7 REPS';
+          document.getElementById('bench-reason').textContent = selectedChoice === 'A'
+            ? 'Backed off after a short-rest grinder; keeps two productive sets.'
+            : 'Longer rest and a lower rep target limit the next two grinders.';
+          document.getElementById('f4-chart-title').textContent = selectedChoice === 'A' ? 'Normal re-centred at 165 lb' : 'Keep 185 lb · expect 6–7 reps';
+          document.getElementById('f4-regime-label').textContent = selectedChoice === 'A' ? '165 LB / RE-CENTRED' : '185 LB / UNCHANGED';
+          document.getElementById('incline-target').textContent = selectedChoice === 'A'
+            ? 'Later / Incline DB Press · 2 sets · 55 lb × 10–12'
+            : 'Later / Incline DB Press · 3 sets · 55 lb × 10–12';
+          document.getElementById('incline-reason').textContent = 'Then Lat Pulldown → Cable Lateral Raise.';
+          f4.querySelector('.meta').textContent = selectedChoice === 'A'
+            ? '4 working sets · target RPE 8 · rest 2:30'
+            : '4 working sets · cap at RPE 9 · rest 3:00';
+          var timer = timers.F4;
+          var restTarget = selectedChoice === 'B' ? 180 : 150;
+          if (timer.remaining > 0) {
+            timer.remaining = Math.max(0, timer.remaining + restTarget - timer.target);
+            timer.running = timer.remaining > 0;
+          }
+          timer.target = restTarget;
+          drawTimer(timer);
+          updateUndoAvailability();
+        }
+        revealFrame('F4');
+      });
+
+      document.getElementById('skip-injury').addEventListener('click', function () {
+        var button = this;
+        var skipped = button.getAttribute('data-skipped') === 'true';
+        button.setAttribute('data-skipped', String(!skipped));
+        button.querySelector('span').textContent = skipped ? 'Skip - injury' : 'Skipped for injury · Undo';
+        document.getElementById('planned-status').textContent = skipped ? 'NEXT UPPER A · PLANNED' : 'THURSDAY · SKIPPED';
+        document.getElementById('injury-note').textContent = skipped
+          ? 'A session skipped for injury does not count as a failure or a missed progression.'
+          : 'Thursday was skipped for injury. This does not count as a failure or a missed progression.';
+        feedback(button.closest('.phone'), skipped ? 'Thursday’s planned session restored.' : 'Recover first. Progression is preserved.');
+      });
+    }());
+  </script>
+</body>
+</html>

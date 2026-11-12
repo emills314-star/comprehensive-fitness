@@ -1,0 +1,1212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>09 · Engine — A chess engine for your sets</title>
+  <link rel="stylesheet" href="palette.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;650;700;750;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--text); font-family: Manrope, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    button, input, a { -webkit-tap-highlight-color: transparent; }
+    button, input { font: inherit; border-radius: 0; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--current); outline-offset: 2px; }
+    svg { display: block; width: 20px; height: 20px; fill: transparent; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
+    .symbols { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .mono { font-family: 'Roboto Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .eyebrow { font: 500 11px/16px 'Roboto Mono', ui-monospace, monospace; letter-spacing: .6px; text-transform: uppercase; }
+    .blue { color: var(--current); }
+    .muted { color: var(--muted); }
+    .showcase { max-width: 2260px; padding: 40px 32px 60px; margin: auto; }
+    .concept-header { display: grid; grid-template-columns: 1.15fr 1fr; gap: 30px 70px; align-items: end; padding-bottom: 38px; }
+    .concept-name { display: flex; align-items: center; gap: 23px; }
+    .concept-name h1 { margin: 9px 0 14px; font-size: 78px; line-height: 1; letter-spacing: -5px; font-weight: 800; }
+    .concept-name .mono { font-size: 38px; font-weight: 600; letter-spacing: -4px; color: var(--current); }
+    .thesis { margin: 0; font-size: 22px; line-height: 1.4; letter-spacing: -.7px; }
+    .collection-note { margin-top: 16px; font-size: 11px; line-height: 17px; color: var(--muted); letter-spacing: .4px; }
+    .concept-notes { margin: 0 0 3px; font-size: 13px; line-height: 1.8; }
+    .concept-notes div { display: grid; grid-template-columns: 145px 1fr; gap: 10px; }
+    .concept-notes dt { font-weight: 800; }
+    .concept-notes dd { margin: 0; color: var(--muted); }
+    .frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 30px 24px; }
+    figure { margin: 0; width: 390px; flex: 0 0 390px; }
+    figcaption { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; line-height: 20px; font-weight: 750; }
+    figcaption .mono { color: var(--muted); font-size: 11px; font-weight: 400; }
+    .phone { position: relative; isolation: isolate; display: flex; flex-direction: column; width: 390px; min-width: 390px; max-width: 390px; height: 844px; min-height: 844px; max-height: 844px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 5%, transparent); }
+    .status { height: 28px; flex: 0 0 28px; padding: 8px 19px 0; display: flex; justify-content: space-between; align-items: flex-start; font-size: 11px; line-height: 14px; font-weight: 800; }
+    .status svg { width: 46px; height: 14px; stroke-width: 1.5; }
+    .brand { height: 44px; flex: 0 0 44px; margin: 0 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .brand-name { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; letter-spacing: 2px; }
+    .brand-name svg { width: 25px; height: 28px; }
+    .engine-state { display: flex; align-items: center; gap: 6px; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .state-dot { width: 5px; height: 5px; background: var(--current); }
+    .session { height: 92px; flex: 0 0 92px; padding: 6px 16px; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+    .session-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .session h2 { margin: 0; font-size: 22px; line-height: 27px; font-weight: 800; letter-spacing: -.8px; }
+    .session-row > .mono { font-size: 11px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+    .session-description { margin: 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .session-tools { display: flex; align-items: center; justify-content: space-between; min-height: 24px; gap: 8px; }
+    .quiet-toggle { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; margin: 0; color: var(--muted); font-size: 11px; line-height: 16px; cursor: pointer; }
+    .quiet-toggle input { position: relative; appearance: none; -webkit-appearance: none; width: 25px; min-width: 25px; height: 14px; margin: 0; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); cursor: pointer; }
+    .quiet-toggle input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .quiet-toggle input:checked { background: var(--current-dark); border-color: var(--current); }
+    .quiet-toggle input:checked::after { left: 13px; background: var(--current); }
+    .quiet-toggle:has(input:checked) { color: var(--current); }
+    .analysis { position: relative; flex: 1 1 auto; min-height: 0; padding: 0 14px 0 62px; }
+    .home-row { height: 20px; flex: 0 0 20px; display: flex; align-items: center; justify-content: center; }
+    .home { width: 94px; height: 3px; border-radius: 3px; background: var(--text); opacity: .18; }
+
+    .eval-rail { position: absolute; left: 8px; top: 4px; bottom: 16px; width: 44px; }
+    .rail-title { position: absolute; top: 0; left: 0; width: 44px; text-align: center; font-size: 11px; line-height: 16px; color: var(--muted); letter-spacing: .5px; }
+    .scale-label { position: absolute; left: 0; z-index: 3; width: 44px; text-align: center; background: var(--bg); font-size: 11px; line-height: 16px; font-weight: 750; color: var(--muted); }
+    .scale-label.top { top: 32px; }
+    .scale-label.middle { top: 50%; transform: translateY(-50%); padding: 3px 0; }
+    .scale-label.bottom { bottom: 14px; }
+    .eval-track { position: absolute; left: 17px; width: 10px; top: 58px; bottom: 50px; background: var(--line); }
+    .eval-fill { position: absolute; bottom: 0; left: 0; width: 10px; height: 84%; background: var(--current); }
+    .eval-marker { position: absolute; left: -11px; z-index: 4; width: 32px; border-top: 2px solid var(--text); color: var(--text); text-align: center; }
+    .eval-marker span { display: block; margin-top: 5px; padding: 1px 0; background: var(--bg); font: 500 11px/14px 'Roboto Mono', ui-monospace, monospace; }
+    .eval-marker.current { top: 16%; }
+    .eval-marker.current::before { content: ''; position: absolute; left: -4px; top: -5px; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 5px solid var(--text); }
+    .eval-marker.previous { top: 16%; border-top: 1px dashed var(--muted); color: var(--muted); }
+    .is-limited .eval-fill { height: 18%; background: var(--amber); }
+    .is-limited .eval-marker.current { top: 82%; color: var(--amber); border-color: var(--amber); }
+    .is-limited .eval-marker.current::before { border-left-color: var(--amber); }
+    .eval-projection { position: absolute; bottom: 0; left: 0; width: 10px; height: 84%; background: color-mix(in srgb, var(--current) 22%, var(--bg)); }
+    .eval-marker.future { top: 16%; color: var(--current); border-top: 2px dashed var(--current); }
+    .project-mixed .eval-projection { height: 60%; }
+    .project-mixed .eval-marker.future { top: 40%; }
+    .project-limited .eval-projection { height: 18%; }
+    .project-limited .eval-marker.future { display: none; }
+
+    .board-head { padding-top: 4px; }
+    .board-title { display: flex; align-items: baseline; justify-content: space-between; gap: 7px; }
+    .board-head h3 { margin: 0; font-size: 19px; line-height: 24px; font-weight: 800; letter-spacing: -.65px; }
+    .board-head p { margin: 3px 0 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .outlook-word { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--current); white-space: nowrap; }
+    .exercise-marker { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+    .exercise-marker > span { font-size: 11px; line-height: 16px; color: var(--muted); }
+    .book-note { height: 25px; display: flex; align-items: center; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 11px; line-height: 16px; color: var(--muted); }
+    .move-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .col-set { width: 28px; }
+    .col-previous { width: 79px; }
+    .col-reps { width: 44px; }
+    .col-rpe { width: 40px; }
+    .col-check { width: 34px; }
+    .move-table thead tr { height: 25px; }
+    .move-table th { padding: 3px 2px; color: var(--muted); font-size: 11px; line-height: 16px; font-weight: 500; text-align: center; }
+    .move-table th:nth-child(2) { text-align: left; }
+    .move-table tbody tr { height: 40px; border-bottom: 1px solid var(--line); }
+    .move-table td { padding: 2px; text-align: center; vertical-align: middle; }
+    .move-table .previous { padding-left: 2px; text-align: left; color: var(--muted); font: 400 11px/16px 'Roboto Mono', ui-monospace, monospace; white-space: nowrap; }
+    .move-table .played { color: var(--text); font: 500 16px/22px 'Roboto Mono', ui-monospace, monospace; }
+    .move-table .effort { font: 400 13px/20px 'Roboto Mono', ui-monospace, monospace; }
+    .move-table .no-effort { color: var(--muted); font-size: 13px; }
+    .set-stamp { font: 500 12px/20px 'Roboto Mono', ui-monospace, monospace; color: var(--muted); }
+    .set-type { position: relative; width: 24px; height: 28px; padding: 0 5px 0 0; border: 0; background: transparent; color: var(--text); font: 500 12px/20px 'Roboto Mono', ui-monospace, monospace; }
+    .set-type::after { content: '⌄'; position: absolute; right: 0; bottom: 2px; color: var(--muted); font-size: 11px; }
+    .set-type:hover { color: var(--current); }
+    .rep-mark { display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+    .annotation { color: var(--success); font: 800 12px/16px Manrope, system-ui, sans-serif; letter-spacing: -.8px; }
+    .annotation.flagged { color: var(--amber); }
+    .next-set { background: var(--current-dark); box-shadow: inset 2px 0 var(--current); }
+    .fieldbox { position: relative; display: block; min-width: 0; }
+    .target-field { display: block; appearance: textfield; -moz-appearance: textfield; width: 100%; min-width: 0; height: 36px; padding: 0 1px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); text-align: center; font: 500 16px/24px 'Roboto Mono', ui-monospace, monospace; }
+    .target-field::placeholder { color: var(--muted); opacity: 1; }
+    .target-field.effort-input { font-size: 13px; font-weight: 400; }
+    .target-field:disabled { opacity: 1; -webkit-text-fill-color: var(--text); }
+    .target-field::-webkit-inner-spin-button, .target-field::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .old-target { display: none; position: absolute; top: 0; left: 0; right: 0; z-index: 1; color: var(--muted); font: 400 11px/12px 'Roboto Mono', ui-monospace, monospace; text-align: center; pointer-events: none; }
+    .fieldbox.has-change .old-target { display: block; }
+    .fieldbox.has-change .target-field { height: 38px; padding-top: 12px; color: var(--current); }
+    .fieldbox.has-change .target-field::placeholder { color: var(--current); }
+    .coach-changed .set-type { color: var(--current); }
+    .check-button { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: auto; padding: 0; border: 1px solid var(--line-strong); background: transparent; color: var(--muted); }
+    .check-button svg { width: 17px; height: 17px; }
+    .next-set .check-button { border-color: var(--action); background: var(--action); color: var(--on-action); }
+    .rest-running .next-set .check-button { border-color: var(--line-strong); background: transparent; color: var(--muted); }
+    .check-button.done { border-color: transparent; background: var(--success-dark); color: var(--success); }
+    .check-button:disabled:not(.done) { opacity: .45; }
+    .omitted { opacity: .55; }
+    .omitted .set-type { text-decoration: line-through; }
+    .table-key { margin: 4px 0; color: var(--muted); font-size: 11px; line-height: 15px; }
+    .change-note { margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--line); }
+    .change-heading { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 18px; }
+    .change-heading > span { color: var(--current); font-size: 11px; line-height: 16px; font-weight: 750; }
+    .undo { min-width: 33px; min-height: 22px; padding: 0; border: 0; background: transparent; color: var(--current); font-size: 11px; line-height: 16px; font-weight: 750; text-decoration: underline; text-underline-offset: 3px; }
+    .undo:disabled { color: var(--muted); text-decoration: none; }
+    .change-copy { margin: 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .rest-timer { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 55px; margin-top: 6px; padding: 5px 0; border-top: 1px solid var(--rest-accent); border-bottom: 1px solid var(--line); color: var(--rest-text); }
+    .rest-label { font-size: 11px; line-height: 15px; }
+    .rest-clock { display: flex; align-items: baseline; gap: 7px; }
+    .rest-clock strong { font: 500 25px/28px 'Roboto Mono', ui-monospace, monospace; letter-spacing: -1px; }
+    .rest-source { font-size: 11px; line-height: 15px; color: var(--muted); }
+    .timer-controls { display: flex; align-items: center; gap: 4px; }
+    .timer-controls button { min-width: 39px; height: 32px; padding: 0 5px; border: 1px solid var(--line); background: transparent; color: var(--rest-text); font: 400 11px/16px 'Roboto Mono', ui-monospace, monospace; }
+    .timer-controls button:hover { border-color: var(--rest-accent); }
+    .principal { margin-top: 8px; padding: 7px 0 0; border-top: 2px solid var(--text); }
+    .principal .eyebrow { color: var(--muted); line-height: 14px; }
+    .engine-best { display: flex; align-items: baseline; justify-content: space-between; gap: 5px; }
+    .engine-best strong { font: 500 22px/27px 'Roboto Mono', ui-monospace, monospace; letter-spacing: -.9px; }
+    .engine-best span { font-size: 11px; line-height: 16px; color: var(--muted); }
+    .principal p { margin: 2px 0 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .next-exercise { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
+    .next-title { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+    .next-title strong { font-size: 12px; line-height: 18px; font-weight: 750; }
+    .next-title > .mono { font-size: 11px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+    .next-target, .next-reason { margin: 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .next-exercise > .quiet-toggle { width: 100%; }
+    .frame-status { min-height: 30px; margin: 4px 0 0; font-size: 11px; line-height: 15px; color: var(--muted); }
+    .plate-note { margin: 6px 0 0; color: var(--muted); font-size: 11px; line-height: 16px; }
+
+    .primary { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--action); background: var(--action); color: var(--on-action); font-size: 13px; line-height: 18px; font-weight: 800; text-align: left; text-decoration: none; }
+    .primary:hover { border-color: var(--green-2); background: var(--green-2); }
+    .primary svg { width: 18px; height: 18px; }
+    .primary:disabled { border-color: var(--line); background: var(--line); color: var(--muted); }
+    .primary.logged { border-color: var(--success); background: var(--success); color: var(--on-action); }
+    .text-action { display: inline-flex; align-items: center; min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 12px; line-height: 17px; font-weight: 750; }
+    .text-action.blue { color: var(--current); }
+    .text-action:hover { color: var(--current); }
+
+    .flag { background: var(--panel-3); border-color: color-mix(in srgb, var(--amber) 35%, var(--panel-3)); }
+    .flag .brand { border-color: color-mix(in srgb, var(--amber) 23%, transparent); }
+    .flag .engine-state { color: var(--amber); }
+    .flag .state-dot { background: var(--amber); }
+    .flag .session h2 { font-size: 17px; line-height: 27px; letter-spacing: -.4px; }
+    .flag .scale-label, .flag .eval-marker span { background: var(--panel-3); }
+    .finding { display: grid; grid-template-columns: 1fr 68px; gap: 4px; align-items: center; min-height: 66px; }
+    .finding h2 { margin: 0; font-size: 35px; line-height: 33px; letter-spacing: -1.7px; font-weight: 800; }
+    .finding-symbol { position: relative; display: grid; place-items: center; width: 66px; height: 66px; color: var(--amber); }
+    .finding-symbol .checker { position: absolute; inset: 0; width: 66px; height: 66px; stroke: transparent; }
+    .checker rect { fill: color-mix(in srgb, var(--amber) 10%, var(--panel-3)); }
+    .giant-annotation { position: relative; padding-right: 5px; font-size: 59px; line-height: 66px; font-weight: 800; letter-spacing: -7px; }
+    .flag-move { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; border-bottom: 1px solid color-mix(in srgb, var(--amber) 25%, transparent); }
+    .flag-move > .mono { font-size: 26px; line-height: 32px; letter-spacing: -1.1px; }
+    .logged-effort { font-size: 12px; line-height: 16px; text-align: right; }
+    .logged-effort small { display: block; color: var(--muted); font-size: 11px; line-height: 15px; }
+    .eval-chart { margin-top: 4px; }
+    .chart-heading { display: flex; align-items: center; justify-content: space-between; gap: 5px; font-size: 11px; line-height: 15px; }
+    .chart-key { display: flex; align-items: center; gap: 7px; color: var(--muted); }
+    .chart-key span { display: flex; align-items: center; gap: 4px; }
+    .key-dot { display: inline-block; width: 7px; height: 7px; border: 1px solid var(--current); border-radius: 50%; background: transparent; }
+    .key-dot.now { background: var(--amber); border-color: var(--amber); }
+    .eval-chart svg { width: 312px; height: 76px; max-width: 100%; }
+    .chart-grid { stroke: color-mix(in srgb, var(--amber) 19%, transparent); stroke-width: 1; }
+    .chart-label { fill: var(--muted); stroke: transparent; font: 600 11px Manrope, system-ui, sans-serif; }
+    .chart-move { fill: var(--muted); stroke: transparent; font: 400 11px 'Roboto Mono', ui-monospace, monospace; }
+    .chart-sound { stroke: var(--current); stroke-width: 2.5; }
+    .chart-drop { stroke: var(--amber); stroke-width: 2.5; }
+    .chart-prev { fill: var(--panel-3); stroke: var(--current); stroke-width: 2; }
+    .chart-now { fill: var(--amber); stroke: var(--panel-3); stroke-width: 3; }
+    .chart-caption { padding-bottom: 2px; border-bottom: 1px solid color-mix(in srgb, var(--amber) 23%, transparent); font-size: 11px; line-height: 15px; color: var(--muted); }
+    .deviation { display: grid; grid-template-columns: 88px 1fr; gap: 10px; align-items: center; padding: 6px 0; }
+    .deviation strong { color: var(--amber); font-size: 32px; line-height: 32px; font-weight: 600; letter-spacing: -1.7px; }
+    .deviation p { margin: 0; font-size: 12px; line-height: 16px; }
+    .expectation { margin: 0 0 2px; font-size: 12px; line-height: 17px; }
+    .expectation small { display: block; font-size: 11px; line-height: 15px; color: var(--muted); }
+    .cause-heading { display: flex; align-items: center; justify-content: space-between; min-height: 20px; border-bottom: 1px solid color-mix(in srgb, var(--amber) 23%, transparent); color: var(--amber); }
+    .causes { list-style: none; margin: 0; padding: 0; }
+    .causes li { display: grid; grid-template-columns: 23px 1fr; gap: 2px; padding: 4px 0; border-bottom: 1px solid color-mix(in srgb, var(--amber) 19%, transparent); }
+    .causes li:last-child { border-bottom: 0; }
+    .cause-rank { color: var(--amber); font-size: 11px; line-height: 17px; }
+    .causes strong { display: block; font-size: 12px; line-height: 17px; font-weight: 800; }
+    .causes p { margin: 0; font-size: 11px; line-height: 16px; }
+    .last-night { margin: 4px 0 0; font-size: 11px; line-height: 16px; color: var(--muted); }
+    .flag-cta { margin-top: 6px; }
+
+    .lines-intro h2 { margin: 0; font-size: 29px; line-height: 34px; font-weight: 800; letter-spacing: -1.3px; }
+    .lines-intro p { margin: 3px 0 6px; font-size: 11px; line-height: 15px; color: var(--muted); }
+    .line-list { margin: 0; padding: 0; list-style: none; }
+    .variation { display: block; width: 100%; padding: 8px 10px; border: 0; border-top: 2px solid transparent; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
+    .variation.selected { border-top-color: var(--current); background: var(--current-dark); }
+    .variation:hover { background: var(--surface); }
+    .variation.selected:hover { background: var(--current-dark); }
+    .variation-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 20px; }
+    .variation-top > .eyebrow { color: var(--muted); letter-spacing: .2px; }
+    .variation.selected .variation-top > .eyebrow { color: var(--green-2); }
+    .judgment { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font: 500 11px/16px 'Roboto Mono', ui-monospace, monospace; }
+    .variation.selected .judgment { color: var(--current); }
+    .judgment b { font: 800 14px/20px Manrope, system-ui, sans-serif; }
+    .sequence { display: block; margin-top: 4px; font: 400 13px/19px 'Roboto Mono', ui-monospace, monospace; letter-spacing: -.4px; }
+    .sequence > span { display: block; }
+    .rest-notation { color: var(--rest-text); }
+    .variation-note { display: block; margin-top: 4px; font-size: 11px; line-height: 16px; }
+    .variation.selected .variation-note { color: var(--green-2); }
+    .exercise-markers { margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--line); }
+    .line-meta { padding: 4px 0 2px; }
+    .line-meta p { margin: 0; font-size: 12px; line-height: 17px; }
+    .line-meta .notation-key { margin-top: 2px; color: var(--muted); font-size: 11px; line-height: 15px; }
+    .line-actions { margin-top: 6px; }
+    .secondary-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .line-feedback { min-height: 30px; margin: 4px 0 0; font-size: 11px; line-height: 15px; color: var(--muted); }
+
+    .book-rail { position: absolute; left: 8px; top: 4px; bottom: 16px; width: 44px; border-right: 1px solid var(--line); }
+    .book-rail > svg { position: absolute; left: 10px; top: 30px; width: 25px; height: 28px; color: var(--muted); }
+    .opening-intro { padding: 2px 0 2px; }
+    .opening-intro h3 { margin: 0; font-size: 26px; line-height: 31px; letter-spacing: -1.1px; font-weight: 800; }
+    .opening-intro p { margin: 3px 0 0; font-size: 12px; line-height: 18px; color: var(--muted); }
+    .opening-lines { margin: 0; padding: 0; list-style: none; }
+    .opening-branch { position: relative; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+    .opening-main { border-top: 2px solid var(--current); background: var(--current-dark); }
+    .branch-index { position: absolute; left: -55px; top: 9px; width: 40px; text-align: center; color: var(--muted); font: 500 22px/28px 'Roboto Mono', ui-monospace, monospace; letter-spacing: -1px; }
+    .opening-main .branch-index { color: var(--current); }
+    .branch-heading { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 18px; }
+    .branch-heading .eyebrow { color: var(--muted); letter-spacing: .2px; }
+    .opening-main .branch-heading .eyebrow { color: var(--green-2); }
+    .branch-glyph { color: var(--current); font-size: 14px; line-height: 18px; font-weight: 800; }
+    .load-condition { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+    .load-condition p { margin: 0; font-size: 12px; line-height: 16px; }
+    .book-load { color: var(--current); font: 500 40px/44px 'Roboto Mono', ui-monospace, monospace; letter-spacing: -2px; white-space: nowrap; }
+    .book-load small { margin-left: 4px; font-size: 15px; line-height: 20px; font-weight: 400; letter-spacing: -.3px; }
+    .book-notation { margin: 2px 0 0; font-size: 12px; line-height: 17px; letter-spacing: -.3px; }
+    .branch-note { margin: 2px 0 0; font-size: 11px; line-height: 15px; }
+    .branch-condition { margin: 3px 0 0; font-size: 12px; line-height: 16px; }
+    .conditional-load { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 2px; }
+    .conditional-load p { margin: 0; font-size: 12px; line-height: 16px; }
+    .result-load { color: var(--current); font: 500 25px/28px 'Roboto Mono', ui-monospace, monospace; letter-spacing: -1px; white-space: nowrap; }
+    .progress-result { display: flex; align-items: baseline; gap: 7px; margin-top: 2px; }
+    .progress-result small { font-size: 11px; line-height: 15px; color: var(--muted); }
+    .branch-watch .branch-heading .eyebrow, .branch-watch .branch-index, .branch-watch .branch-glyph { color: var(--amber); }
+    .deload-result { margin: 2px 0 0; font-size: 14px; line-height: 19px; font-weight: 800; }
+    .deload-detail { margin: 2px 0 0; font-size: 11px; line-height: 15px; }
+    .opening-cta { margin-top: 8px; }
+    .injury-plan { margin-top: 6px; padding-top: 3px; border-top: 1px solid var(--line); }
+    .injury-plan button { min-height: 28px; padding: 0; border: 0; background: transparent; color: var(--red); font-size: 11px; line-height: 16px; font-weight: 750; }
+    .injury-plan p { margin: 0; color: var(--muted); font-size: 11px; line-height: 15px; }
+    .opening-status { min-height: 15px; margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 15px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; font-size: 11px; }
+
+    .logging .session, .lines .session { height: 80px; flex-basis: 80px; padding-top: 3px; padding-bottom: 3px; }
+    .logging .move-table tbody tr { height: 30px; }
+    .logging .set-type { height: 26px; }
+    .logging .target-field { height: 26px; line-height: 20px; }
+    .logging .fieldbox.has-change .target-field { height: 32px; padding-top: 12px; line-height: 16px; }
+    .logging .check-button { width: 26px; height: 26px; }
+    .logging .table-key { margin: 2px 0; line-height: 14px; }
+    .logging .change-note { margin-top: 2px; padding-top: 3px; }
+    .logging .rest-timer { min-height: 51px; margin-top: 4px; }
+    .logging .principal { margin-top: 6px; padding-top: 5px; }
+    .logging .next-exercise { margin-top: 5px; padding-top: 5px; }
+    .logging .frame-status { margin-top: 2px; }
+    .applied .change-copy { line-height: 14px; }
+    .applied .plate-note { margin-top: 4px; line-height: 14px; }
+    .lines .variation { padding: 4px 10px; }
+    .lines .variation-top { min-height: 16px; }
+    .lines .judgment b { line-height: 16px; }
+    .lines .sequence { line-height: 16px; }
+    .lines .variation-note { margin-top: 2px; }
+    .lines .exercise-markers { margin-top: 4px; padding-top: 2px; }
+    .lines .line-actions { margin-top: 4px; }
+    .lines .line-feedback { margin-top: 2px; }
+
+    @media (max-width: 900px) {
+      .showcase { padding: 28px 20px 40px; }
+      .concept-header { grid-template-columns: 1fr; gap: 22px; }
+      .concept-name h1 { font-size: 60px; letter-spacing: -3.5px; }
+      .concept-notes div { grid-template-columns: 135px 1fr; }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .primary, .variation { transition: background .15s; }
+    }
+  </style>
+</head>
+<body>
+<svg class="symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="icon-knight" viewBox="0 0 28 30">
+    <path d="M5 27h19M7 23h14l-2-5 3-5-4-8-5-2 1 5-7 6 1 4 5-1 1 3-7 3Z"/>
+    <path d="M16 10h.1"/>
+  </symbol>
+  <symbol id="icon-status" viewBox="0 0 48 16">
+    <path d="M2 12v-2M6 12V7M10 12V4M14 12V1"/>
+    <rect x="24" y="3" width="18" height="10" rx="1"/>
+    <path d="M45 6v4M27 6v4M30 6v4M33 6v4M36 6v4M39 6v4"/>
+  </symbol>
+  <symbol id="icon-check" viewBox="0 0 20 20">
+    <path d="m4 10 4 4 8-8"/>
+  </symbol>
+  <symbol id="icon-arrow" viewBox="0 0 20 20">
+    <path d="M3 10h13m-5-5 5 5-5 5"/>
+  </symbol>
+</svg>
+
+<main class="showcase">
+  <header class="concept-header">
+    <div>
+      <div class="eyebrow blue">Coach concepts / 09</div>
+      <div class="concept-name"><h1>Engine</h1><span class="mono">!?</span></div>
+      <p class="thesis">A chess engine for your sets.<br>Find the strongest continuation.</p>
+      <div class="collection-note mono">DESIGN EXPLORATION · SYNTHETIC SCENARIO · ALL LOADS IN LB</div>
+    </div>
+    <dl class="concept-notes">
+      <div><dt>How it feels</dt><dd>A serious analysis board, with your next move already prepared.</dd></div>
+      <div><dt>How the coach speaks</dt><dd>“Short rest looks likeliest. Here’s the best line.”</dd></div>
+      <div><dt>The trade-off</dt><dd>Notation takes a little learning; judgments stay explicitly ordinal.</dd></div>
+    </dl>
+  </header>
+
+  <div class="frames">
+    <figure>
+      <figcaption><span>F1 · Lifting</span><span class="mono">THE MOVE LIST</span></figcaption>
+      <section class="phone logging rest-running" data-frame="F1" data-session="today" aria-label="Lifting: bench set two available to log during recommended rest">
+        <div class="status"><span>10:24</span><svg aria-hidden="true"><use href="#icon-status"/></svg></div>
+        <div class="brand">
+          <div class="brand-name"><svg aria-hidden="true"><use href="#icon-knight"/></svg>ENGINE</div>
+          <div class="engine-state mono"><span class="state-dot"></span>analysing</div>
+        </div>
+        <div class="session">
+          <div class="session-row"><h2>Upper A</h2><span class="mono">SAT 31 OCT</span></div>
+          <p class="session-description">Hypertrophy block 2 · Week 4 of 6 · ~62 min</p>
+          <div class="session-tools">
+            <label class="quiet-toggle"><span>Session · This was a deload</span><input type="checkbox" role="switch" data-scope="session-today" aria-label="Session: This was a deload" title="Exclude this session from progression and normal bounds"></label>
+          </div>
+        </div>
+
+        <div class="analysis">
+          <aside class="eval-rail" aria-label="Ordinal work versus fatigue outlook: sound after set one">
+            <span class="rail-title mono">EVAL</span>
+            <span class="scale-label top">SOUND</span>
+            <div class="eval-track">
+              <div class="eval-fill"></div>
+              <div class="eval-marker current"><span>S1<br>now</span></div>
+            </div>
+            <span class="scale-label middle">MIXED</span>
+            <span class="scale-label bottom">LIMITED</span>
+          </aside>
+
+          <div class="board-head">
+            <div class="board-title"><h3>Barbell Bench Press</h3><span class="outlook-word mono">SOUND</span></div>
+            <p><span data-working-count>4</span> working sets · 8–10 reps · target RPE <span data-target-effort>8</span></p>
+          </div>
+          <div class="exercise-marker">
+            <span>Bench</span>
+            <label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="bench-today" aria-label="Barbell Bench Press: This was a deload" title="Exclude bench sets from progression and normal bounds"></label>
+          </div>
+          <div class="book-note mono">Book · 45×10 · 95×8 · 135×5</div>
+
+          <table class="move-table" aria-label="Bench move list with October 24 previous sets and today's targets">
+            <colgroup><col class="col-set"><col class="col-previous"><col><col class="col-reps"><col class="col-rpe"><col class="col-check"></colgroup>
+            <thead><tr><th scope="col">Set</th><th scope="col">Previous</th><th scope="col">lb</th><th scope="col">Reps</th><th scope="col">RPE</th><th scope="col"><span class="sr-only">Accept set</span>✓</th></tr></thead>
+            <tbody>
+              <tr data-set="W" data-type="W" data-logged="true">
+                <td><span class="set-stamp">W</span></td><td class="previous">165 × 3</td><td class="played">165</td><td class="played">3</td><td class="no-effort">—</td>
+                <td><button type="button" class="check-button done" disabled aria-label="Warm-up logged"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr data-set="1" data-type="work" data-logged="true">
+                <td><span class="set-stamp">1</span></td><td class="previous">185 × 10</td><td class="played">185</td><td class="played"><span class="rep-mark">9 <span class="annotation" aria-label="Inside bounds">!</span></span></td><td class="effort">8</td>
+                <td><button type="button" class="check-button done" disabled aria-label="Set one logged"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr class="next-set" data-set="2" data-type="work" data-target-load="185" data-target-reps="8" data-logged="false" data-touched="false">
+                <td><button type="button" class="set-type" aria-label="Set two, working. Tap to change set type" title="Cycle working, drop, failure, warm-up">2</button></td>
+                <td class="previous">185 × 10</td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field load-input" type="number" inputmode="decimal" min="0" step="2.5" placeholder="185" aria-label="Set two load in pounds, target 185"></span></td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field reps-input" type="number" inputmode="numeric" min="1" max="50" step="1" placeholder="8" aria-label="Set two reps, target eight within eight to ten"></span></td>
+                <td><input class="target-field effort-input" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set two actual RPE, empty until you enter it"></td>
+                <td><button type="button" class="check-button accept-set" aria-label="Accept targets and log set two; full 2:30 rest recommended; checking now overrides remaining rest and automatically starts new rest"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr data-set="3" data-type="work" data-target-load="185" data-target-reps="8" data-logged="false" data-touched="false">
+                <td><button type="button" class="set-type" aria-label="Set three, working. Tap to change set type" title="Cycle working, drop, failure, warm-up">3</button></td>
+                <td class="previous">185 × 9</td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field load-input" type="number" inputmode="decimal" min="0" step="2.5" placeholder="185" aria-label="Set three load in pounds, target 185"></span></td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field reps-input" type="number" inputmode="numeric" min="1" max="50" step="1" placeholder="8" aria-label="Set three reps, target eight within eight to ten"></span></td>
+                <td><input class="target-field effort-input" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set three actual RPE, empty until you enter it"></td>
+                <td><button type="button" class="check-button accept-set" disabled aria-label="Set three queued"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr data-set="4" data-type="work" data-target-load="185" data-target-reps="8" data-logged="false" data-touched="false">
+                <td><button type="button" class="set-type" aria-label="Set four, working. Tap to change set type" title="Cycle working, drop, failure, warm-up">4</button></td>
+                <td class="previous">185 × 9</td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field load-input" type="number" inputmode="decimal" min="0" step="2.5" placeholder="185" aria-label="Set four load in pounds, target 185"></span></td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field reps-input" type="number" inputmode="numeric" min="1" max="50" step="1" placeholder="8" aria-label="Set four reps, target eight within eight to ten"></span></td>
+                <td><input class="target-field effort-input" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set four actual RPE, empty until you enter it"></td>
+                <td><button type="button" class="check-button accept-set" disabled aria-label="Set four queued"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="table-key">✓ accepts load + reps targets · enter your own RPE.<br>W warm-up · number working · D drop · F failure</p>
+
+          <div class="change-note">
+            <div class="change-heading"><span data-change-label>Only untouched later sets can change</span><button type="button" class="undo" data-undo disabled>Undo</button></div>
+            <p class="change-copy" data-change-copy>One coach revision at a time, always with undo.</p>
+          </div>
+
+          <div class="rest-timer" aria-label="Rest auto-started on set one check. Full 2:30 recommended; minus fifteen seconds, plus fifteen seconds and Skip are your overrides.">
+            <div><div class="rest-label" data-rest-label>REST · 2:30 RECOMMENDED</div><div class="rest-clock"><strong data-rest-time>0:42</strong><span class="rest-source" data-rest-source>auto · set 1 check</span></div></div>
+            <div class="timer-controls"><button type="button" data-adjust="-15" aria-label="Override: subtract fifteen seconds of rest">−15s</button><button type="button" data-adjust="15" aria-label="Override: add fifteen seconds of rest">+15s</button><button type="button" data-adjust="skip" aria-label="Override: skip remaining rest">Skip</button></div>
+          </div>
+
+          <div class="principal">
+            <div class="eyebrow">Principal variation</div>
+            <div class="engine-best"><strong>185 × 8–10</strong><span>target RPE 8</span></div>
+            <p>Full 2:30 recommended · Skip to override.</p>
+          </div>
+          <div class="next-exercise">
+            <div class="next-title"><strong>Next · Chest-Supported T-Bar Row</strong><span class="mono">90 lb</span></div>
+            <p class="next-target mono">4 × 10–12 · pulling unchanged</p>
+            <label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="row-today" aria-label="Chest-Supported T-Bar Row: This was a deload" title="Exclude row sets from progression and normal bounds"></label>
+          </div>
+          <p class="frame-status mono" data-log-status role="status">depth: 12 sessions · recovery-adjusted<br>Outlook: useful work vs fatigue; ordinal.</p>
+        </div>
+        <div class="home-row"><div class="home" aria-hidden="true"></div></div>
+      </section>
+    </figure>
+
+    <figure>
+      <figcaption><span>F2 · The flag</span><span class="mono">THE POSITION CHANGES</span></figcaption>
+      <section class="phone flag" data-frame="F2" data-session="today" id="the-flag" tabindex="-1" aria-label="Bench set two outside normal bounds">
+        <div class="status"><span>10:24</span><svg aria-hidden="true"><use href="#icon-status"/></svg></div>
+        <div class="brand">
+          <div class="brand-name"><svg aria-hidden="true"><use href="#icon-knight"/></svg>ENGINE</div>
+          <div class="engine-state mono"><span class="state-dot"></span>outside bounds</div>
+        </div>
+        <div class="session">
+          <div class="session-row"><h2>Upper A · Bench set 2</h2><span class="mono">24:10 ELAPSED</span></div>
+          <p class="session-description">Sat 31 Oct · Hypertrophy block 2 · Week 4 of 6</p>
+          <div class="session-tools">
+            <label class="quiet-toggle"><span>Session · This was a deload</span><input type="checkbox" role="switch" data-scope="session-today" aria-label="Session: This was a deload" title="Exclude this session from progression and normal bounds"></label>
+          </div>
+        </div>
+
+        <div class="analysis">
+          <aside class="eval-rail is-limited" aria-label="Ordinal outlook: previous set sound, current set limited">
+            <span class="rail-title mono">EVAL</span>
+            <span class="scale-label top">SOUND</span>
+            <div class="eval-track"><div class="eval-fill"></div><div class="eval-marker previous"><span>S1<br>prev</span></div><div class="eval-marker current"><span>S2<br>now</span></div></div>
+            <span class="scale-label middle">MIXED</span><span class="scale-label bottom">LIMITED</span>
+          </aside>
+
+          <div class="exercise-marker">
+            <span>Bench</span>
+            <label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="bench-today" aria-label="Barbell Bench Press: This was a deload" title="Exclude bench sets from progression and normal bounds"></label>
+          </div>
+          <div class="finding">
+            <h2>Unexpected<br>drop.</h2>
+            <div class="finding-symbol">
+              <svg class="checker" viewBox="0 0 76 76" aria-hidden="true"><rect x="0" y="0" width="19" height="19"/><rect x="38" y="0" width="19" height="19"/><rect x="19" y="19" width="19" height="19"/><rect x="57" y="19" width="19" height="19"/><rect x="0" y="38" width="19" height="19"/><rect x="38" y="38" width="19" height="19"/><rect x="19" y="57" width="19" height="19"/><rect x="57" y="57" width="19" height="19"/></svg>
+              <span class="giant-annotation" aria-label="Unexpected result annotation">?!</span>
+            </div>
+          </div>
+          <div class="flag-move"><span class="mono">2. B185×6</span><span class="logged-effort"><b>RPE 10</b><small>logged · grinder</small></span></div>
+
+          <div class="eval-chart">
+            <div class="chart-heading"><span class="mono">WORK / FATIGUE</span><div class="chart-key"><span><i class="key-dot" aria-hidden="true"></i>S1 prev</span><span><i class="key-dot now" aria-hidden="true"></i>S2 now</span></div></div>
+            <svg viewBox="0 0 312 76" role="img" aria-label="Evaluation graph. The opening and set one are sound. The outlook drops to limited at set two.">
+              <path class="chart-grid" d="M58 14H302M58 35H302M58 56H302"/>
+              <text class="chart-label" x="0" y="18">Sound</text><text class="chart-label" x="0" y="39">Mixed</text><text class="chart-label" x="0" y="60">Limited</text>
+              <path class="chart-sound" d="M72 14H168"/><path class="chart-drop" d="M168 14 292 56"/>
+              <circle class="chart-prev" cx="168" cy="14" r="4"/><circle class="chart-now" cx="292" cy="56" r="5.5"/>
+              <text class="chart-move" x="58" y="74">book</text><text class="chart-move" x="162" y="74">1.</text><text class="chart-move" x="286" y="74">2.</text>
+            </svg>
+            <div class="chart-caption">Ordinal outlook · sound / mixed / limited</div>
+          </div>
+
+          <div class="deviation"><strong class="mono">3.4σ</strong><p>beyond your usual drop.<br><b>3 reps</b> vs 0.6 ± 0.7.</p></div>
+          <p class="expectation">Expected <b>8–9 reps</b>; actual <b>6</b>.<small>Recovery-adjusted band 7–9 · last 12 sessions</small></p>
+          <div class="cause-heading eyebrow"><span>The engine’s read</span><span>Ranked</span></div>
+          <ol class="causes">
+            <li><span class="cause-rank mono">01</span><div><strong>Short rest · most likely driver</strong><p class="mono">1:32 / 2:30 · 61% of recommended rest.</p></div></li>
+            <li><span class="cause-rank mono">02</span><div><strong>Low recovery · likely contributor</strong></div></li>
+            <li><span class="cause-rank mono">03</span><div><strong>No sign of strength loss</strong><p>Set-1 e1RM <b>253 lb</b> · trend 249–254.</p></div></li>
+          </ol>
+          <p class="last-night">Last night · Fitbit: sleep 5 h 48 m (avg 7 h 21 m) · HRV 38 ms (baseline 52) · resting HR 61 (baseline 55).</p>
+          <a class="primary flag-cta" href="#best-line"><span>Analyse the continuations</span><svg aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+          <span class="sr-only" data-announcement role="status"></span>
+        </div>
+        <div class="home-row"><div class="home" aria-hidden="true"></div></div>
+      </section>
+    </figure>
+
+    <figure>
+      <figcaption><span>F3 · Next best action · today</span><span class="mono">CANDIDATE LINES</span></figcaption>
+      <section class="phone lines" data-frame="F3" data-session="today" id="best-line" tabindex="-1" aria-label="Three ranked continuations for today's session">
+        <div class="status"><span>10:24</span><svg aria-hidden="true"><use href="#icon-status"/></svg></div>
+        <div class="brand">
+          <div class="brand-name"><svg aria-hidden="true"><use href="#icon-knight"/></svg>ENGINE</div>
+          <div class="engine-state mono">3 continuations</div>
+        </div>
+        <div class="session">
+          <div class="session-row"><h2>Upper A</h2><span class="mono">AFTER 2. B185×6</span></div>
+          <p class="session-description">Rest of this session · current outlook: limited</p>
+          <div class="session-tools">
+            <label class="quiet-toggle"><span>Session · This was a deload</span><input type="checkbox" role="switch" data-scope="session-today" aria-label="Session: This was a deload" title="Exclude this session from progression and normal bounds"></label>
+          </div>
+        </div>
+
+        <div class="analysis">
+          <aside class="eval-rail is-limited" aria-label="Current outlook limited, previous outlook sound">
+            <span class="rail-title mono">EVAL</span><span class="scale-label top">SOUND</span>
+            <div class="eval-track"><div class="eval-fill"></div><div class="eval-marker previous"><span>S1<br>prev</span></div><div class="eval-marker current"><span>S2<br>now</span></div></div>
+            <span class="scale-label middle">MIXED</span><span class="scale-label bottom">LIMITED</span>
+          </aside>
+          <div class="lines-intro"><h2>Best from here.</h2><p>Ranked by useful work vs fatigue · ordinal outlook</p></div>
+          <ol class="line-list">
+            <li><button type="button" class="variation selected" data-line="A" aria-pressed="true" aria-label="Select recommended line A: full two minutes thirty seconds rest, bench 165 pounds for two sets, incline reduced to two sets later, after the T-Bar Row">
+              <span class="variation-top"><span class="eyebrow">A / Principal variation</span><span class="judgment">SOUND <b>!</b></span></span>
+              <span class="sequence"><span><span class="rest-notation">2:30 →</span> 3. B165×8 @8</span><span><span class="rest-notation">2:30 →</span> 4. B165×8 @8</span><span>Later · I1–2. 55×10–12 (3→2)</span></span>
+              <span class="variation-note">Chest 15/16 · bench −11% · ≈ −1 min</span>
+            </button></li>
+            <li><button type="button" class="variation" data-line="B" aria-pressed="false" aria-label="Select line B: bench 185 pounds for two sets, three minutes recommended rest, target RPE nine; incline later, after the T-Bar Row">
+              <span class="variation-top"><span class="eyebrow">B / Longer-rest variation</span><span class="judgment">MIXED <b>!?</b></span></span>
+              <span class="sequence"><span><span class="rest-notation">3:00 →</span> 3. B185×6–7 @9</span><span><span class="rest-notation">3:00 →</span> 4. B185×6–7 @9</span><span>Later · I1–3. 55×10–12</span></span>
+              <span class="variation-note">RPE 9 ceiling · more fatigue into Thursday.</span>
+            </button></li>
+            <li><button type="button" class="variation" data-line="C" aria-pressed="false" aria-label="Select line C: omit remaining bench sets, T-Bar Row next, incline stays at three sets later">
+              <span class="variation-top"><span class="eyebrow">C / Stop-bench variation</span><span class="judgment">LIMITED <b>?!</b></span></span>
+              <span class="sequence"><span>3. B— omitted</span><span>no rest → 4. B— omitted</span><span>Later · I1–3. 55×10–12</span></span>
+              <span class="variation-note">Chest 14/16 · 2 productive sets lost.</span>
+            </button></li>
+          </ol>
+          <div class="exercise-markers">
+            <div class="exercise-marker"><span>Bench</span><label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="bench-today" aria-label="Barbell Bench Press: This was a deload" title="Exclude bench sets from progression and normal bounds"></label></div>
+            <div class="exercise-marker"><span>Incline DB</span><label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="incline-today" aria-label="Incline Dumbbell Press: This was a deload" title="Exclude incline sets from progression and normal bounds"></label></div>
+          </div>
+          <div class="line-meta">
+            <p>Next · T-Bar Row → Incline → Lat Pulldown → Cable Lateral Raise.</p>
+            <p class="notation-key mono">B bench · I incline · @ target RPE · lb</p>
+          </div>
+          <div class="line-actions">
+            <a class="primary" id="accept-line" href="#plan-applied"><span>Accept best line</span><svg aria-hidden="true"><use href="#icon-arrow"/></svg></a>
+            <div class="secondary-actions"><button class="text-action blue" id="choose-another" type="button">Choose another line</button><button class="text-action" id="dismiss" type="button">Dismiss</button></div>
+          </div>
+          <p class="line-feedback" id="line-message" role="status">Effort numbers are targets. Actual RPE stays yours to enter.</p>
+        </div>
+        <div class="home-row"><div class="home" aria-hidden="true"></div></div>
+      </section>
+    </figure>
+
+    <figure>
+      <figcaption><span>F4 · Plan applied</span><span class="mono">THE LINE IS QUEUED</span></figcaption>
+      <section class="phone logging applied rest-running" data-frame="F4" data-session="today" id="plan-applied" tabindex="-1" aria-label="Best line accepted: only untouched bench sets three and four changed from 185 to 165 pounds; full 2:30 rest recommended, with the next check available">
+        <div class="status"><span>10:24</span><svg aria-hidden="true"><use href="#icon-status"/></svg></div>
+        <div class="brand">
+          <div class="brand-name"><svg aria-hidden="true"><use href="#icon-knight"/></svg>ENGINE</div>
+          <div class="engine-state mono"><span class="state-dot"></span>line applied</div>
+        </div>
+        <div class="session">
+          <div class="session-row"><h2>Upper A</h2><span class="mono">SAT 31 OCT</span></div>
+          <p class="session-description">Hypertrophy block 2 · Week 4 of 6</p>
+          <div class="session-tools"><label class="quiet-toggle"><span>Session · This was a deload</span><input type="checkbox" role="switch" data-scope="session-today" aria-label="Session: This was a deload" title="Exclude this session from progression and normal bounds"></label></div>
+        </div>
+
+        <div class="analysis">
+          <aside class="eval-rail is-limited project-sound" id="applied-eval" aria-label="Current outlook limited; accepted line projects a sound outlook if followed">
+            <span class="rail-title mono">EVAL</span><span class="scale-label top">SOUND</span>
+            <div class="eval-track"><div class="eval-projection"></div><div class="eval-fill"></div><div class="eval-marker future"><span id="future-marker">A<br>line</span></div><div class="eval-marker current"><span>S2<br>now</span></div></div>
+            <span class="scale-label middle">MIXED</span><span class="scale-label bottom">LIMITED</span>
+          </aside>
+          <div class="board-head">
+            <div class="board-title"><h3>Barbell Bench Press</h3><span class="outlook-word mono" id="applied-line-label">LINE A</span></div>
+            <p><span data-working-count>4</span> working sets · <span data-remaining-count>2</span> left · target RPE <span data-target-effort>8</span></p>
+          </div>
+          <div class="exercise-marker"><span>Bench</span><label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="bench-today" aria-label="Barbell Bench Press: This was a deload" title="Exclude bench sets from progression and normal bounds"></label></div>
+          <div class="book-note mono">Book · 45×10 · 95×8 · 135×5</div>
+
+          <table class="move-table" aria-label="Bench move list with October 24 previous sets: completed sets stay fixed; coach changed untouched sets three and four">
+            <colgroup><col class="col-set"><col class="col-previous"><col><col class="col-reps"><col class="col-rpe"><col class="col-check"></colgroup>
+            <thead><tr><th scope="col">Set</th><th scope="col">Previous</th><th scope="col">lb</th><th scope="col">Reps</th><th scope="col">RPE</th><th scope="col"><span class="sr-only">Accept set</span>✓</th></tr></thead>
+            <tbody>
+              <tr data-set="W" data-type="W" data-logged="true">
+                <td><span class="set-stamp">W</span></td><td class="previous">165 × 3</td><td class="played">165</td><td class="played">3</td><td class="no-effort">—</td><td><button type="button" class="check-button done" disabled aria-label="Warm-up logged"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr data-set="1" data-type="work" data-logged="true">
+                <td><span class="set-stamp">1</span></td><td class="previous">185 × 10</td><td class="played">185</td><td class="played"><span class="rep-mark">9 <span class="annotation" aria-label="Inside bounds">!</span></span></td><td class="effort">8</td><td><button type="button" class="check-button done" disabled aria-label="Set one logged at 185 pounds for nine reps, RPE eight"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr data-set="2" data-type="work" data-logged="true">
+                <td><span class="set-stamp">2</span></td><td class="previous">185 × 10</td><td class="played">185</td><td class="played"><span class="rep-mark">6 <span class="annotation flagged" aria-label="Unexpected drop">?!</span></span></td><td class="effort">10</td><td><button type="button" class="check-button done" disabled aria-label="Working set two logged at 185 pounds for six reps, RPE ten"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr class="next-set coach-changed" data-set="3" data-type="work" data-target-load="165" data-target-reps="8" data-logged="false" data-touched="false">
+                <td><button type="button" class="set-type" aria-label="Set three, working. Tap to change set type" title="Cycle working, drop, failure, warm-up">3</button></td><td class="previous">185 × 9</td>
+                <td><span class="fieldbox has-change"><span class="old-target"><s>185</s> →</span><input class="target-field load-input" type="number" inputmode="decimal" min="0" step="2.5" placeholder="165" aria-label="Set three load, coach changed target from 185 to 165 pounds"></span></td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field reps-input" type="number" inputmode="numeric" min="1" max="50" step="1" placeholder="8" aria-label="Set three reps, target eight"></span></td>
+                <td><input class="target-field effort-input" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set three actual RPE, empty until you enter it"></td>
+                <td><button type="button" class="check-button accept-set" aria-label="Accept 165 pounds and eight reps for set three; full 2:30 rest recommended; checking now overrides remaining rest and automatically starts new rest"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+              <tr class="coach-changed" data-set="4" data-type="work" data-target-load="165" data-target-reps="8" data-logged="false" data-touched="false">
+                <td><button type="button" class="set-type" aria-label="Set four, working. Tap to change set type" title="Cycle working, drop, failure, warm-up">4</button></td><td class="previous">185 × 9</td>
+                <td><span class="fieldbox has-change"><span class="old-target"><s>185</s> →</span><input class="target-field load-input" type="number" inputmode="decimal" min="0" step="2.5" placeholder="165" aria-label="Set four load, coach changed target from 185 to 165 pounds"></span></td>
+                <td><span class="fieldbox"><span class="old-target"></span><input class="target-field reps-input" type="number" inputmode="numeric" min="1" max="50" step="1" placeholder="8" aria-label="Set four reps, target eight"></span></td>
+                <td><input class="target-field effort-input" type="number" inputmode="decimal" min="1" max="10" step=".5" placeholder="—" aria-label="Set four actual RPE, empty until you enter it"></td>
+                <td><button type="button" class="check-button accept-set" disabled aria-label="Set four queued with coach target 165 pounds for eight reps"><svg aria-hidden="true"><use href="#icon-check"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="table-key">✓ accepts load + reps targets · enter your own RPE.<br>W warm-up · number working · D drop · F failure</p>
+
+          <div class="change-note">
+            <div class="change-heading"><span data-change-label>Coach · sets 3–4: 185 → 165</span><button type="button" class="undo" data-undo aria-label="Undo coach changes to untouched later sets">Undo</button></div>
+            <p class="change-copy" data-change-copy>Backed off after a short-rest grinder; keeps two productive sets.</p>
+          </div>
+
+          <div class="rest-timer" aria-label="Rest auto-started on set two check. Full 2:30 recommended; minus fifteen seconds, plus fifteen seconds and Skip are your overrides.">
+            <div><div class="rest-label" data-rest-label>REST · 2:30 RECOMMENDED</div><div class="rest-clock"><strong data-rest-time>2:30</strong><span class="rest-source" data-rest-source>auto · set 2 check</span></div></div>
+            <div class="timer-controls"><button type="button" data-adjust="-15" aria-label="Override: subtract fifteen seconds of rest">−15s</button><button type="button" data-adjust="15" aria-label="Override: add fifteen seconds of rest">+15s</button><button type="button" data-adjust="skip" aria-label="Override: skip remaining rest">Skip</button></div>
+          </div>
+          <div class="next-exercise">
+            <div class="next-title"><strong>Next · Chest-Supported T-Bar Row</strong><span class="mono">90 lb</span></div>
+            <p class="next-target mono">4 × 10–12 · pulling unchanged</p>
+            <div class="next-title"><strong>Later · Incline DB Press</strong><span class="mono" data-incline-plan>55×10–12 · 3→2 sets</span></div>
+            <label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="incline-today" aria-label="Incline Dumbbell Press: This was a deload" title="Exclude incline sets from progression and normal bounds"></label>
+            <p class="sr-only" data-incline-reason>Trimmed one set to limit pressing fatigue.</p>
+          </div>
+          <p class="plate-note" id="plate-note">Plate change: swap each 25 for a 10 + 5.<br>Per side: <b class="mono">45 + 10 + 5 lb</b>. Skip to override rest.</p>
+          <p class="frame-status mono" data-log-status role="status">A accepted · SOUND projected, if followed.<br>Pulling unchanged · weekly chest 15/16.</p>
+        </div>
+        <div class="home-row"><div class="home" aria-hidden="true"></div></div>
+      </section>
+    </figure>
+
+    <figure>
+      <figcaption><span>F5 · Next session</span><span class="mono">THE OPENING BOOK</span></figcaption>
+      <section class="phone opening" data-frame="F5" data-session="thursday" aria-label="Prepared bench opening for Upper A on Thursday November five">
+        <div class="status"><span>10:24</span><svg aria-hidden="true"><use href="#icon-status"/></svg></div>
+        <div class="brand">
+          <div class="brand-name"><svg aria-hidden="true"><use href="#icon-knight"/></svg>ENGINE</div>
+          <div class="engine-state mono"><span class="state-dot"></span>opening book</div>
+        </div>
+        <div class="session">
+          <div class="session-row"><h2>Upper A</h2><span class="mono">THU 5 NOV</span></div>
+          <p class="session-description">Next session · main line and prepared variations</p>
+          <div class="session-tools"><label class="quiet-toggle"><span>Session · This was a deload</span><input type="checkbox" role="switch" data-scope="session-thursday" aria-label="Thursday session: This was a deload" title="Exclude this session from progression and normal bounds"></label></div>
+        </div>
+
+        <div class="analysis">
+          <aside class="book-rail" aria-label="Opening book, variations A through D"><span class="rail-title mono">BOOK</span><svg aria-hidden="true"><use href="#icon-knight"/></svg></aside>
+          <div class="opening-intro"><h3>Prepared opening.</h3><p>Barbell Bench Press · hold the load</p></div>
+          <div class="exercise-marker"><span>Bench</span><label class="quiet-toggle"><span>This was a deload</span><input type="checkbox" role="switch" data-scope="bench-thursday" aria-label="Thursday Barbell Bench Press: This was a deload" title="Exclude bench sets from progression and normal bounds"></label></div>
+          <ol class="opening-lines">
+            <li class="opening-branch opening-main">
+              <span class="branch-index" aria-hidden="true">A.</span>
+              <div class="branch-heading"><span class="eyebrow">Main line / hold</span><span class="branch-glyph">!</span></div>
+              <div class="load-condition"><p>Morning HRV<br><b>≥ 45 ms →</b></p><div class="book-load">185<small>lb</small></div></div>
+              <p class="book-notation mono">1.–4. B185×8–10 · target RPE 8</p>
+              <p class="branch-note">4 working sets · full 2:30 rest recommended.</p>
+            </li>
+            <li class="opening-branch">
+              <span class="branch-index" aria-hidden="true">B.</span>
+              <div class="branch-heading"><span class="eyebrow">Recovery variation / Thu AM</span><span class="branch-glyph">!?</span></div>
+              <div class="conditional-load"><p><b>HRV &lt; 45 ms</b></p><span class="result-load">→ 175 lb</span></div>
+              <p class="branch-note">Start Thursday’s bench at this load.</p>
+            </li>
+            <li class="opening-branch">
+              <span class="branch-index" aria-hidden="true">C.</span>
+              <div class="branch-heading"><span class="eyebrow">Progression continuation</span><span class="branch-glyph">!</span></div>
+              <p class="branch-condition">At <b>185 lb</b>, sets <b>1–2 both ≥ 9 reps</b><br>with your logged <b>RPE ≤ 9</b>:</p>
+              <div class="progress-result"><span class="result-load">→ 190 lb</span><small>following Upper A</small></div>
+            </li>
+            <li class="opening-branch branch-watch">
+              <span class="branch-index" aria-hidden="true">D.</span>
+              <div class="branch-heading"><span class="eyebrow">Watch variation</span><span class="branch-glyph">?!</span></div>
+              <p class="branch-condition">Bench flags again Thursday<br>with <b>normal recovery</b>:</p>
+              <p class="deload-result">→ Pressing deload</p>
+              <p class="deload-detail"><b>−10% load · −1 set · one week.</b></p>
+            </li>
+          </ol>
+          <button class="primary opening-cta" id="keep-opening" type="button"><span>Keep this opening</span><svg aria-hidden="true"><use href="#icon-check"/></svg></button>
+          <div class="injury-plan">
+            <button type="button" id="skip-injury" aria-label="Injured, skip Thursday's planned session">Injured, skip</button>
+            <p>A session skipped for injury does not count as a failure or a missed progression.</p>
+          </div>
+          <p class="opening-status" id="opening-status" role="status">Prepared for Thu 5 Nov · synthetic preview</p>
+        </div>
+        <div class="home-row"><div class="home" aria-hidden="true"></div></div>
+      </section>
+    </figure>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var states = {};
+  var deloadScopes = {};
+  var selectedLine = 'A';
+
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function all(selector, root) {
+    return Array.prototype.slice.call((root || document).querySelectorAll(selector));
+  }
+
+  function formatRest(seconds) {
+    return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  }
+
+  function status(state, text) {
+    state.phone.querySelector('[data-log-status]').textContent = text;
+  }
+
+  function available(row) {
+    return row.dataset.logged !== 'true' && row.dataset.touched !== 'true';
+  }
+
+  function restRunning(state) {
+    return state.end !== null && state.end > Date.now();
+  }
+
+  function restRecommendation(state) {
+    return 'REST · ' + formatRest(state.duration) + ' RECOMMENDED';
+  }
+
+  function updateCounts(state) {
+    var rows = all('.move-table tbody tr', state.phone);
+    var working = rows.filter(function (row) {
+      return row.dataset.type !== 'W' && row.dataset.omitted !== 'true';
+    });
+    state.phone.querySelector('[data-working-count]').textContent = working.length;
+    var remaining = state.phone.querySelector('[data-remaining-count]');
+    if (remaining) {
+      remaining.textContent = working.filter(function (row) {
+        return row.dataset.logged !== 'true';
+      }).length;
+    }
+  }
+
+  function advance(state) {
+    var next = null;
+    var resting = restRunning(state);
+    state.phone.classList.toggle('rest-running', resting);
+    all('.move-table tbody tr', state.phone).forEach(function (row) {
+      var button = row.querySelector('.accept-set');
+      if (!button) return;
+      var pending = row.dataset.logged !== 'true' && row.dataset.omitted !== 'true';
+      if (pending && !next) next = row;
+      row.classList.toggle('next-set', row === next);
+      button.disabled = row !== next || !pending;
+      if (pending) {
+        button.setAttribute('aria-label', row === next
+          ? 'Accept targets and log set ' + row.dataset.set +
+            (resting ? '; full ' + formatRest(state.duration) + ' rest recommended; checking now overrides remaining rest' : '') +
+            '; automatically start rest'
+          : 'Set ' + row.dataset.set + ' queued');
+      }
+    });
+    updateCounts(state);
+  }
+
+  function tick(state) {
+    if (state.end === null) {
+      state.phone.classList.remove('rest-running');
+      return;
+    }
+    var seconds = Math.max(0, Math.ceil((state.end - Date.now()) / 1000));
+    state.phone.querySelector('[data-rest-time]').textContent = formatRest(seconds);
+    state.phone.classList.toggle('rest-running', seconds > 0);
+    if (seconds === 0) {
+      state.end = null;
+      state.phone.querySelector('[data-rest-label]').textContent = 'REST · COMPLETE';
+      state.phone.querySelector('[data-rest-source]').textContent = 'rest complete';
+      advance(state);
+    }
+  }
+
+  function startRest(state, setNumber) {
+    state.end = Date.now() + state.duration * 1000;
+    state.phone.querySelector('[data-rest-label]').textContent = restRecommendation(state);
+    state.phone.querySelector('[data-rest-source]').textContent = 'auto · set ' + setNumber + ' check';
+    state.phone.querySelector('.rest-timer').setAttribute('aria-label',
+      'Rest auto-started on set ' + setNumber + ' check. Full ' + formatRest(state.duration) +
+      ' recommended; minus fifteen seconds, plus fifteen seconds and Skip are your overrides.');
+    tick(state);
+  }
+
+  function snapshot(row) {
+    return {
+      set: row.dataset.set,
+      load: row.dataset.targetLoad,
+      reps: row.dataset.targetReps,
+      omitted: row.dataset.omitted === 'true',
+      loadChange: row.querySelector('.load-input').parentElement.classList.contains('has-change'),
+      repsChange: row.querySelector('.reps-input').parentElement.classList.contains('has-change'),
+      oldLoad: row.querySelector('.load-input').parentElement.querySelector('.old-target').textContent,
+      oldReps: row.querySelector('.reps-input').parentElement.querySelector('.old-target').textContent
+    };
+  }
+
+  function showOldTarget(input, oldValue, changed) {
+    var box = input.parentElement;
+    box.classList.toggle('has-change', changed);
+    var old = box.querySelector('.old-target');
+    old.textContent = '';
+    if (changed) {
+      var strike = document.createElement('s');
+      strike.textContent = oldValue;
+      old.appendChild(strike);
+      old.appendChild(document.createTextNode(' →'));
+    }
+  }
+
+  function setTarget(row, load, reps, omitted) {
+    var loadInput = row.querySelector('.load-input');
+    var repsInput = row.querySelector('.reps-input');
+    var oldLoad = row.dataset.targetLoad;
+    var oldReps = row.dataset.targetReps;
+    showOldTarget(loadInput, oldLoad, oldLoad !== String(load));
+    showOldTarget(repsInput, oldReps, oldReps !== String(reps));
+    row.dataset.targetLoad = String(load);
+    row.dataset.targetReps = String(reps);
+    row.dataset.omitted = String(Boolean(omitted));
+    row.classList.toggle('omitted', Boolean(omitted));
+    row.classList.add('coach-changed');
+    loadInput.placeholder = omitted ? '—' : String(load);
+    repsInput.placeholder = omitted ? '—' : String(reps);
+    loadInput.setAttribute('aria-label', 'Set ' + row.dataset.set + ' load target ' + load + ' pounds');
+    repsInput.setAttribute('aria-label', 'Set ' + row.dataset.set + ' reps target ' + reps);
+    all('input', row).forEach(function (input) { input.disabled = Boolean(omitted); });
+  }
+
+  function setIncline(state, sets, reason) {
+    state.inclineSets = sets;
+    var plan = state.phone.querySelector('[data-incline-plan]');
+    if (plan) {
+      plan.textContent = '55×10–12 · ' + (sets === 2 ? '3→2 sets' : '3 sets');
+      state.phone.querySelector('[data-incline-reason]').textContent = reason;
+    }
+  }
+
+  function coachChange(state, label, reason) {
+    state.phone.querySelector('[data-change-label]').textContent = label;
+    state.phone.querySelector('[data-change-copy]').textContent = reason;
+    state.phone.querySelector('[data-undo]').disabled = state.history.length === 0;
+  }
+
+  function reviseAfterSet(state, loggedRow, load, reps, effort) {
+    if (deloadScopes['session-today'] || deloadScopes['bench-today']) {
+      status(state, 'Deload set logged · excluded from progression and normal bounds. Rest auto-started.');
+      return;
+    }
+
+    var later = all('.move-table tbody tr[data-target-load]', state.phone).filter(function (row) {
+      return Number(row.dataset.set) > Number(loggedRow.dataset.set) && available(row) && row.dataset.omitted !== 'true';
+    });
+
+    if (load === 185 && reps <= 6 && effort !== null && effort >= 9.5 && later.length) {
+      var changed = later.filter(function (row) {
+        return row.dataset.targetLoad !== '165' || row.dataset.targetReps !== '8';
+      });
+      if (changed.length) {
+        state.history.push({ rows: changed.map(snapshot), inclineSets: state.inclineSets, duration: state.duration });
+        changed.forEach(function (row) { setTarget(row, 165, 8, false); });
+        coachChange(state, 'Coach · later sets: 185 → 165', 'Backed off after a short-rest grinder; keeps productive work.');
+        status(state, 'Set ' + loggedRow.dataset.set + ' flagged. Untouched later targets revised once; undo is available.');
+      }
+    } else {
+      status(state, 'Set ' + loggedRow.dataset.set + ' logged · rest auto-started. Later targets reviewed and unchanged.');
+    }
+  }
+
+  function logSet(state, row) {
+    if (row.dataset.logged === 'true') return;
+    var inputs = all('input', row);
+    var invalid = inputs.filter(function (input) { return !input.checkValidity(); })[0];
+    if (invalid) {
+      invalid.reportValidity();
+      return;
+    }
+    var loadInput = row.querySelector('.load-input');
+    var repsInput = row.querySelector('.reps-input');
+    var effortInput = row.querySelector('.effort-input');
+    var load = loadInput.value === '' ? Number(row.dataset.targetLoad) : Number(loadInput.value);
+    var reps = repsInput.value === '' ? Number(row.dataset.targetReps) : Number(repsInput.value);
+    var effort = effortInput.value === '' ? null : Number(effortInput.value);
+
+    loadInput.value = String(load);
+    repsInput.value = String(reps);
+    row.dataset.logged = 'true';
+    inputs.forEach(function (input) { input.disabled = true; });
+    var type = row.querySelector('.set-type');
+    type.disabled = true;
+    var check = row.querySelector('.accept-set');
+    check.classList.add('done');
+    check.disabled = true;
+    check.setAttribute('aria-label', 'Set ' + row.dataset.set + ' logged: ' + load + ' pounds for ' + reps + ' reps' + (effort === null ? '; RPE not entered' : ', RPE ' + effort));
+    startRest(state, row.dataset.set);
+    reviseAfterSet(state, row, load, reps, effort);
+    advance(state);
+  }
+
+  function setupLogger(frame, initialSeconds, inclineSets) {
+    var phone = document.querySelector('[data-frame="' + frame + '"]');
+    var state = {
+      phone: phone,
+      duration: 150,
+      end: Date.now() + initialSeconds * 1000,
+      inclineSets: inclineSets,
+      history: []
+    };
+    states[frame] = state;
+
+    all('.accept-set', phone).forEach(function (button) {
+      button.addEventListener('click', function () { logSet(state, button.closest('tr')); });
+    });
+    all('.target-field', phone).forEach(function (input) {
+      input.addEventListener('input', function () {
+        input.closest('tr').dataset.touched = 'true';
+      });
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          var row = input.closest('tr');
+          var check = row.querySelector('.accept-set');
+          if (check && !check.disabled) logSet(state, row);
+        }
+      });
+    });
+    all('.set-type', phone).forEach(function (button) {
+      button.addEventListener('click', function () {
+        var row = button.closest('tr');
+        var order = ['work', 'D', 'F', 'W'];
+        var next = order[(order.indexOf(row.dataset.type) + 1) % order.length];
+        row.dataset.type = next;
+        row.dataset.touched = 'true';
+        button.textContent = next === 'work' ? row.dataset.set : next;
+        var words = { work: 'working', D: 'drop', F: 'failure', W: 'warm-up' };
+        button.setAttribute('aria-label', 'Set ' + row.dataset.set + ', ' + words[next] + '. Tap to change set type');
+        updateCounts(state);
+        status(state, 'Set ' + row.dataset.set + ' marked ' + words[next] + '. Your edited set will keep its targets.');
+      });
+    });
+    all('[data-adjust]', phone).forEach(function (button) {
+      button.addEventListener('click', function () {
+        if (button.dataset.adjust === 'skip') {
+          state.end = null;
+          phone.querySelector('[data-rest-time]').textContent = '0:00';
+          phone.querySelector('[data-rest-label]').textContent = 'REST · SKIPPED';
+          phone.querySelector('[data-rest-source]').textContent = 'your override';
+          status(state, 'Rest skipped. The next check automatically starts a new rest timer.');
+          advance(state);
+        } else {
+          var remaining = state.end === null ? 0 : Math.max(0, Math.ceil((state.end - Date.now()) / 1000));
+          var adjusted = Math.max(0, remaining + Number(button.dataset.adjust));
+          state.end = Date.now() + adjusted * 1000;
+          phone.querySelector('[data-rest-label]').textContent = restRecommendation(state);
+          phone.querySelector('[data-rest-source]').textContent = 'your time override';
+          tick(state);
+          advance(state);
+        }
+      });
+    });
+
+    phone.querySelector('[data-undo]').addEventListener('click', function () {
+      if (!state.history.length) return;
+      var previous = state.history.pop();
+      var restored = 0;
+      previous.rows.forEach(function (item) {
+        var row = phone.querySelector('tr[data-set="' + item.set + '"]');
+        if (!row || !available(row)) return;
+        var loadInput = row.querySelector('.load-input');
+        var repsInput = row.querySelector('.reps-input');
+        row.dataset.targetLoad = item.load;
+        row.dataset.targetReps = item.reps;
+        row.dataset.omitted = String(Boolean(item.omitted));
+        row.classList.toggle('omitted', Boolean(item.omitted));
+        loadInput.placeholder = item.omitted ? '—' : item.load;
+        repsInput.placeholder = item.omitted ? '—' : item.reps;
+        loadInput.parentElement.classList.toggle('has-change', Boolean(item.loadChange));
+        repsInput.parentElement.classList.toggle('has-change', Boolean(item.repsChange));
+        loadInput.parentElement.querySelector('.old-target').textContent = item.oldLoad || '';
+        repsInput.parentElement.querySelector('.old-target').textContent = item.oldReps || '';
+        row.classList.toggle('coach-changed', Boolean(item.loadChange || item.repsChange));
+        all('input', row).forEach(function (input) { input.disabled = Boolean(item.omitted); });
+        loadInput.setAttribute('aria-label', 'Set ' + item.set + ' load target ' + item.load + ' pounds');
+        repsInput.setAttribute('aria-label', 'Set ' + item.set + ' reps target ' + item.reps);
+        restored += 1;
+      });
+      if (previous.inclineSets !== undefined) {
+        setIncline(state, previous.inclineSets, previous.inclineSets === 3 ? 'Original three-set target restored.' : 'Trimmed one set to limit pressing fatigue.');
+      }
+      state.duration = previous.duration || 150;
+      if (restRunning(state)) {
+        phone.querySelector('[data-rest-label]').textContent = restRecommendation(state);
+      }
+      coachChange(state, restored ? 'Undo · untouched targets restored' : 'Your logged sets and edits stay fixed', 'Completed sets and anything you edited are never rewritten.');
+      status(state, 'Coach revision undone for ' + restored + ' untouched set' + (restored === 1 ? '.' : 's.'));
+      if (frame === 'F4') {
+        setProjection('mixed', 'Undo');
+        byId('applied-line-label').textContent = 'UNDONE';
+        byId('plate-note').textContent = 'Untouched targets restored. Full ' + formatRest(state.duration) + ' rest recommended; Skip to override.';
+      }
+      advance(state);
+    });
+
+    advance(state);
+    tick(state);
+    return state;
+  }
+
+  setupLogger('F1', 42, 3);
+  var applied = setupLogger('F4', 150, 2);
+  applied.history.push({
+    rows: [
+      { set: '3', load: '185', reps: '8', omitted: false, loadChange: false, repsChange: false },
+      { set: '4', load: '185', reps: '8', omitted: false, loadChange: false, repsChange: false }
+    ],
+    inclineSets: 3,
+    duration: 150
+  });
+
+  window.setInterval(function () {
+    Object.keys(states).forEach(function (key) { tick(states[key]); });
+  }, 250);
+
+  function setProjection(outlook, line) {
+    var rail = byId('applied-eval');
+    rail.classList.remove('project-sound', 'project-mixed', 'project-limited');
+    rail.classList.add('project-' + outlook);
+    byId('future-marker').textContent = '';
+    byId('future-marker').appendChild(document.createTextNode(line));
+    byId('future-marker').appendChild(document.createElement('br'));
+    byId('future-marker').appendChild(document.createTextNode('line'));
+    rail.setAttribute('aria-label', 'Current outlook limited; continuation projects ' + outlook + ' on the ordinal work versus fatigue scale');
+  }
+
+  var choices = all('[data-line]');
+  var accept = byId('accept-line');
+
+  function selectLine(line) {
+    selectedLine = line;
+    choices.forEach(function (button) {
+      var selected = button.dataset.line === line;
+      button.classList.toggle('selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+    accept.querySelector('span').textContent = line === 'A' ? 'Accept best line' : 'Accept line ' + line;
+    byId('dismiss').textContent = 'Dismiss';
+    var descriptions = {
+      A: 'A selected: bench 165 lb × 2 sets; incline later 3→2. Full 2:30 rest recommended.',
+      B: 'B selected: 185 lb, target RPE 9. Full 3:00 rest recommended; Skip to override.',
+      C: 'C selected: omit remaining bench sets; T-Bar Row next. Incline later stays at three.'
+    };
+    byId('line-message').textContent = descriptions[line];
+  }
+
+  choices.forEach(function (button) {
+    button.addEventListener('click', function () { selectLine(button.dataset.line); });
+  });
+  byId('choose-another').addEventListener('click', function () {
+    var order = ['A', 'B', 'C'];
+    var next = order[(order.indexOf(selectedLine) + 1) % order.length];
+    selectLine(next);
+    choices[order.indexOf(next)].focus({ preventScroll: true });
+  });
+  byId('dismiss').addEventListener('click', function () {
+    byId('line-message').textContent = 'Suggestion dismissed. No targets were changed.';
+    this.textContent = 'Dismissed';
+  });
+
+  accept.addEventListener('click', function () {
+    var line = selectedLine;
+    var isA = line === 'A';
+    var isB = line === 'B';
+    var load = isA ? 165 : 185;
+    var reps = isA ? 8 : 6;
+    var omit = line === 'C';
+    var inclineSets = isA ? 2 : 3;
+    var rows = all('tr[data-target-load]', applied.phone).filter(function (row) {
+      return available(row) && (
+        row.dataset.targetLoad !== String(load) ||
+        row.dataset.targetReps !== String(reps) ||
+        (row.dataset.omitted === 'true') !== omit
+      );
+    });
+    if (rows.length || applied.inclineSets !== inclineSets) {
+      applied.history.push({ rows: rows.map(snapshot), inclineSets: applied.inclineSets, duration: applied.duration });
+      rows.forEach(function (row) { setTarget(row, load, reps, omit); });
+    }
+    var duration = isB ? 180 : 150;
+    if (applied.end !== null && applied.duration !== duration) {
+      applied.end += (duration - applied.duration) * 1000;
+    }
+    applied.duration = duration;
+    if (restRunning(applied)) {
+      applied.phone.querySelector('[data-rest-label]').textContent = restRecommendation(applied);
+      applied.phone.querySelector('.rest-timer').setAttribute('aria-label',
+        'Rest auto-started on the last set check. Full ' + formatRest(duration) +
+        ' recommended; minus fifteen seconds, plus fifteen seconds and Skip are your overrides.');
+    }
+    applied.phone.querySelector('[data-target-effort]').textContent = isB ? '9' : '8';
+    setIncline(applied, inclineSets, isA ? 'Trimmed one set to limit pressing fatigue.' : 'Original three-set target unchanged.');
+    setProjection(isA ? 'sound' : isB ? 'mixed' : 'limited', line);
+    byId('applied-line-label').textContent = 'LINE ' + line;
+
+    if (isA) {
+      coachChange(applied, 'Coach · sets 3–4: 185 → 165', 'Backed off after a short-rest grinder; keeps two productive sets.');
+      byId('plate-note').textContent = 'Swap each 25 for a 10 + 5. Per side: 45 + 10 + 5 lb. Full 2:30 rest recommended; Skip to override.';
+    } else if (isB) {
+      coachChange(applied, 'Coach · longer-rest line accepted', 'Same load, fewer reps; extra rest limits another drop.');
+      byId('plate-note').textContent = 'Keep 185 lb · target RPE 9. Full 3:00 rest recommended; Skip to override. Enter actual RPE.';
+    } else {
+      coachChange(applied, 'Coach · untouched bench sets omitted', 'Stops bench to limit fatigue; incline work stays available.');
+      applied.end = null;
+      applied.phone.querySelector('[data-rest-time]').textContent = '0:00';
+      applied.phone.querySelector('[data-rest-label]').textContent = 'REST · BENCH CLOSED';
+      applied.phone.querySelector('[data-rest-source]').textContent = 'move on';
+      byId('plate-note').textContent = 'Bench closed. Next: Chest-Supported T-Bar Row. Incline later stays at three sets.';
+    }
+
+    status(applied, line + ' accepted · ' + (isA ? 'SOUND' : isB ? 'MIXED' : 'LIMITED') + ' projected. Only untouched targets changed.');
+    byId('line-message').textContent = 'Line ' + line + ' applied. Completed sets and your edits stay fixed.';
+    accept.querySelector('span').textContent = 'Line ' + line + ' applied';
+    advance(applied);
+    tick(applied);
+  });
+
+  all('.session-description').forEach(function (node) {
+    node.dataset.originalText = node.textContent;
+  });
+
+  all('input[data-scope]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      var scope = input.dataset.scope;
+      var checked = input.checked;
+      deloadScopes[scope] = checked;
+      all('input[data-scope]').forEach(function (peer) {
+        if (peer.dataset.scope === scope) peer.checked = checked;
+      });
+      var session = scope.indexOf('thursday') !== -1 ? 'thursday' : 'today';
+      all('.phone[data-session="' + session + '"]').forEach(function (phone) {
+        var description = phone.querySelector('.session-description');
+        description.textContent = checked
+          ? 'Deload marked · excluded from progression & normal bounds.'
+          : description.dataset.originalText;
+        var announcement = phone.querySelector('[data-announcement]');
+        if (announcement) announcement.textContent = checked
+          ? 'Deload sets do not count toward progression or normal bounds.'
+          : 'Deload marker off.';
+      });
+      var logger = states[input.closest('.phone').dataset.frame];
+      if (logger) status(logger, checked
+        ? 'Deload marked · these sets do not count toward progression or normal bounds.'
+        : 'Deload marker off. Normal progression and bounds apply.');
+    });
+  });
+
+  byId('keep-opening').addEventListener('click', function () {
+    this.querySelector('span').textContent = 'Opening kept';
+    this.classList.add('logged');
+    this.disabled = true;
+    byId('opening-status').textContent = 'Kept for Thu 5 Nov · synthetic preview.';
+  });
+
+  byId('skip-injury').addEventListener('click', function () {
+    var phone = this.closest('.phone');
+    phone.querySelector('.session h2').textContent = 'Upper A · skipped';
+    phone.querySelector('.session-description').textContent = 'Thu 5 Nov · skipped for injury';
+    phone.querySelector('.engine-state').textContent = 'session skipped';
+    this.textContent = 'Skipped – injury';
+    this.disabled = true;
+    var keep = byId('keep-opening');
+    keep.disabled = true;
+    keep.classList.remove('logged');
+    keep.querySelector('span').textContent = 'Thursday session skipped';
+    byId('opening-status').textContent = 'Injury skip recorded · no failure or missed progression.';
+  });
+}());
+</script>
+</body>
+</html>

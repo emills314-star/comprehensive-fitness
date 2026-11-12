@@ -1,6 +1,7 @@
 "use strict";
 
 const { test, expect } = require("@playwright/test");
+const { closeLoadedBarSheet, focusExercise, openExerciseOptions, openSetOptions } = require("./fixtures/loaded-bar.helpers");
 const {
   FIXED_NOW,
   IDS,
@@ -543,10 +544,15 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await installFixture(page, buildTemplateLifecycleFixture());
     await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator(".active-session-ready")).toHaveText("Ready");
-    await expect(page.locator(".exercise-card"), "the active workout must render every exercise in one continuous document").toHaveCount(2);
-    const firstExercise = page.locator(".exercise-card").first();
-    await expect(firstExercise.locator(".set-current-editor .set-previous"), "a newly started warm-up must not borrow working-set history").toContainText("No history");
+    await expect(page.locator(".loaded-bar-focus [data-action=\"toggle-set\"]").first(), "a direct start must immediately permit logging").toBeEnabled();
+    await expect(page.locator(".loaded-bar-rest-clamp"), "an unperformed workout has no active rest").toHaveCount(0);
+    await expect(page.locator(".loaded-bar-focus")).toHaveCount(1);
+    await expect(page.locator(".loaded-bar-up-next [data-action=\"focus-workout-exercise\"]"), "the other routine exercise remains reachable through Up next").toHaveCount(1);
+    const firstExercise = page.locator(".loaded-bar-focus");
+    const warmup = firstExercise.locator('.loaded-bar-row').first();
+    await expect(warmup.locator('[data-action="set-type-sheet"]')).toHaveText("W");
+    await expect(warmup.locator('.loaded-bar-previous'), "a newly started warm-up must not borrow working-set history").toHaveText("—");
+    await expect(warmup.locator('.loaded-bar-previous > span')).toHaveAttribute("title", "No previous workout found");
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
       if (sessions.length !== 1) return false;
@@ -558,7 +564,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await reloadAndWait(page);
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible();
-    await expect(page.locator(".active-session-ready")).toHaveText("Ready");
+    await expect(page.locator(".loaded-bar-focus [data-action=\"toggle-set\"]").first()).toBeEnabled();
+    await expect(page.locator(".loaded-bar-rest-clamp")).toHaveCount(0);
     expect(browserErrors, "template-start lifecycle browser errors").toEqual([]);
   });
 
@@ -631,10 +638,11 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
     await expect(page.locator(".destination-error"), "a newly started unavailable-equipment exercise must remain inside its workout card").toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Public Synthetic New Cable Exercise", exact: true })).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator(".exercise-card")).toHaveCount(1);
-    await expect(page.locator(".exercise-card .program-warning.blocking"), "Equipment metadata must not block the active logger").toHaveCount(0);
-    await page.locator(".exercise-card details.exercise-details > summary").click();
-    await expect(page.locator(".exercise-card [data-action=\"add-set\"]")).toBeEnabled();
+    await expect(page.locator(".loaded-bar-focus")).toHaveCount(1);
+    await expect(page.locator(".loaded-bar-focus .program-warning.blocking"), "Equipment metadata must not block the active logger").toHaveCount(0);
+    const exerciseId = await page.locator('.loaded-bar-focus [data-action="exercise-menu"]').getAttribute("data-exercise-id");
+    const options = await openExerciseOptions(page, exerciseId);
+    await expect(options.locator('[data-action="add-set"]')).toBeEnabled();
     expect(browserErrors, "bounded unavailable-equipment paths must not emit browser errors").toEqual([]);
   });
 
@@ -662,8 +670,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.locator(".destination-error"), "a persisted partial recommendation must not replace Today with the destination error surface").toHaveCount(0);
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .unified-prescription`), "Legacy analytical recommendations must stay out of the active logger").toHaveCount(0);
-    await page.locator(`#exercise-${IDS.activeBenchExercise} details.exercise-details > summary`).click();
-    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} [data-action="add-set"]`)).toBeEnabled();
+    const options = await openExerciseOptions(page, IDS.activeBenchExercise);
+    await expect(options.locator('[data-action="add-set"]')).toBeEnabled();
     const hasActiveSnapshot = await page.evaluate((exerciseId) => Object.hasOwn(data.exercises.find((exercise) => exercise.id === exerciseId), "recommendationSnapshot"), IDS.activeBenchExercise);
     expect(hasActiveSnapshot, "the original active-workout reference must survive as inert recovery/audit history").toBe(true);
     expect(browserErrors, "partial active recommendation presentation must not emit browser errors").toEqual([]);
@@ -705,30 +713,32 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await installFixture(page, fixture);
 
     const currentLayout = await page.locator(`#set-${IDS.activeBenchSet1}`).evaluate((block) => {
-      const previous = block.querySelector(".set-previous").getBoundingClientRect();
+      const previous = block.querySelector(".loaded-bar-previous").getBoundingClientRect();
       const load = block.querySelector('[data-action="set-weight"]').getBoundingClientRect();
       const style = getComputedStyle(document.body);
       return {
-        collapsed: !block.querySelector(".set-tools-disclosure").open,
+        hasTypeControl: Boolean(block.querySelector('[data-action="set-type-sheet"]')),
         height: block.getBoundingClientRect().height,
-        previousTop: previous.top,
+        previousRight: previous.right,
         previousWidth: previous.width,
-        loadBottom: load.bottom,
-        editorWidth: block.querySelector(".set-current-editor").getBoundingClientRect().width,
+        loadLeft: load.left,
+        editorWidth: block.getBoundingClientRect().width,
         bodyBackground: style.backgroundColor
       };
     });
     const pendingLayout = await page.locator(`#set-${IDS.activeBenchSet2}`).evaluate((block) => ({
-      collapsed: !block.querySelector(".set-tools-disclosure").open,
+      hasTypeControl: Boolean(block.querySelector('[data-action="set-type-sheet"]')),
       height: block.getBoundingClientRect().height,
-      mode: block.querySelector("[data-set-mode]")?.getAttribute("data-set-mode")
+      mode: block.getAttribute("data-set-mode")
     }));
-    expect(currentLayout.collapsed, "current set controls should start collapsed").toBe(true);
-    expect(pendingLayout.collapsed, "pending set controls should start collapsed").toBe(true);
-    expect(pendingLayout.mode, "a pending set must use the V3 target-only shape").toBe("pending");
+    await expect(page.locator('.loaded-bar-sheet'), "set tools stay closed until their type flag is opened").toHaveCount(0);
+    expect(currentLayout.hasTypeControl, "current set tools remain reachable from their type flag").toBe(true);
+    expect(pendingLayout.hasTypeControl, "pending set tools remain reachable from their type flag").toBe(true);
+    expect(pendingLayout.mode, "a pending set must retain its pending state in the compact table").toBe("pending");
     expect(pendingLayout.height, "the pending target line must remain vertically cheaper than the current editor").toBeLessThan(currentLayout.height);
-    expect(currentLayout.previousTop, "Previous history must follow the three primary M1 entry boxes").toBeGreaterThanOrEqual(currentLayout.loadBottom - 1);
-    expect(currentLayout.previousWidth, "Previous history must remain a compact full-width strip rather than a fourth primary entry box").toBeGreaterThanOrEqual(currentLayout.editorWidth * 0.85);
+    expect(currentLayout.previousRight, "Previous facts must occupy their own table column without overlapping the load input").toBeLessThanOrEqual(currentLayout.loadLeft + 1);
+    expect(currentLayout.previousWidth, "Previous facts must retain usable width in the compact table").toBeGreaterThan(0);
+    expect(currentLayout.previousWidth).toBeLessThan(currentLayout.editorWidth);
     expect(currentLayout.bodyBackground, "the light application canvas must be true white").toBe("rgb(255, 255, 255)");
 
     await page.evaluate(() => setActiveTab("progress"));
@@ -786,8 +796,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     }).toBe(true);
 
     const initialSessionUpdatedAt = await page.evaluate((sessionId) => data.sessions.find((session) => session.id === sessionId)?.updatedAt, IDS.activeSession);
-    await activeExercise.locator("details.exercise-details > summary").click();
-    const editor = activeExercise.locator("[data-standard-workload-form]");
+    const options = await openExerciseOptions(page, IDS.activeRowExercise);
+    const editor = options.locator("[data-standard-workload-form]");
     await editor.locator('[data-default-field="sets"]').fill("3");
     await editor.locator('[data-default-field="rep-min"]').fill("12");
     await editor.locator('[data-default-field="rep-max"]').fill("14");
@@ -809,6 +819,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
         && Boolean(audit);
     }, "Exercise options must durably update only the owning active session");
     expect(persisted.sessions.find((session) => session.id === IDS.historySession)?.updatedAt).toBe("2026-07-16T15:00:00.000Z");
+    await closeLoadedBarSheet(page);
 
     await reloadAndWait(page);
     await expect(page.locator(`#exercise-${IDS.activeRowExercise} .set-block`)).toHaveCount(3);
@@ -924,11 +935,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     };
     fixture.exercises.find((item) => item.id === IDS.activeBenchExercise).recommendationSnapshot = corruptSnapshot;
     await installFixture(page, fixture);
-    const card = page.locator(`#exercise-${IDS.activeBenchExercise}`);
     const beforeCount = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).length, IDS.activeBenchExercise);
-    await card.locator("details.exercise-details > summary").click();
-    await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
-    await card.locator('[data-action="add-set"]').click();
+    const options = await openExerciseOptions(page, IDS.activeBenchExercise);
+    await expect(options.locator('[data-action="add-set"]')).toBeEnabled();
+    await options.locator('[data-action="add-set"]').click();
     await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).length, IDS.activeBenchExercise)).toBe(beforeCount + 1);
     const hasActiveSnapshot = await page.evaluate((exerciseId) => Object.hasOwn(data.exercises.find((item) => item.id === exerciseId), "recommendationSnapshot"), IDS.activeBenchExercise);
     expect(hasActiveSnapshot, "logging must preserve the original snapshot bytes without executing them").toBe(true);
@@ -941,12 +951,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
 
     const renamed = "Public Synthetic Paused Bench Press — Session Edit";
-    const sourceCard = page.locator(`#exercise-${IDS.activeBenchExercise}`);
-    await sourceCard.locator("details.exercise-details > summary").click();
-    await sourceCard.locator('[data-action="exercise-substitute-name"]').fill(renamed);
-    await sourceCard.locator('[data-action="apply-exercise-substitution"]').click();
-    await page.locator(`#exercise-${IDS.activeRowExercise} details.exercise-overflow > summary`).click();
-    await page.locator(`[data-action="move-exercise"][data-exercise-id="${IDS.activeRowExercise}"][data-direction="-1"]`).click();
+    const sourceOptions = await openExerciseOptions(page, IDS.activeBenchExercise);
+    await sourceOptions.locator('[data-action="exercise-substitute-name"]').fill(renamed);
+    await sourceOptions.locator('[data-action="apply-exercise-substitution"]').click();
+    const rowOptions = await openExerciseOptions(page, IDS.activeRowExercise);
+    await rowOptions.locator(`[data-action="move-exercise"][data-exercise-id="${IDS.activeRowExercise}"][data-direction="-1"]`).click();
+    await closeLoadedBarSheet(page);
     const addExercisePanel = page.locator("details.add-exercise-panel");
     await addExercisePanel.locator(":scope > summary").click();
     await expect(addExercisePanel).toHaveAttribute("open", "");
@@ -967,24 +977,19 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       }
     });
     expect(afterAddRenderError, "adding a custom exercise must leave the active workout renderable").toBe("");
-    await page.evaluate((exerciseId) => {
-      const control = document.createElement("button");
-      control.type = "button";
-      control.dataset.action = "delete-exercise";
-      control.dataset.exerciseId = exerciseId;
-      root.appendChild(control);
-      control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-      control.remove();
-    }, custom.id);
+    const customOptions = await openExerciseOptions(page, custom.id);
+    await customOptions.locator(`[data-action="delete-exercise"][data-exercise-id="${custom.id}"]`).click();
     await expect.poll(() => page.evaluate((exerciseId) => data.exercises.some((item) => item.id === exerciseId), custom.id)).toBe(false);
 
     const initialBenchSetCount = stored.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise).length;
-    await page.locator(`#exercise-${IDS.activeBenchExercise} details.exercise-details > summary`).click();
-    await page.locator(`[data-action="add-set"][data-exercise-id="${IDS.activeBenchExercise}"]`).click();
+    const benchOptions = await openExerciseOptions(page, IDS.activeBenchExercise);
+    await benchOptions.locator(`[data-action="add-set"][data-exercise-id="${IDS.activeBenchExercise}"]`).click();
+    await closeLoadedBarSheet(page);
     stored = await waitForPersisted(page, (data) => data.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise).length === initialBenchSetCount + 1, "added working set must persist");
     const addedSet = stored.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise).sort((a, b) => Number(b.sequenceIndex) - Number(a.sequenceIndex))[0];
-    await page.locator(`#set-${addedSet.id} .set-tools-disclosure > summary`).click();
-    await page.locator(`[data-action="delete-set"][data-set-id="${addedSet.id}"]`).click();
+    const setOptions = await openSetOptions(page, addedSet.id);
+    await setOptions.locator(`[data-action="delete-set"][data-set-id="${addedSet.id}"]`).click();
+    await closeLoadedBarSheet(page);
     await page.locator('[data-action="session-menu"]').click();
     await page.locator('[data-action="save-template"]').click();
     await expect(page.locator(".templates-view")).toBeVisible();
@@ -1001,7 +1006,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
     await page.locator('[data-action="resume-active-workout"]').first().click();
     await expect(page.locator(".workout-view")).toBeVisible();
-    await expect(page.locator(`.exercise-card[aria-label="Exercise: ${renamed}"]`)).toHaveCount(1);
+    const renamedExercise = await focusExercise(page, IDS.activeBenchExercise);
+    await expect(renamedExercise).toHaveAttribute("aria-label", `Exercise: ${renamed}`);
     await expect(page.locator('[data-action="exercise-name"]')).toHaveCount(0);
     expect(browserErrors, "active-edit lifecycle browser errors").toEqual([]);
   });
@@ -1048,8 +1054,11 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(first).toHaveAttribute("aria-pressed", "true");
     await first.click();
     await expect(first).toHaveAttribute("aria-pressed", "false");
-    await page.locator(`#set-${IDS.activeRowSet2} .set-tools-disclosure > summary`).click();
-    await page.locator(`[data-action="toggle-skip-set"][data-set-id="${IDS.activeRowSet2}"]`).click();
+    await focusExercise(page, IDS.activeRowExercise);
+    const setOptions = await openSetOptions(page, IDS.activeRowSet2);
+    await setOptions.locator(`[data-action="toggle-skip-set"][data-set-id="${IDS.activeRowSet2}"]`).click();
+    await closeLoadedBarSheet(page);
+    await focusExercise(page, IDS.activeBenchExercise);
     await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`).click();
 
     await page.locator('[data-action="request-submit-workout"]').click();
@@ -1203,10 +1212,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("heading", { name: EDITED_HISTORY_TITLE, exact: true })).toBeVisible();
     const editedSet = page.locator(`#set-${IDS.historyBenchSet1}`);
     await expect(editedSet).toContainText("11");
-    await expect(editedSet).toContainText("145 lb");
+    await expect(editedSet.locator(':scope > [role="cell"]').nth(2)).toHaveText("145");
+    await expect(page.locator(`#exercise-${IDS.historyBenchExercise}`).getByRole("columnheader", { name: "LB", exact: true })).toBeVisible();
     const reloaded = await persistedData(page);
     const reloadedSession = reloaded.sessions.find((item) => item.id === IDS.historySession);
     expect(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
+    expect(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1)).toMatchObject({ weight: 145, weightUnit: "lb" });
     expect(reloadedSession.workoutAnalysis).toEqual(storedHistoricalGrade);
     expect(reloaded.sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     await page.locator('[data-action="begin-history-edit"]').click();
@@ -1271,9 +1282,11 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await card.click();
     const editedSet = page.locator(`#set-${IDS.historyBenchSet1}`);
     await expect(editedSet).toContainText("12");
-    await expect(editedSet).toContainText("145 lb");
+    await expect(editedSet.locator(':scope > [role="cell"]').nth(2)).toHaveText("145");
+    await expect(page.locator(`#exercise-${IDS.historyBenchExercise}`).getByRole("columnheader", { name: "LB", exact: true })).toBeVisible();
     const reloaded = await persistedData(page);
     expect.soft(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
+    expect.soft(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1)).toMatchObject({ weight: 145, weightUnit: "lb" });
     expect.soft(reloaded.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis).toEqual(storedHistoricalGrade);
   });
 

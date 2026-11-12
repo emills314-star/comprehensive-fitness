@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loaded Bar module — equipment preview</title>
+  <link rel="stylesheet" href="./palette.css">
+  <style>
+    :root {
+      --f-sign: "Bebas Neue", "Oswald", "Impact", "Arial Narrow", sans-serif;
+      --f-text: "Work Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--surface); color: var(--text); font: 14px/1.5 var(--f-text); }
+    main { max-width: 1280px; padding: 40px 28px 60px; margin: auto; }
+    header { max-width: 720px; margin-bottom: 28px; }
+    h1 { margin: 8px 0 12px; font: 400 74px/.95 var(--f-sign); letter-spacing: .02em; }
+    header p { margin: 0 0 10px; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+    a { color: var(--green-2); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 386px), 1fr)); gap: 18px; }
+    .sample { padding: 18px; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+    .sample h2 { margin: 0 0 12px; font: 400 25px/1.1 var(--f-sign); letter-spacing: .04em; }
+    .drawing { position: relative; width: 358px; max-width: 100%; aspect-ratio: 358 / 148; padding-top: 5px; }
+    .drawing > svg { max-width: 100%; height: auto; }
+    .drawing.compact { display: flex; align-items: center; width: auto; aspect-ratio: auto; min-height: 100px; padding: 20px 14px; }
+    .target { position: absolute; left: 0; top: 7px; font: 400 62px/.9 var(--f-sign); letter-spacing: .01em; }
+    .target small { margin-left: 4px; color: var(--muted); font-size: 22px; letter-spacing: .04em; }
+    .reason { position: absolute; bottom: 0; right: 4.8883%; max-width: 304px; margin: 0; padding: 0 11px 3px 0; border-bottom: 1.5px solid var(--amber); color: var(--amber); font-size: 12px; font-weight: 600; text-align: right; }
+    .caption { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+    .change { margin: 8px 0 0; font-weight: 700; color: var(--green-2); }
+    .note { margin: 6px 0 0; color: var(--amber); font-size: 12px; }
+    footer { max-width: 780px; margin-top: 24px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 440px) {
+      main { padding: 24px 12px 40px; }
+      h1 { font-size: 60px; }
+      .sample { padding: 14px; }
+      .target { font-size: 50px; }
+      .reason { font-size: 11px; }
+    }
+
+    /* loaded-bar equipment styles: start */
+    .defs{position:absolute;width:0;height:0;overflow:hidden}
+    .gs0{stop-color:var(--line)}.gs1{stop-color:var(--bg)}.gs2{stop-color:var(--line)}.gs3{stop-color:var(--line-strong)}
+    .gd0{stop-color:var(--line-strong)}.gd1{stop-color:var(--muted-2)}
+    .kn{stroke:var(--muted);stroke-width:.8;fill:none;opacity:.6}
+    .ht{stroke:var(--amber);stroke-width:2.2}
+    .bar{display:block;overflow:visible}
+    .bar .sleeve,.bar .shaft{fill:url(#lb-gSteel);stroke:var(--line-strong);stroke-width:1}
+    .bar .knurl{fill:url(#lb-knurl)}
+    .bar .cap,.bar .sh{fill:url(#lb-gSteelD);stroke:var(--muted-2);stroke-width:1}
+    .bar .ring{stroke:var(--muted-2);stroke-width:1.5}
+    .bar .floor{stroke:var(--line-strong);stroke-width:2.4;stroke-dasharray:1 6;stroke-linecap:round}
+    .pl-b{stroke:none}
+    .p45 .pl-b{fill:var(--text)}
+    .p35 .pl-b{fill:var(--green-2)}.p35 .pl-n{fill:var(--on-action)}
+    .p25 .pl-b{fill:var(--action)}
+    .p10 .pl-b{fill:var(--current-dark);stroke:var(--action);stroke-width:2}
+    .p5 .pl-b{fill:var(--bg);stroke:var(--text);stroke-width:2}
+    .p2 .pl-b{fill:var(--panel-2);stroke:var(--muted);stroke-width:1.6}
+    .pl-rim{fill:none;stroke:color-mix(in srgb,var(--on-action) 26%,transparent);stroke-width:1.2}
+    .p10 .pl-rim,.p5 .pl-rim,.p2 .pl-rim{stroke:color-mix(in srgb,var(--action) 30%,transparent)}
+    .pl-hi{fill:color-mix(in srgb,var(--on-action) 34%,transparent)}
+    .p10 .pl-hi,.p5 .pl-hi,.p2 .pl-hi{fill:color-mix(in srgb,var(--on-action) 85%,transparent)}
+    .pl-n{font-family:var(--f-sign);fill:var(--on-action);letter-spacing:.05em}
+    .p10 .pl-n{fill:var(--green-2)}.p5 .pl-n{fill:var(--text)}.p2 .pl-n{fill:var(--muted)}
+    .pl-l{font-family:var(--f-sign);letter-spacing:.05em;fill:var(--text)}
+    .p25 .pl-l{fill:var(--green-2)}.p10 .pl-l{fill:var(--green-2)}.p2 .pl-l{fill:var(--muted)}
+    .pl-halo{fill:none;stroke:var(--action);stroke-width:2;stroke-dasharray:3 3}
+    .pl.new .pl-halo{visibility:visible}
+    .col-b{fill:var(--text)}.col-lever{fill:var(--muted)}.col-pin{fill:var(--line-strong)}
+    .col-hi{fill:color-mix(in srgb,var(--on-action) 32%,transparent)}
+    .col.steel .col-b{fill:var(--text)}
+    .col.flag .col-b{fill:var(--amber)}.col.flag .col-lever{fill:var(--text)}
+    .acord{fill:none;stroke:var(--amber);stroke-width:2.2;stroke-linecap:round}
+    .aknot{fill:var(--amber)}
+    .rd-b{fill:var(--text)}.rd-rim{fill:none;stroke:color-mix(in srgb,var(--on-action) 30%,transparent);stroke-width:1.5}
+    .rd-hub{fill:var(--bg);stroke:var(--muted-2);stroke-width:1.5}
+    .rd-n{font-family:var(--f-sign);fill:var(--on-action);letter-spacing:.05em}
+    .rd.p35 .rd-b{fill:var(--green-2)}
+    .rd.p25 .rd-b{fill:var(--action)}
+    .rd.p10 .rd-b{fill:var(--current-dark);stroke:var(--action);stroke-width:3}
+    .rd.p10 .rd-rim{stroke:color-mix(in srgb,var(--action) 35%,transparent)}.rd.p10 .rd-n{fill:var(--green-2)}
+    .rd.p5 .rd-b{fill:var(--bg);stroke:var(--text);stroke-width:2.5}
+    .rd.p5 .rd-rim{stroke:color-mix(in srgb,var(--text) 25%,transparent)}.rd.p5 .rd-n{fill:var(--text)}
+    .rd.p2 .rd-b{fill:var(--panel-2);stroke:var(--muted);stroke-width:2}.rd.p2 .rd-n{fill:var(--muted)}
+    .eqa{display:block;flex:none;overflow:visible}
+    .eq-h{fill:var(--text)}.eq-h2{fill:var(--muted)}.eq-g{fill:var(--line-strong)}
+    .eq-lever{stroke:var(--line-strong);stroke-width:4;stroke-linecap:round;fill:none}
+    .eq-pivot{fill:var(--muted)}
+    .eq-rod{stroke:var(--line-strong);stroke-width:1.4}
+    .eq-slab{fill:var(--line)}.eq-slab.lift{fill:var(--action)}
+    .eq-pin{stroke:var(--text);stroke-width:2.2;stroke-linecap:round}.eq-pinhead{fill:var(--text)}
+    .eq-cable{stroke:var(--text);stroke-width:1.5;fill:none}
+    .eq-label{font-family:var(--f-sign);fill:var(--text);letter-spacing:.04em}
+    .eq-stack-label{font-family:var(--f-sign);fill:var(--on-action);letter-spacing:.02em}
+    .eq-figure{fill:none;stroke:var(--text);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+    .eq-block{fill:var(--panel-2);stroke:var(--line-strong);stroke-width:1.5}
+    /* end */
+  </style>
+</head>
+<body>
+  <div id="equipment-defs"></div>
+  <main>
+    <header>
+      <p class="eyebrow">Loaded Bar · pure module · synthetic loads</p>
+      <h1>Every target, loaded.</h1>
+      <p>The equipment drawings from <a href="./10-loaded-bar-v1.html">Loaded Bar v1</a>, rendered by <code>loaded-bar.js</code>. The blue halos mark only the plates added since the previous load.</p>
+      <p>Compare with the <a href="./shots/10v1-page.png">rendered concept reference</a>. This page works directly from disk with no build step or network requests.</p>
+    </header>
+    <div class="grid" id="samples"></div>
+    <noscript><p>Enable JavaScript to render the equipment preview.</p></noscript>
+    <footer>
+      All loads are synthetic. The 182.5 lb sample keeps its requested target and shows the nearest lower loadable weight. Plate selection minimizes the number of plates, then prefers the heavier list lexicographically. The mockup font families are retained with local fallbacks; no remote fonts are requested.
+    </footer>
+  </main>
+  <script src="../loaded-bar.js"></script>
+  <script>
+    "use strict";
+    (() => {
+      const bar = ComprehensiveFitnessLoadedBar;
+      const previous = bar.loadBarbell({ target: 185, unit: "lb" }).perSide;
+      const samples = [
+        { title: "Barbell · 135 lb", equipmentClass: "barbell", target: 135, size: "hero" },
+        { title: "Barbell · 185 lb", equipmentClass: "barbell", target: 185, size: "hero" },
+        { title: "Barbell · 180 lb · changed", equipmentClass: "barbell", target: 180, size: "hero", previousPerSide: previous, collar: "flag", reason: "Set 4: -5 lb because set 3 was RPE 10." },
+        { title: "Barbell · target 182.5 lb", equipmentClass: "barbell", target: 182.5, size: "hero" },
+        { title: "Barbell · 100 kg", equipmentClass: "barbell", target: 100, unit: "kg", size: "hero" },
+        { title: "Barbell · row · 92 × 50", equipmentClass: "barbell", target: 185, size: "row" },
+        { title: "Barbell · history · 74 × 40", equipmentClass: "barbell", target: 185, size: "history" },
+        { title: "Dumbbells · 55s", equipmentClass: "dumbbell", target: 55, size: "hero" },
+        { title: "Weight stack · 140 lb", equipmentClass: "stack", target: 140, size: "hero" },
+        { title: "Plate-loaded · 230 lb", equipmentClass: "plate_loaded", target: 230, size: "hero" },
+        { title: "Bodyweight", equipmentClass: "bodyweight", target: null, size: "hero" },
+        { title: "Generic · 40 lb", equipmentClass: "generic", target: 40, size: "hero" },
+        { title: "Generic · no target", equipmentClass: "generic", target: null, size: "hero" }
+      ];
+
+      document.getElementById("equipment-defs").innerHTML = bar.renderDefs();
+      const grid = document.getElementById("samples");
+      samples.forEach((sample) => {
+        const options = { unit: "lb", ...sample };
+        const card = document.createElement("section");
+        card.className = "sample";
+        const heading = document.createElement("h2");
+        heading.textContent = sample.title;
+        card.appendChild(heading);
+        const drawing = document.createElement("div");
+        drawing.className = options.size === "hero" ? "drawing" : "drawing compact";
+        drawing.innerHTML = bar.renderEquipment(options);
+        card.appendChild(drawing);
+
+        if (options.equipmentClass === "barbell" || options.equipmentClass === "plate_loaded") {
+          const load = bar.loadBarbell(options);
+          if (options.size === "hero") {
+            const target = document.createElement("div");
+            target.className = "target";
+            target.appendChild(document.createTextNode(bar.formatLoad(load.target)));
+            const unit = document.createElement("small");
+            unit.textContent = load.unit.toUpperCase();
+            target.appendChild(unit);
+            drawing.appendChild(target);
+          }
+          const caption = document.createElement("p");
+          caption.className = "caption";
+          caption.textContent = `${bar.formatLoad(load.loaded)} ${load.unit} loaded · ${bar.formatLoad(load.barWeight)} ${load.unit} bar · each side ${bar.perSideText(load.perSide) || "empty"}`;
+          card.appendChild(caption);
+          if (load.note) {
+            const note = document.createElement("p");
+            note.className = "note";
+            note.textContent = load.note;
+            card.appendChild(note);
+          }
+          if (options.previousPerSide) {
+            const change = document.createElement("p");
+            change.className = "change";
+            change.textContent = bar.plateChange(options.previousPerSide, load.perSide).text;
+            card.appendChild(change);
+          }
+        } else {
+          const caption = document.createElement("p");
+          caption.className = "caption";
+          caption.textContent = drawing.querySelector("svg").getAttribute("aria-label");
+          card.appendChild(caption);
+        }
+        if (sample.reason) {
+          const reason = document.createElement("p");
+          reason.className = "reason";
+          reason.textContent = sample.reason;
+          drawing.appendChild(reason);
+        }
+        grid.appendChild(card);
+      });
+    })();
+  </script>
+</body>
+</html>

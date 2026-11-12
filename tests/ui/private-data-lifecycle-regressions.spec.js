@@ -73,7 +73,9 @@ test("migration audit import fields are typed and every rendered value is escape
     };
 
     const payload = '<img id="migration-render-xss" src="x" onerror="globalThis.__MIGRATION_XSS_EXECUTED__=1">';
-    data = structuredClone(model);
+    // Match the real load boundary before deliberately injecting hostile audit
+    // values below. New Settings controls require the normalized defaults.
+    data = normalizeLoadedData(structuredClone(model));
     data.migrationAudit = [{
       version: payload,
       inspected: payload,

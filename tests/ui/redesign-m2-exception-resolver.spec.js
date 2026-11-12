@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { test, expect } = require("@playwright/test");
+const { closeLoadedBarSheet, openExerciseOptions, enterRpe } = require("./fixtures/loaded-bar.helpers");
 const {
   FIXED_NOW,
   STORAGE_KEY,
@@ -214,33 +215,39 @@ async function beginTemplate(page) {
 }
 
 function activeExercise(page) {
-  return page.locator(".exercise-card").filter({ hasText: EXERCISE_NAME });
+  return page.locator(".loaded-bar-focus").filter({ hasText: EXERCISE_NAME });
 }
 
-async function assertStableTargetAndPriorFact(exercise) {
+async function assertStableTargetAndPriorFact(page, exercise) {
   await expect(exercise).toHaveCount(1);
   await expect(exercise).toHaveAttribute("aria-label", `Exercise: ${EXERCISE_NAME}`);
   await expect(exercise.getByRole("heading", { name: EXERCISE_NAME, exact: true })).toBeVisible();
-  await expect(exercise.locator(".set-current-editor")).toContainText("3 sets planned");
-  await expect(exercise).toContainText("5-7 reps");
-  await expect(exercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("12345.5");
-  await expect(exercise.getByRole("spinbutton", { name: "Set 1 reps" })).toHaveValue("6");
-  await expect(exercise.getByRole("spinbutton", { name: "Set 1 RPE" })).toHaveValue("8.5");
-  await expect(exercise.locator(".set-previous").first()).toContainText("12,345.5");
-  await expect(exercise.locator(".set-previous").first()).toContainText("8.5");
+  await expect(exercise.locator(".loaded-bar-row")).toHaveCount(3);
+  await expect(exercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("");
+  await expect(exercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveAttribute("placeholder", "12345.5");
+  await expect(exercise.getByRole("spinbutton", { name: "Set 1 reps", exact: true })).toHaveValue("");
+  await expect(exercise.getByRole("spinbutton", { name: "Set 1 reps", exact: true })).toHaveAttribute("placeholder", "6");
+  await expect(exercise.getByRole("spinbutton", { name: "Set 1 RPE", exact: true })).toHaveValue("");
+  await expect(exercise.getByRole("spinbutton", { name: "Set 1 RPE", exact: true })).not.toHaveAttribute("placeholder");
+  await expect(exercise.locator(".loaded-bar-previous").first()).toContainText(/12,?345\.5/);
+  await expect(exercise.locator(".loaded-bar-previous").first()).toContainText("8.5");
+  const exerciseId = (await exercise.getAttribute("id")).slice("exercise-".length);
+  const options = await openExerciseOptions(page, exerciseId);
+  await expect(options.getByRole("spinbutton", { name: "Working set 1 minimum reps", exact: true })).toHaveValue("5");
+  await expect(options.getByRole("spinbutton", { name: "Working set 1 maximum reps", exact: true })).toHaveValue("7");
+  await closeLoadedBarSheet(page);
 }
 
 async function logLargeDecimalSet(page, exercise) {
   const load = exercise.getByRole("spinbutton", { name: "Set 1 load" });
   const reps = exercise.getByRole("spinbutton", { name: "Set 1 reps" });
-  const rpe = exercise.getByRole("spinbutton", { name: "Set 1 RPE" });
   const setId = await load.getAttribute("data-set-id");
 
   await load.fill("12346.75");
   await reps.fill("7");
-  await rpe.fill("7.5");
-  await exercise.getByRole("button", { name: "Mark set complete", exact: true }).click();
-  await expect(exercise.getByRole("button", { name: "Set completed", exact: true })).toBeVisible();
+  await enterRpe(page, setId, "7.5");
+  await exercise.getByRole("button", { name: "Complete set 1", exact: true }).click();
+  await expect(exercise.getByRole("button", { name: "Reopen set 1", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate((id) => {
     const set = data.sets.find((item) => item.id === id);
     return set ? { weight: set.weight, reps: set.reps, rpe: set.rpe, completed: set.completed } : null;
@@ -260,7 +267,7 @@ test("ordinary M2 start is silent while stable target, prior fact, and logging r
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const exercise = activeExercise(page);
-  await assertStableTargetAndPriorFact(exercise);
+  await assertStableTargetAndPriorFact(page, exercise);
   const workout = page.locator(".workout-view");
   await expect(workout.locator(".resolved-action-card")).toHaveCount(0);
   await expect(workout.locator(".recommendation")).toHaveCount(0);
@@ -313,7 +320,7 @@ test("pain or injury entry yields one canonical continued-action card without re
   await expect(workout.locator(".analysis-confidence, .readiness-evidence-summary, .meter[data-conf]")).toHaveCount(0);
 
   const exercise = activeExercise(page);
-  await assertStableTargetAndPriorFact(exercise);
+  await assertStableTargetAndPriorFact(page, exercise);
   await actionCard.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(actionCard).toContainText("Decision to continue recorded.");
   const canonical = await page.evaluate(({ templateId }) => {
@@ -346,15 +353,19 @@ test("pain or injury entry yields one canonical continued-action card without re
   expect(canonical.stableTargetSnapshot).toMatchObject({ repLow: 5, repHigh: 7 });
   expect(canonical.templateRepRange).toEqual({ min: 5, max: 7 });
 
-  await exercise.getByRole("spinbutton", { name: "Set 1 load" }).fill("12346.75");
-  await expect.poll(() => page.evaluate(() => {
+  const pendingLoad = exercise.getByRole("spinbutton", { name: "Set 1 load" });
+  const pendingSetId = await pendingLoad.getAttribute("data-set-id");
+  await pendingLoad.fill("12346.75");
+  await pendingLoad.press("Tab");
+  await expect.poll(() => page.evaluate((setId) => {
     try {
       const draft = JSON.parse(localStorage.getItem("comprehensive-fitness-active-draft-v1") || "null");
-      return draft?.contractVersion || "";
+      return draft?.contractVersion === "comprehensive-fitness-active-draft/2.0.0"
+        && draft.sets?.find((set) => set.id === setId)?.weight === 12346.75;
     } catch {
-      return "";
+      return false;
     }
-  }), { timeout: 10_000 }).toBe("comprehensive-fitness-active-draft/2.0.0");
+  }, pendingSetId), { message: "the edited load must reach the active draft before reload", timeout: 10_000 }).toBe(true);
   await page.reload();
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(page.locator(".workout-view .resolved-action-card")).toHaveCount(1);
@@ -377,8 +388,8 @@ test("pain or injury entry yields one canonical continued-action card without re
   const restoredExercise = activeExercise(page);
   await expect(restoredExercise).toHaveCount(1);
   await expect(restoredExercise).toHaveAttribute("aria-label", `Exercise: ${EXERCISE_NAME}`);
-  await expect(restoredExercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("12347");
-  await expect(restoredExercise.locator(".set-previous").first()).toContainText("12,345.5");
+  await expect(restoredExercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("12346.75");
+  await expect(restoredExercise.locator(".loaded-bar-previous").first()).toContainText(/12,?345\.5/);
   await logLargeDecimalSet(page, restoredExercise);
   const geometry = await page.evaluate(() => ({
     viewportWidth: document.documentElement.clientWidth,

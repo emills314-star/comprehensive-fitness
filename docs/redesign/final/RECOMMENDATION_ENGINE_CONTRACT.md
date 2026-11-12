@@ -1,7 +1,8 @@
 # Comprehensive Fitness Recommendation Engine Contract
 
-**Status:** FINAL PRODUCT CONTRACT  
+**Status:** FINAL PRODUCT CONTRACT, partly superseded by D-028 (2026-10-31)  
 **Date:** 2026-07-30  
+**Superseded clauses:** [D-028](../DECISION_LOG.md) adds a distinct per-session prescription channel governed by [`../coach/COACH_V1_CONTRACT.md`](../coach/COACH_V1_CONTRACT.md). The bans on normal add-load, add-rep, add-set, hold, and reason text no longer apply to that channel. Exception validation, precedence, the pain/illness advisory, and the threshold-approval gates in this contract stand.  
 **Implementation status:** Not started or authorized by this document  
 **Product authority:** [`FINAL_REDESIGN_PRD.md`](FINAL_REDESIGN_PRD.md)  
 **Evidence and rulings:** [`../audits/ADJUDICATION_MATRIX.md`](../audits/ADJUDICATION_MATRIX.md)

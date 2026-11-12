@@ -112,8 +112,8 @@
       }
 
       function priorComparableWorkoutSets(session, exercise, resistanceType, referenceSet = null) {
-        const priorSessionIds = new Set(activeHistorySessions({ throughDate: session.date }).filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session)).map((candidate) => candidate.id));
-        const priorExerciseIds = new Set(data.exercises.filter((candidate) => priorSessionIds.has(candidate.sessionId) && !candidate.isDeload && samePerformanceExercise(candidate, exercise) && resistanceTypeFor(candidate) === resistanceType).map((candidate) => candidate.id));
+        const priorSessions = new Map(activeHistorySessions({ throughDate: session.date }).filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session)).map((candidate) => [candidate.id, candidate]));
+        const priorExerciseIds = new Set(data.exercises.filter((candidate) => priorSessions.has(candidate.sessionId) && !isDeloadExposure(priorSessions.get(candidate.sessionId), candidate, setsForExercise(candidate.id)) && samePerformanceExercise(candidate, exercise) && resistanceTypeFor(candidate) === resistanceType).map((candidate) => candidate.id));
         const comparableRole = referenceSet ? normalizeSetTypeCode(referenceSet.setType, referenceSet.isWarmup) : "";
         return data.sets.filter((set) =>
           priorExerciseIds.has(set.exerciseId)
@@ -182,7 +182,8 @@
         const bestSet = bestWorkoutSet(validSets, resistanceType);
         const resolvedAction = canonicalGradeActionForExercise(actionContext, exercise);
         const actionWasCoherentlyHandled = COHERENT_GRADE_ACTION_HANDLINGS.has(resolvedAction?.handling);
-        const adaptedWork = Boolean(exercise.isDeload || actionWasCoherentlyHandled);
+        const deloadExposure = isDeloadExposure(session, exercise, setsForExercise(exercise.id));
+        const adaptedWork = Boolean(deloadExposure || actionWasCoherentlyHandled);
         const priorBestSet = adaptedWork ? null : bestWorkoutSet(priorComparableWorkoutSets(session, exercise, resistanceType, bestSet), resistanceType);
         const comparison = adaptedWork && bestSet
           ? { status: "baseline", label: "Adapted work recorded", change: "This deload or adapted exercise is not compared with prior normal work." }
@@ -202,7 +203,7 @@
           comparisonGradeFactor: ({ progress: 1, stable: 0.9, baseline: 0.9, regression: 0.8, incomplete: 0.4 })[comparison.status] || 0.7,
           bestSet: bestSet ? { id: bestSet.id, text: formatSetPerformance(bestSet, exercise), reps: Number(bestSet.reps || 0), load: resistanceLoadInUnit(bestSet, resistanceType), rpe: Number(bestSet.rpe || 0) } : null,
           priorBestSet: priorBestSet ? { text: formatSetPerformance(priorBestSet, exercise), reps: Number(priorBestSet.reps || 0), load: resistanceLoadInUnit(priorBestSet, resistanceType), rpe: Number(priorBestSet.rpe || 0) } : null,
-          prs: prs.filter((pr) => (pr.performanceExerciseId || canonicalExerciseId(pr.exercise)) === performanceExerciseId),
+          prs: deloadExposure ? [] : prs.filter((pr) => (pr.performanceExerciseId || canonicalExerciseId(pr.exercise)) === performanceExerciseId),
           resolvedActionDecisionId: resolvedAction?.decisionId || "",
           resolvedActionHandling: resolvedAction?.handling || ""
         };
@@ -369,8 +370,24 @@
         };
       }
 
-      function workoutCompletionHighlights(session) {
+      // Preserve submitted PRs as facts, but do not present a PR whose exposure
+      // has since been marked as a deload. Older PRs may lack sourceSetId.
+      function visibleStoredSessionPrs(session) {
         const prs = Array.isArray(session?.prs) ? session.prs : [];
+        if (isDeloadExposure(session, null, [])) return [];
+        const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
+        return prs.filter((pr) => {
+          const source = pr.sourceSetId ? data.sets.find((set) => set.id === pr.sourceSetId) : null;
+          const sourceExercise = source ? exercises.find((exercise) => exercise.id === source.exerciseId) : null;
+          const matches = sourceExercise ? [sourceExercise] : exercises.filter((exercise) =>
+            pr.performanceExerciseId ? canonicalExerciseId(exercise) === pr.performanceExerciseId : exercise.name === pr.exercise
+          );
+          return !matches.some((exercise) => isDeloadExposure(session, exercise, setsForExercise(exercise.id)));
+        });
+      }
+
+      function workoutCompletionHighlights(session) {
+        const prs = visibleStoredSessionPrs(session);
         const actionContext = canonicalGradeActionContext(session);
         const results = data.exercises
           .filter((exercise) => exercise.sessionId === session.id)
@@ -429,17 +446,19 @@
 
       function submitWorkoutPrs(session) {
         const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
-        const priorSessionIds = new Set(data.sessions.filter((item) => item.id !== session.id && isSessionSubmitted(item) && sessionComesBefore(item, session)).map((item) => item.id));
+        const priorSessions = new Map(data.sessions.filter((item) => item.id !== session.id && isSessionSubmitted(item) && sessionComesBefore(item, session)).map((item) => [item.id, item]));
+        const priorExercises = new Map(data.exercises.filter((item) => priorSessions.has(item.sessionId) && !isDeloadExposure(priorSessions.get(item.sessionId), item, setsForExercise(item.id))).map((item) => [item.id, item]));
         const prs = [];
         sessionExercises.forEach((exercise) => {
+          if (isDeloadExposure(session, exercise, setsForExercise(exercise.id))) return;
           const prStart = prs.length;
           const performanceExerciseId = canonicalExerciseId(exercise);
           const resistanceType = resistanceTypeFor(exercise);
           const currentSets = setsForExercise(exercise.id).filter((set) => set.completed && !set.skipped && isWorkingSet(set, "pr") && actualWorkSetIsValid(set, exercise));
           if (!currentSets.length) return;
           const priorSets = data.sets.filter((set) => {
-            const priorExercise = data.exercises.find((item) => item.id === set.exerciseId);
-            return set.completed && !set.skipped && isWorkingSet(set, "pr") && priorExercise && actualWorkSetIsValid(set, priorExercise) && priorSessionIds.has(priorExercise.sessionId) && samePerformanceExercise(priorExercise, exercise) && resistanceTypeFor(priorExercise, set) === resistanceType;
+            const priorExercise = priorExercises.get(set.exerciseId);
+            return set.completed && !set.skipped && isWorkingSet(set, "pr") && priorExercise && actualWorkSetIsValid(set, priorExercise) && samePerformanceExercise(priorExercise, exercise) && resistanceTypeFor(priorExercise, set) === resistanceType;
           });
           const roleFor = (set) => normalizeSetTypeCode(set.setType, set.isWarmup);
           const priorForRole = (set) => priorSets.filter((prior) => roleFor(prior) === roleFor(set));
@@ -527,13 +546,13 @@
         const tone = workoutGradeScoreTone(analysis.grade);
         const currentHighlights = analysis.currentContract
           ? workoutCompletionHighlights(session)
-          : (Array.isArray(session.prs) ? session.prs.slice(0, 3).map((pr) => ({
+          : visibleStoredSessionPrs(session).slice(0, 3).map((pr) => ({
               type: "pr",
               exerciseId: pr.performanceExerciseId || "",
               resistanceType: pr.resistanceType || "",
               title: pr.exercise + " — " + pr.type,
               detail: pr.value
-            })) : []);
+            }));
         const highlights = currentHighlights.slice(0, 3);
         const highlightSection = highlights.length
           ? '<section class="workout-summary-section completion-highlights" aria-labelledby="completion-highlights-title"><h3 id="completion-highlights-title">Progress highlights</h3><div class="workout-highlight-list">' + highlights.map((item) => '<article class="workout-highlight"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></article>').join('') + '</div></section>'

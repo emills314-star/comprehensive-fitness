@@ -42,7 +42,7 @@ function functionSource(name) {
 }
 
 function evaluateFunction(name, context = {}) {
-  return vm.runInNewContext(`(${functionSource(name).trim()})`, context, { filename: `index.html#${name}` });
+  return vm.runInNewContext(`(${functionSource(name).trim()}\n)`, context, { filename: `index.html#${name}` });
 }
 
 function firstFunctionName(candidates) {
@@ -288,7 +288,9 @@ test("invalid reconciled custom exercise identity fails closed without an execut
 });
 
 test("stable template targets remain authoritative while canonical actions are prospective", () => {
-  const start = functionSource("startTemplate");
+  const entry = functionSource("startTemplate");
+  assert.match(entry, /buildWorkoutStartPlan\(template, session\)/, "Start must consume the same construction as Today previews");
+  const start = entry + "\n" + functionSource("buildWorkoutStartPlan") + "\n" + functionSource("workoutStartRowPreviews");
   const resistanceFallbacks = start.match(/resistanceType\s*:\s*target\.resistanceType\s*\|\|\s*templateResistanceType/g) || [];
   collectAssertions([
     ["stable target", () => assertContains(start, /stableTargetForTemplateExercise\(templateExercise,/, "The routine variant must provide the normal set/rep/RPE/rest target")],
@@ -303,6 +305,7 @@ test("stable template targets remain authoritative while canonical actions are p
 test("template start resolves one resistance type for the exercise, warm-ups, and every working set", () => {
   let committed = null;
   let nextId = 0;
+  let coachStartCalls = 0;
   const context = {
     data: {
       templates: [{
@@ -364,6 +367,15 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
     isoNow: () => "2026-07-14T12:00:00.000Z",
     setActiveTab: () => {},
     canonicalSetSequence: (set) => Number(set.sequenceIndex || 0),
+    prescribeSessionCoaching: (model, sessionId, template) => {
+      coachStartCalls += 1;
+      assert.equal(committed, null, "The adapter runs before the start commit");
+      assert.equal(sessionId, "session-1");
+      assert.equal(template.id, "template-1");
+      assert.equal(model.exercises.length, 1, "Runtime exercise identity exists before coaching");
+      assert.equal(model.sets.length, 3, "Every runtime set identity exists before coaching");
+      return model;
+    },
     commit: (model) => { committed = plain(model); },
     activeSessionId: "",
     activeWorkoutId: "",
@@ -371,11 +383,18 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
     templateStartFlow: null,
     activeSetId: "",
     activeSetAcknowledged: false,
-    activeSetNotice: ""
+    activeSetNotice: "",
+    todayWorkoutChoice: null,
+    todayWorseThanUsual: null,
+    todayPreview: null
   };
   context.startWorkoutDuration = evaluateFunction("startWorkoutDuration", context);
+  context.recoveryForWorkoutStart = evaluateFunction("recoveryForWorkoutStart", context);
+  context.workoutStartRowPreviews = evaluateFunction("workoutStartRowPreviews", context);
+  context.buildWorkoutStartPlan = evaluateFunction("buildWorkoutStartPlan", context);
   const startTemplate = evaluateFunction("startTemplate", context);
   startTemplate("template-1", {}, "usual");
+  assert.equal(coachStartCalls, 1, "A routine start reaches the adapter exactly once");
   const exercise = committed?.exercises?.find((item) => item.sessionId === "session-1");
   const generatedSets = committed?.sets?.filter((item) => item.exerciseId === exercise?.id) || [];
   assert.equal(exercise?.resistanceType, "cable", "The started exercise must fall back to the resolved template resistance type");
@@ -529,10 +548,22 @@ test("backup revision metadata is bounded and rebased while template numbers sha
     maxFileBytes: BACKUP_BOUNDARIES.fileBytes
   };
   const validate = evaluateFunction("validateImportedAppData", {
+    window: { FitnessBackupContract: backupContract },
     BACKUP_IMPORT_LIMITS: limits,
     validateBackupJsonShape: () => true,
     TextEncoder
   });
+  const coachFixture = require("../tests/fixtures/synthetic-coach-backup").syntheticCoachBackup();
+  const coachExport = plain(backupContract.decodeLegacyBackup(JSON.parse(backupContract.serializeBackupExport(coachFixture))));
+  delete coachExport.backupSchemaVersion;
+  const coachImported = plain(validate(coachExport, limits));
+  for (const key of ["sessions", "exercises", "sets", "templates", "settings", "skippedSessions"]) {
+    assert.deepEqual(coachImported[key], coachFixture[key], `Coach ${key} must survive the production backup/import boundaries`);
+  }
+  const foreignCoachSet = structuredClone(coachFixture);
+  foreignCoachSet.exercises.push({ id: "foreign-coach-exercise", sessionId: "coach-session" });
+  foreignCoachSet.sets[0].exerciseId = "foreign-coach-exercise";
+  assert.throws(() => validate(foreignCoachSet, limits), /another exercise or session/);
   const backup = (overrides = {}) => ({
     appDataVersion: 2,
     sessions: [],
@@ -897,6 +928,7 @@ test("strict backup validation accepts every exact entity boundary and rejects b
     maxTemplates: BACKUP_BOUNDARIES.templates
   };
   const validateImportedAppData = evaluateFunction("validateImportedAppData", {
+    window: { FitnessBackupContract: backupContract },
     BACKUP_IMPORT_LIMITS: limits,
     validateBackupJsonShape: () => true
   });
@@ -1149,7 +1181,8 @@ test("startup resolves IndexedDB and local fallback by valid data revision", () 
     ["identical content dedupes", () => assert.equal(resolve(indexed, { ...local, canonicalContent: "indexed", timestamp: null }).identical, true)],
     ["always inspect local fallback", () => assert.doesNotMatch(loadData, /if\s*\(\s*!stored\s*\)[\s\S]{0,180}localStorage\.getItem/, "A readable IndexedDB value must not prevent inspection of the local fallback")],
     ["higher revision selection", () => assertContains(loadData, /localCandidate\.revision\s*>\s*indexedCandidate\.revision/, "The newer valid local fallback must outrank stale readable IndexedDB")],
-    ["conflict skips promotion", () => assertContains(loadData, /appDataPersistenceConflict[\s\S]*?if\s*\(\s*!appDataPersistenceConflict[\s\S]*?await\s+writeIndexedValue/, "Unorderable valid copies must remain outside destructive promotion and cleanup")],
+    ["conflict and quarantine skip promotion", () => assertContains(loadData, /if\s*\(\s*!coachRecoveryPending\s*&&\s*!appDataPersistenceConflict[\s\S]*?await\s+writeIndexedValue/, "Conflicting or quarantined copies must remain outside destructive promotion and cleanup")],
+    ["raw ordering and recovered runtime stay distinct", () => assertContains(candidate, /source, value, runtimeValue: recovered\.model/, "Candidate ordering must retain raw storage while runtime uses quarantined metadata")],
     ["stable save preserves alternate", () => assertContains(persistStable, /appDataPersistenceConflict[\s\S]*?localStorage\.removeItem|localStorage\.removeItem[\s\S]*?appDataPersistenceConflict/, "Stable snapshots must not remove a conflict-preserved local alternate")],
     ["ordinary save preserves alternate", () => assertContains(saveData, /appDataPersistenceConflict[\s\S]*?localStorage\.removeItem|localStorage\.removeItem[\s\S]*?appDataPersistenceConflict/, "Ordinary saves must not remove a conflict-preserved local alternate")],
     ["promotion precedes cleanup", () => assertContains(loadData, /await\s+writeIndexedValue\s*\(\s*["']app-data["'][\s\S]*?localStorage\.removeItem\s*\(\s*STORAGE_KEY\s*\)/, "Local fallback cleanup must occur only after successful awaited IndexedDB promotion")],

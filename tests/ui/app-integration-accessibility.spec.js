@@ -11,6 +11,7 @@ const {
   validFullState
 } = require("../fixtures/synthetic-app-backups");
 const { buildAnalyticsEvidenceFixture } = require("./fixtures/analytics-settings.fixture");
+const { closeLoadedBarSheet, openExerciseOptions } = require("./fixtures/loaded-bar.helpers");
 
 const PRIVATE_EVIDENCE_PATH = /^\/(?:private-personal-data|personal_fitness_data)\//;
 const RESEARCH_JSON_PATH = /^(?:\/resources\/[^/]+|\/research_database\/exports\/json\/[^/]+)\.json$/;
@@ -429,11 +430,21 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   const fixture = safetyWorkoutState({ illness: false, pain: false });
   await seedApplicationState(page, fixture.state);
 
-  const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
-  const exerciseDetails = card.locator("details.exercise-details");
-  await exerciseDetails.locator(":scope > summary").click();
+  // A single exercise sheet is rendered at a time. Inspect the straight defaults
+  // before editing the bench form so switching exercises cannot discard a draft.
+  const straightCard = await openExerciseOptions(page, fixture.exerciseIds.legPress);
+  const straightEditor = straightCard.locator('[data-standard-workload-form]');
+  await expect.poll(() => straightEditor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(false);
+  await expect(straightEditor.locator('[data-default-field="working-rest"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="warmup-rest"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="target-rpe-min"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="target-rpe-max"]')).toBeVisible();
+  await closeLoadedBarSheet(page);
+
+  let card = await openExerciseOptions(page, fixture.exerciseIds.bench);
   await card.getByRole("button", { name: "Add warm-up set to Barbell Bench Press" }).click();
-  if (!await exerciseDetails.evaluate((node) => node.open)) await exerciseDetails.locator(":scope > summary").click();
+  card = await openExerciseOptions(page, fixture.exerciseIds.bench);
+  const exerciseDetails = card.locator("details.loaded-bar-exercise-more");
   const collapseCue = await exerciseDetails.locator(":scope > summary").evaluate((summary) => {
     const style = getComputedStyle(summary, "::after");
     return { content: style.content, background: style.backgroundColor };
@@ -471,15 +482,6 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   await warmupRow.locator('[data-set-default-field="target-rpe-min"]').fill("3.5");
   await warmupRow.locator('[data-set-default-field="target-rpe-max"]').fill("4.5");
   await warmupRow.locator('[data-set-default-field="rest"]').fill("60");
-
-  const straightCard = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.legPress}"])`).first();
-  await straightCard.locator("details.exercise-details > summary").click();
-  const straightEditor = straightCard.locator('[data-standard-workload-form]');
-  await expect.poll(() => straightEditor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(false);
-  await expect(straightEditor.locator('[data-default-field="working-rest"]')).toBeVisible();
-  await expect(straightEditor.locator('[data-default-field="warmup-rest"]')).toBeVisible();
-  await expect(straightEditor.locator('[data-default-field="target-rpe-min"]')).toBeVisible();
-  await expect(straightEditor.locator('[data-default-field="target-rpe-max"]')).toBeVisible();
 
   await editor.locator('[data-default-field="sets"]').fill("5");
   const rows = editor.locator('[data-set-default-row][data-set-scope="working"]:not([hidden])');
@@ -565,8 +567,7 @@ test("an exercise without research or historical guidance still has editable def
     commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, set] });
     return exerciseId;
   }, fixture.state.sessions[0].id);
-  const card = page.locator(`.exercise-card:has([data-exercise-id="${customId}"])`).first();
-  await card.locator("details.exercise-details > summary").click();
+  const card = await openExerciseOptions(page, customId);
   const editor = card.locator("[data-standard-workload-form]");
   await expect(editor.locator('[data-default-field="sets"]'), "An unresolved exercise must retain editable set targets").toBeVisible();
   await editor.locator('[data-default-field="sets"]').fill("3");

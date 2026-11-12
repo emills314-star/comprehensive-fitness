@@ -1,6 +1,7 @@
 "use strict";
 
 const { test, expect } = require("@playwright/test");
+const { closeLoadedBarSheet, focusExercise, openExerciseOptions, openSetOptions } = require("./fixtures/loaded-bar.helpers");
 
 const STRONG_EXERCISE = "Public Synthetic Strong Cable Sweep";
 const STRONG_TEMPLATE = "Public Synthetic Strong Upper";
@@ -271,29 +272,48 @@ test("Strong-only history starts an editable workout without inventing a researc
 
   await expect(page.getByRole("heading", { name: STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
   const activeExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", STRONG_EXERCISE);
-  const card = page.locator(`.exercise-card:has([data-exercise-id="${activeExerciseId}"])`);
+  const card = await focusExercise(page, activeExerciseId);
   await expect(card).toHaveCount(1);
   await expect(card).not.toContainText("unknown_exercise_identity");
-  await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
+  const options = await openExerciseOptions(page, activeExerciseId);
+  await expect(options.locator('[data-action="add-set"]')).toBeEnabled();
+  await closeLoadedBarSheet(page);
   const pallofExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", STATIC_RESEARCH_EXERCISE);
-  const pallofCard = page.locator(`.exercise-card:has([data-exercise-id="${pallofExerciseId}"])`);
+  const pallofCard = await focusExercise(page, pallofExerciseId);
   await expect(pallofCard).not.toContainText("no_dynamic_direct_target");
-  await expect(pallofCard.locator('[data-action="add-set"]')).toBeEnabled();
+  const pallofOptions = await openExerciseOptions(page, pallofExerciseId);
+  await expect(pallofOptions.locator('[data-action="add-set"]')).toBeEnabled();
+  await closeLoadedBarSheet(page);
+  await focusExercise(page, activeExerciseId);
 
-  const lastTime = card.locator(".set-previous");
-  await expect(lastTime).toHaveCount(1);
-  expect((await lastTime.allTextContents()).every((text) => text.includes("July 17") && !text.includes("No prior working set found"))).toBe(true);
+  const lastTime = card.locator(".loaded-bar-previous .set-previous-link");
+  await expect(lastTime).toHaveCount(2);
+  for (const previous of await lastTime.all()) await expect(previous).toHaveAttribute("title", /July 17/);
   await expect(lastTime.first()).toContainText("27.5");
   await expect(lastTime.first()).toContainText("14");
+  await expect(lastTime.nth(1)).toContainText("25 × 16");
+  // PLAN R5 and coach contract §9: prior values are targets, not actuals.
+  const firstRow = card.locator(".loaded-bar-row").first();
+  await expect(firstRow.locator('[data-action="set-weight"]')).toHaveValue("");
+  await expect(firstRow.locator('[data-action="set-weight"]')).toHaveAttribute("placeholder", "27.5");
+  await expect(firstRow.locator('[data-action="set-reps"]')).toHaveValue("");
+  await expect(firstRow.locator('[data-action="set-reps"]')).toHaveAttribute("placeholder", "14");
+  await expect(firstRow.locator('[data-action="set-rpe"]')).toHaveValue("");
+  await firstRow.locator('[data-action="toggle-set"]').click();
+  await expect(firstRow.locator('[data-action="set-weight"]')).toHaveValue("27.5");
+  await expect(firstRow.locator('[data-action="set-reps"]')).toHaveValue("14");
+  await expect(firstRow.locator('[data-action="set-rpe"]')).toHaveValue("");
 
   const beforeCount = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId);
-  await card.locator("details.exercise-details > summary").click();
-  await card.locator('[data-action="add-set"]').click();
+  const addOptions = await openExerciseOptions(page, activeExerciseId);
+  await addOptions.locator('[data-action="add-set"]').click();
+  await closeLoadedBarSheet(page);
   await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount + 1);
 
   const newestSetId = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => Number(b.sequenceIndex) - Number(a.sequenceIndex))[0].id, activeExerciseId);
-  await page.locator(`#set-${newestSetId} .set-tools-disclosure > summary`).click();
-  await page.locator(`[data-action="delete-set"][data-set-id="${newestSetId}"]`).click();
+  const setOptions = await openSetOptions(page, newestSetId);
+  await setOptions.locator(`[data-action="delete-set"][data-set-id="${newestSetId}"]`).click();
+  await closeLoadedBarSheet(page);
   await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount);
   await expect.poll(() => page.evaluate((exerciseId) => new Promise((resolve, reject) => {
     const request = indexedDB.open("comprehensive-fitness", 1);
@@ -310,7 +330,8 @@ test("Strong-only history starts an editable workout without inventing a researc
 
   await page.reload();
   await expect(page.getByRole("heading", { name: STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
-  await expect(page.locator(`[data-action="add-set"][data-exercise-id="${activeExerciseId}"]`)).toBeEnabled();
+  const recoveredOptions = await openExerciseOptions(page, activeExerciseId);
+  await expect(recoveredOptions.locator(`[data-action="add-set"][data-exercise-id="${activeExerciseId}"]`)).toBeEnabled();
   await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount);
 });
 
@@ -355,11 +376,13 @@ test("Last time keeps a distinct performance identity separate from the Strong a
   await expect(page.getByRole("heading", { name: OLD_STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const activeExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", OLD_STRONG_EXERCISE);
-  const card = page.locator(`.exercise-card:has([data-exercise-id="${activeExerciseId}"])`);
-  const lastTime = card.locator(".set-previous");
-  await expect(lastTime).toHaveCount(1);
-  await expect(lastTime.first()).toContainText("January 12");
-  await expect(lastTime.first()).toContainText("80 lb");
-  await expect(lastTime.first()).toContainText("10 @ 8");
-  await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
+  const card = await focusExercise(page, activeExerciseId);
+  const lastTime = card.locator(".loaded-bar-previous .set-previous-link");
+  await expect(lastTime).toHaveCount(2);
+  await expect(lastTime.first()).toHaveAttribute("title", /January 12/);
+  await expect(page.getByRole("columnheader", { name: "LB", exact: true })).toBeVisible();
+  await expect(lastTime.first()).toHaveText("80 × 10 @ 8");
+  await expect(lastTime.nth(1)).toHaveText("75 × 12 @ 8.5");
+  const options = await openExerciseOptions(page, activeExerciseId);
+  await expect(options.locator('[data-action="add-set"]')).toBeEnabled();
 });

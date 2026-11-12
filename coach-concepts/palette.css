@@ -1,0 +1,48 @@
+﻿/* Verbatim colour tokens from index.html :root (lines 20-59 and 101-103).
+   The ONLY colours any concept may use. check.js re-verifies parity on every run. */
+:root {
+        --bg: #fff;
+        --bg-soft: #fff;
+        --panel: #fff;
+        --panel-2: #f1f8ff;
+        --panel-3: #fff0bd;
+        --line: hsl(214 25% 87%);
+        --line-strong: hsl(212 23% 69%);
+        --text: hsl(215 48% 14%);
+        --muted: hsl(213 16% 44%);
+        --muted-2: hsl(212 14% 55%);
+        --green: #176fd1;
+        --green-2: #1259a6;
+        --green-dark: hsl(212 45% 94%);
+        --amber: #b86610;
+        --rest-accent: #e4a900;
+        --rest-text: hsl(35 89% 24%);
+        --red: #c83f35;
+        --success: #168a54;
+        --success-dark: rgba(22, 138, 84, 0.12);
+        --current: #176fd1;
+        --current-dark: #e5f2ff;
+        --action: #176fd1;
+        --on-action: hsl(0 0% 100%);
+        --surface: #f6fbff;
+        --surface-strong: #fff;
+        --input-bg: #fff;
+        --nav-bg: rgba(255, 255, 255, 0.96);
+        --shadow: 0 12px 30px rgba(18, 32, 51, 0.08);
+        --color-accent: var(--current);
+        --color-accent-subtle: var(--current-dark);
+        --color-text: var(--text);
+        --color-muted: var(--muted);
+        --color-background: var(--bg);
+        --color-surface: var(--surface);
+        --color-border: var(--line);
+        --color-border-strong: var(--line-strong);
+        --color-success: var(--success);
+        --color-warning: var(--amber);
+        --color-danger: var(--red);
+        --color-rest: var(--rest-accent);
+
+        --el-1: 0 1px 2px hsl(215 40% 12% / 0.06);
+        --el-2: 0 4px 12px hsl(215 40% 12% / 0.08);
+        --el-3: 0 12px 30px hsl(215 40% 12% / 0.12);
+}

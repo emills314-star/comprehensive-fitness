@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · Sentence — coach concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,100..900,0..100,0..1;1,9..144,100..900,0..100,0..1&amp;family=Inter:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="palette.css">
+<style>
+/* ==========================================================================
+   04 · SENTENCE
+   One paragraph. The coach edits it in place. The full stop is the button.
+   Colour comes only from palette.css tokens (and mixes of them).
+   ========================================================================== */
+
+:root {
+  --serif: "Fraunces", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --amber-ink: color-mix(in srgb, var(--amber) 70%, var(--text));
+  --amber-wash: color-mix(in srgb, var(--amber) 15%, transparent);
+  --blue-wash: color-mix(in srgb, var(--action) 15%, transparent);
+  --rest-wash: color-mix(in srgb, var(--rest-accent) 30%, transparent);
+  --hair: color-mix(in srgb, var(--text) 13%, transparent);
+  --gutter: 48px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--surface); }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+p { margin: 0; }
+ol, ul, dl, dd { margin: 0; padding: 0; }
+ins { text-decoration: none; }
+
+/* ---------- the page around the frames ---------- */
+
+.wrap { max-width: 2640px; margin: 0 auto; padding: 0 48px; }
+
+.intro { padding: 60px 0 36px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.eyebrow { font: 600 13px/1 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.eyebrow b { color: var(--action); font-weight: 700; }
+.thesis {
+  margin: 26px 0 0;
+  max-width: 15.5em;
+  font-family: var(--serif);
+  font-weight: 300;
+  font-size: clamp(46px, 5.2vw, 96px);
+  line-height: 1.02;
+  letter-spacing: -.03em;
+  font-variation-settings: "SOFT" 100, "WONK" 1;
+}
+.thesis .tok { font-weight: 400; }
+.thesis .chg { font-weight: 400; font-style: italic; }
+
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 56px; max-width: 1500px; margin-top: 44px; }
+.trio h2 { margin: 0 0 8px; font: 700 12px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.trio p { font-family: var(--serif); font-size: 19px; line-height: 1.5; color: var(--text); font-variation-settings: "SOFT" 100, "WONK" 0; }
+.trio .trade h2 { color: var(--amber-ink); }
+
+.legend { margin-top: 40px; padding-top: 22px; border-top: 1px solid var(--hair); display: flex; flex-wrap: wrap; gap: 14px 38px; align-items: baseline; font-family: var(--serif); font-size: 20px; color: var(--muted); font-variation-settings: "SOFT" 100, "WONK" 0; }
+.legend em { font-family: var(--sans); font-style: normal; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-2); margin-right: 4px; }
+.legend .ring { margin-right: 8px; vertical-align: -2px; }
+.legend .l-stop { display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: var(--action); vertical-align: -3px; margin-right: 8px; }
+
+.stage { padding: 44px 0 80px; }
+.row { display: flex; flex-wrap: wrap; gap: 56px 28px; align-items: flex-start; }
+.slot { margin: 0; flex: 0 0 390px; width: 390px; }
+.slot figcaption { margin: 0 0 14px 6px; display: flex; gap: 10px; align-items: baseline; font: 600 14px/1.25 var(--sans); color: var(--text); }
+.slot figcaption .fid { font-weight: 700; letter-spacing: .08em; color: var(--action); }
+
+.foot-note { padding: 26px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font: 400 13px/1.5 var(--sans); }
+
+/* ---------- the phone ---------- */
+
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  overflow: hidden;
+  border-radius: 42px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  font-variation-settings: "SOFT" 100, "WONK" 0;
+  box-shadow: 0 0 0 1px var(--line-strong), var(--el-3);
+  isolation: isolate;
+}
+.status {
+  position: absolute; z-index: 5; left: 0; right: 0; top: 0; height: 46px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 30px 0 36px;
+  font: 600 15px/1 var(--sans); font-variant-numeric: tabular-nums;
+}
+.sysicons { width: 66px; height: 14px; fill: currentColor; }
+.home {
+  position: absolute; z-index: 6; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px;
+  border-radius: 3px; background: color-mix(in srgb, var(--text) 82%, transparent);
+}
+.page { position: absolute; inset: 46px 0 0 0; padding: 8px 24px 0 var(--gutter); }
+
+.run { display: flex; justify-content: space-between; align-items: center; height: 40px; margin: -6px 0 4px; font-size: 14.5px; color: var(--muted); white-space: nowrap; }
+.run i { font-style: italic; }
+.run .tnum { font-variant-numeric: tabular-nums; }
+
+/* quiet marks: a deload is a hollow full stop you can fill; injury lives with the session */
+.ring { display: inline-block; flex: none; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: transparent; }
+.dltog { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; font: italic 400 13.5px/1 var(--serif); letter-spacing: 0; color: var(--muted-2); white-space: nowrap; }
+.dltog[aria-pressed="true"] { color: var(--text); }
+.dltog[aria-pressed="true"] .ring { background: var(--muted); border-color: var(--muted); }
+.dltog[aria-pressed="true"]::after { content: " · not counted"; color: var(--muted); }
+.sess { display: flex; align-items: center; gap: 2px; margin-right: -6px; }
+.rtog { position: relative; display: inline-block; width: 12px; height: 12px; margin: 0 1px 0 5px; vertical-align: -1px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: transparent; }
+.rtog::after { content: ""; position: absolute; inset: -16px; }
+.rtog[aria-pressed="true"] { background: var(--muted); border-color: var(--muted); }
+.dlnote { margin-top: 10px; font-size: 13.5px; line-height: 1.35; font-style: italic; color: var(--muted-2); }
+.dlnote .ring { width: 11px; height: 11px; vertical-align: -1px; margin-right: 5px; }
+
+/* ---------- the grammar: past, present, future ---------- */
+
+/* a number you can change */
+.tok {
+  position: relative;
+  display: inline;
+  color: var(--green-2);
+  font: inherit; letter-spacing: inherit;
+  padding: 0 .07em; margin: 0 -.02em;
+  border-radius: .16em;
+  background: linear-gradient(to top, var(--blue-wash) 0, var(--blue-wash) .44em, transparent .44em);
+  box-shadow: inset 0 -.07em 0 var(--action);
+}
+button.tok::after { content: ""; position: absolute; inset: -12px -5px; }
+.tok.on { background: var(--action); color: var(--on-action); box-shadow: none; }
+
+/* a set you finished: past tense, fine success underline */
+.done {
+  color: var(--text);
+  padding-bottom: .06em;
+  background: linear-gradient(var(--success), var(--success)) 0 100% / 100% max(2px, .06em) no-repeat;
+}
+
+/* the coach's edit */
+.chg { background: linear-gradient(var(--amber), var(--amber)) 0 100% / 100% max(2px, .06em) no-repeat, var(--amber-wash); padding-bottom: .06em; border-radius: .1em; }
+
+/* the full stop: the log button */
+.stop {
+  position: relative; display: inline-block; vertical-align: baseline;
+  width: 54px; height: 54px; margin: -2px 0 0 3px; border-radius: 50%;
+  background: var(--action);
+  box-shadow: 0 0 0 5px var(--blue-wash);
+}
+.stop:active { background: var(--green-2); transform: scale(.95); }
+.stop.logged { background: var(--success); box-shadow: 0 0 0 5px var(--success-dark); }
+.stop svg { position: absolute; inset: 0; margin: auto; width: 28px; height: 28px; fill: none; stroke: var(--on-action); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+
+.flow { font-weight: 400; line-height: 1.12; letter-spacing: -.012em; }
+.open { display: flex; align-items: baseline; justify-content: space-between; font-size: 54px; font-weight: 600; letter-spacing: -.04em; line-height: 1; margin-bottom: 6px; font-variation-settings: "SOFT" 100, "WONK" 1; }
+.open .dltog { margin: -8px -6px -8px 0; font-variation-settings: "SOFT" 100, "WONK" 0; font-weight: 400; }
+.past { font-size: 21px; line-height: 1.38; color: var(--muted); letter-spacing: -.004em; }
+.now { display: block; margin-top: 16px; font-size: 50px; font-weight: 440; line-height: 1.1; letter-spacing: -.028em; color: var(--text); }
+
+.gloss { margin-top: 18px; display: grid; gap: 3px; font-size: 14.5px; line-height: 1.34; font-style: italic; color: var(--muted); }
+.gloss .rest { color: var(--rest-text); }
+.gloss b { font-weight: 600; font-style: normal; font-variant-numeric: tabular-nums; color: var(--text); }
+.gloss .rest b { color: var(--rest-text); }
+.gloss .logs { color: var(--text); }
+.gloss .logs::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 50%; background: var(--action); vertical-align: 1px; }
+
+.nb { white-space: nowrap; }
+.later { margin-top: 12px; font-size: 16.5px; line-height: 1.4; color: var(--muted); letter-spacing: -.003em; }
+.later .ft { color: var(--text); font-weight: 500; }
+.later .ft-v { border-bottom: 1px dotted var(--line-strong); }
+
+/* ---------- the set lines: each set is a clause; flags hang in the margin, Previous is the marginal gloss ---------- */
+
+.night { margin: -2px 0 10px; font-size: 12.5px; line-height: 1.35; font-style: italic; color: var(--muted-2); }
+.night i { font-weight: 600; color: var(--muted); }
+.f1 .open, .f4 .open { font-size: 40px; margin-bottom: 2px; }
+.f4 .cur .now { font-size: 33px; line-height: 1.14; }
+.f4 .dock { padding-top: 8px; padding-bottom: 26px; }
+.f4 .later { margin-top: 10px; }
+.f4 .stop { width: 46px; height: 46px; }
+.f4 .stop svg { width: 24px; height: 24px; }
+.sets { display: grid; gap: 6px; margin-top: 8px; }
+.setl { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 18px; line-height: 1.25; letter-spacing: -.012em; color: var(--muted); }
+.setl .st { flex: 1; min-width: 0; }
+.setl .prev { flex: none; font-size: 12.5px; font-style: italic; color: var(--muted-2); white-space: nowrap; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.flag { position: absolute; left: -33px; top: 1px; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line-strong); background: transparent; display: grid; place-items: center; font: 600 11.5px/1 var(--sans); color: var(--muted); letter-spacing: 0; }
+.flag::after { content: ""; position: absolute; inset: -11px; }
+.flag.w { border-style: dashed; }
+.setl.is-done { color: var(--text); }
+.setl.is-done .flag { border-color: var(--success); color: var(--success); background: var(--success-dark); }
+.setl.is-cur .flag { background: var(--action); border-color: var(--action); color: var(--on-action); }
+.warm { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.fhint { flex: none; font-size: 12px; font-style: italic; color: var(--muted-2); white-space: nowrap; }
+.swlab { font-size: 12px; font-style: italic; color: var(--muted-2); margin-left: 4px; }
+.swlab .ring { width: 11px; height: 11px; vertical-align: -1px; margin-right: 5px; }
+.warm b { font-weight: 600; font-style: italic; color: var(--muted-2); margin-right: 2px; }
+.cur { position: relative; margin: 6px 0 4px; }
+.cur .flag { top: 10px; background: var(--action); border-color: var(--action); color: var(--on-action); }
+.latwhy { margin: 3px 0 0; font-size: 13px; line-height: 1.3; font-style: italic; color: var(--amber-ink); }
+.cur .now { margin-top: 0; font-size: 42px; line-height: 1.04; }
+.cur .gloss { margin-top: 4px; font-size: 13.5px; line-height: 1.3; }
+.chgd { color: var(--text); }
+.chgd .del { font-size: .62em; margin-right: .1em; }
+.chgd ins { font-weight: 600; color: var(--amber-ink); background: linear-gradient(var(--amber), var(--amber)) 0 100% / 100% 2px no-repeat; padding-bottom: .04em; }
+.setl.is-chg::before { content: ""; position: absolute; left: -41px; top: 2px; bottom: 2px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--amber) 60%, transparent); }
+.cur.is-chg::before { content: ""; position: absolute; left: -41px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--amber) 60%, transparent); }
+
+/* rest timer: starts on the check, minus 15, plus 15, skip */
+.rest2 { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 0; color: var(--rest-text); }
+.rest2 .rc { font-size: 22px; font-weight: 440; letter-spacing: -.02em; white-space: nowrap; }
+.rest2 .rc b { font-weight: 640; font-variant-numeric: tabular-nums; }
+.rctl { display: flex; gap: 4px; margin-right: -4px; }
+.rctl button { min-width: 44px; min-height: 44px; padding: 0 6px; border-radius: 12px; border: 1px solid var(--rest-wash); font: 600 12.5px/1 var(--sans); color: var(--rest-text); text-align: center; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.rctl button.skip { background: var(--rest-wash); }
+.rprog { height: 3px; margin: 0 0 2px; border-radius: 2px; background: var(--rest-wash); }
+.rprog i { display: block; height: 100%; border-radius: 2px; background: var(--rest-accent); }
+.rnote { margin: 3px 0 0; font-size: 12.5px; line-height: 1.3; font-style: italic; color: var(--muted); }
+.rnote b { font-style: normal; font-weight: 600; color: var(--rest-text); }
+
+/* why a target changed, one short line, with undo */
+.whyline { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 2px; }
+.whyline::before { content: ""; position: absolute; left: -41px; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--amber) 60%, transparent); }
+.whyline p { font-size: 14px; line-height: 1.3; font-style: italic; color: var(--amber-ink); }
+.undo { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 6px; font: 600 13.5px/1 var(--sans); color: var(--green-2); margin-right: -6px; }
+.undo svg { width: 15px; height: 15px; fill: none; stroke: var(--green-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* a full stop that is waiting for the rest to finish */
+.stop.wait { background: transparent; box-shadow: none; border: 3px solid var(--rest-wash); }
+.stop.wait svg { stroke: color-mix(in srgb, var(--rest-text) 45%, transparent); }
+
+/* a placeholder RPE slot: empty until the owner sets it */
+.tok.blank { box-shadow: none; background: transparent; border-bottom: .07em dashed var(--action); border-radius: 0; }
+.tok.blank::before { content: "\2007\2007"; }
+.tok.blank + .stop { margin-left: 10px; }
+
+/* ---------- the dock (Strong-fast entry) ---------- */
+
+.dock {
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: 0;
+  padding: 12px 18px 30px 22px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 26px 26px 0 0;
+  font-family: var(--sans);
+}
+.drow { display: grid; grid-template-columns: 62px 1fr; gap: 10px; align-items: center; padding: 0 0 0 0; }
+.drow + .drow { margin-top: 6px; }
+.dl { display: grid; gap: 3px; }
+.dl b { font: 700 11.5px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.dl span { font: 500 12px/1.1 var(--sans); color: var(--muted-2); }
+.drow.focus .dl b { color: var(--action); }
+.step { display: grid; grid-template-columns: 52px 1fr 52px; height: 44px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg); overflow: hidden; }
+.step .sb { display: grid; place-items: center; font: 500 26px/1 var(--sans); color: var(--green-2); }
+.step .sb:active { background: var(--current-dark); }
+.step output { display: grid; place-items: center; font: 600 24px/1 var(--sans); font-variant-numeric: tabular-nums; border-inline: 1px solid var(--line); letter-spacing: -.01em; }
+.step output small { font: 500 14px/1 var(--sans); color: var(--muted); margin-left: 5px; }
+.chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.chip { height: 44px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--bg); font: 600 20px/1 var(--sans); font-variant-numeric: tabular-nums; display: grid; place-items: center; }
+.chip.sel { background: var(--action); border-color: var(--action); color: var(--on-action); }
+.plates { margin: 7px 0 8px; font: 500 13px/1.2 var(--sans); color: var(--muted); }
+.plates b { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ======================= F2 · the flag ======================= */
+
+.f2 { background: var(--panel-3); }
+.f2 .run { color: var(--amber-ink); margin-bottom: 14px; }
+.f2 .mk { display: inline-flex; align-items: baseline; gap: 8px; }
+.f2 .mk::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); align-self: center; box-shadow: 0 0 0 4px var(--amber-wash); }
+.f2 .dltog { color: var(--amber-ink); }
+
+.edit { position: relative; }
+.edit::before { content: ""; position: absolute; left: -28px; top: 4px; bottom: 4px; width: 4px; border-radius: 2px; background: var(--amber); }
+.edit::after { content: "Coach"; position: absolute; left: -19px; top: 10px; writing-mode: vertical-rl; font: 700 11px/1 var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--amber-ink); }
+
+/* the original clause, edited in place: struck words, inserted words, one very large number */
+.rw { font-size: 30px; line-height: 1.12; font-weight: 420; letter-spacing: -.02em; }
+.rw .hw { font-weight: 640; letter-spacing: -.03em; font-variation-settings: "SOFT" 100, "WONK" 1; }
+.del { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--amber); text-decoration-thickness: .1em; }
+.rw .six {
+  font-size: 116px; line-height: .8; font-weight: 700; letter-spacing: -.05em;
+  color: var(--amber);
+  font-variation-settings: "SOFT" 100, "WONK" 1;
+  margin: 0 .02em 0 .08em;
+}
+.rw .nn { font-weight: 640; color: var(--amber-ink); background: linear-gradient(var(--amber), var(--amber)) 0 100% / 100% 2px no-repeat; padding-bottom: .05em; }
+.rstop { position: relative; display: inline-block; width: 28px; height: 28px; margin: 0 0 0 20px; border-radius: 50%; background: var(--amber); vertical-align: baseline; }
+.rstop::before, .rstop::after { content: ""; position: absolute; border-radius: 50%; border: 2px solid var(--amber); }
+.rstop::before { inset: -9px; opacity: .5; }
+.rstop::after { inset: -16px; opacity: .22; }
+
+.ins { margin-top: 14px; font-size: 21px; line-height: 1.26; font-weight: 450; letter-spacing: -.014em; }
+.ins .chg { box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: .04em .1em .06em; margin: 0 -.1em; }
+.ins .sg { font-size: 1.4em; font-weight: 600; line-height: 1; color: var(--amber-ink); letter-spacing: -.03em; font-variant-numeric: lining-nums; }
+.ins .sg .sig { font-family: var(--sans); font-weight: 500; font-size: .8em; letter-spacing: 0; }
+.ins sup { font-size: 11.5px; font-weight: 700; color: var(--amber-ink); vertical-align: .85em; margin-left: .15em; font-family: var(--sans); }
+
+.reps { margin-top: 18px; display: grid; gap: 8px; }
+.rrow { display: grid; grid-template-columns: 46px 1fr 26px; align-items: center; }
+.rrow .rl { font: 700 11px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--amber-ink); }
+.rrow .rn { font-size: 22px; font-weight: 600; text-align: right; line-height: 1; letter-spacing: -.02em; }
+.dots { display: flex; gap: 8px; }
+.dots i { width: 19px; height: 19px; border-radius: 50%; background: var(--success); flex: none; }
+.dots.bad i { background: var(--amber); }
+.dots.bad i.x { background: transparent; border: 2px solid var(--amber); }
+.dots.bad i.x.f { border-style: dashed; opacity: .6; }
+
+.fn { margin-top: 16px; }
+.fn::before { content: ""; display: block; width: 52px; height: 1px; background: var(--amber); margin-bottom: 11px; }
+.fn .lede { font-size: 14.5px; line-height: 1.4; color: var(--text); }
+.fn .lede sup { font: 700 11px/1 var(--sans); color: var(--amber-ink); margin-right: 3px; vertical-align: .55em; }
+.fn .lede b { font-weight: 600; }
+.why { list-style: none; margin-top: 10px; display: grid; gap: 8px; }
+.why li { display: grid; grid-template-columns: 22px 1fr; font-size: 14.5px; line-height: 1.36; color: var(--text); }
+.why .n { font-style: italic; font-weight: 600; font-size: 19px; line-height: .95; color: var(--amber-ink); }
+.why li b { font-weight: 650; }
+.why li:nth-child(n+2) { color: color-mix(in srgb, var(--text) 82%, transparent); }
+
+.next {
+  position: absolute; z-index: 3; left: var(--gutter); right: 24px; bottom: 28px; height: 58px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-top: 1px solid var(--hair);
+  font-size: 23px; font-style: italic; font-weight: 450; color: var(--green-2); letter-spacing: -.012em;
+}
+.next .go { width: 44px; height: 44px; border-radius: 50%; background: var(--action); display: grid; place-items: center; }
+.next .go svg { width: 22px; height: 22px; fill: none; stroke: var(--on-action); stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ======================= F3 · three rewrites ======================= */
+
+.lead { font-size: 18px; line-height: 1.3; margin: 0 0 10px; letter-spacing: -.008em; text-wrap: balance; }
+.nw { white-space: nowrap; }
+.lead b { font-weight: 600; }
+.rd { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.opt { position: relative; display: block; padding: 12px 0 13px; border-top: 1px solid var(--hair); cursor: pointer; }
+.opt::before {
+  content: attr(data-l); position: absolute; left: -26px; top: 18px;
+  font-size: 17px; font-style: italic; font-weight: 500; color: var(--muted-2);
+}
+.opt .pick { display: block; margin-bottom: 7px; font: 700 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--action); }
+.opt .txt { display: block; font-size: 19px; line-height: 1.18; text-wrap: pretty; letter-spacing: -.016em; color: var(--muted); font-weight: 400; }
+.opt .cons { display: block; margin-top: 8px; font-size: 14px; line-height: 1.32; font-style: italic; color: var(--muted-2); }
+.opt .pt { display: inline-block; width: 22px; height: 22px; margin: 0 0 0 7px; border-radius: 50%; border: 2px solid var(--line-strong); vertical-align: -3px; }
+.rd:checked + .opt .pt { width: 28px; height: 28px; margin-left: 9px; background: var(--action); border-color: var(--action); box-shadow: 0 0 0 3px var(--blue-wash); }
+.opt .tk { color: inherit; }
+.rd:checked + .opt .txt { font-size: 24px; line-height: 1.2; color: var(--text); letter-spacing: -.02em; font-weight: 430; }
+.rd:checked + .opt .cons { color: var(--muted); }
+.rd:checked + .opt::before { color: var(--action); }
+.rd:checked + .opt .tk { color: var(--green-2); background: linear-gradient(to top, var(--blue-wash) 0, var(--blue-wash) .44em, transparent .44em); box-shadow: inset 0 -.07em 0 var(--action); padding: 0 .07em; border-radius: .16em; }
+.rd:focus-visible + .opt { outline: 2px solid var(--action); outline-offset: 4px; border-radius: 6px; }
+
+.act { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; padding: 12px 24px 28px var(--gutter); background: var(--bg); border-top: 1px solid var(--line); }
+.accept {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; height: 54px; padding: 0 12px 0 22px; border-radius: 14px;
+  background: var(--action); color: var(--on-action);
+  font-size: 22px; font-weight: 500; letter-spacing: -.012em;
+}
+.accept:active { background: var(--green-2); }
+.accept .dot { width: 34px; height: 34px; border-radius: 50%; background: var(--on-action); display: grid; place-items: center; }
+.accept .dot svg { width: 20px; height: 20px; fill: none; stroke: var(--action); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.acts2 { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+.quiet { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; font: 500 14.5px/1.1 var(--sans); color: var(--muted); }
+.hurts { color: var(--red); font-weight: 600; }
+.hurts svg { width: 18px; height: 18px; fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: round; }
+
+/* ======================= F4 · plan applied ======================= */
+
+.mm { position: relative; }
+.mm::before { content: ""; position: absolute; left: -26px; top: 3px; bottom: 3px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--amber) 55%, transparent); }
+.mm::after { content: attr(data-m); position: absolute; left: -19px; top: 3px; writing-mode: vertical-rl; white-space: nowrap; font: italic 500 12.5px/1 var(--serif); color: var(--amber-ink); opacity: .85; }
+.f4 .later .chg { color: var(--text); }
+
+/* ======================= F5 · Thursday ======================= */
+
+.kicker { font: 600 12px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.f5 { --gutter: 58px; }
+.f5 .kicker, .f5 .day { margin-left: -34px; }
+.day { margin: 6px 0 12px; font-size: 70px; font-weight: 300; font-style: italic; letter-spacing: -.05em; line-height: .9; font-variation-settings: "SOFT" 100, "WONK" 1; }
+.cl { position: relative; display: block; margin-top: 8px; font-size: 22.5px; line-height: 1.2; text-wrap: pretty; letter-spacing: -.018em; font-weight: 420; }
+.cl:first-of-type { margin-top: 0; }
+.cl::before {
+  content: attr(data-t); position: absolute; left: -50px; top: .5em; white-space: nowrap;
+  font: 600 11px/1 var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted-2); opacity: .9;
+}
+.cl.watch::before { color: var(--amber-ink); }
+.cl i { font-weight: 500; }
+.cl .sw { background: var(--panel-3); box-shadow: 0 0 0 .1em var(--panel-3); border-radius: .08em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.because { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--hair); font-size: 14.5px; line-height: 1.4; font-style: italic; color: var(--muted); }
+.because b { font-style: normal; font-weight: 600; color: var(--text); }
+.skip { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hair); }
+.skip p { font-size: 15.5px; line-height: 1.38; font-style: italic; color: var(--muted); }
+.skipbtn { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0 18px; border-radius: 12px; border: 1.5px solid color-mix(in srgb, var(--red) 50%, transparent); color: var(--red); font: 600 15px/1 var(--sans); }
+
+/* ======================= F6 · morning ======================= */
+
+.kick6 { display: flex; align-items: center; justify-content: space-between; height: 40px; margin: -6px 0 6px; }
+.kick6 .dltog { margin-right: -6px; }
+.night6 { font-size: 14px; margin: 12px 0 0; }
+.plan6 { color: var(--muted); font-size: 19px !important; }
+.plan6 .ft { color: var(--text); font-weight: 500; }
+.hello { font-size: 54px; font-weight: 440; line-height: 1; letter-spacing: -.04em; font-variation-settings: "SOFT" 100, "WONK" 1; }
+.read { margin-top: 20px; font-size: 22px; line-height: 1.3; letter-spacing: -.012em; }
+.read p + p { margin-top: 16px; }
+.read p { text-wrap: pretty; }
+.read .rail + p { margin-top: 16px; }
+.read .lo { color: var(--amber-ink); font-weight: 650; font-variant-numeric: lining-nums; background: linear-gradient(var(--amber), var(--amber)) 0 100% / 100% 2px no-repeat; padding-bottom: .04em; }
+.read .u { color: var(--muted); }
+.read .band { color: var(--green-2); font-weight: 600; }
+.read .go { display: block; margin-top: 22px; font-size: 40px; line-height: 1.06; font-weight: 440; letter-spacing: -.03em; }
+.read .go .stop { width: 50px; height: 50px; margin-top: -10px; }
+.rail { position: relative; }
+.rail::before { content: ""; position: absolute; left: -26px; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--amber) 70%, transparent); }
+</style>
+</head>
+<body>
+
+<header class="intro">
+  <div class="wrap">
+    <div class="eyebrow"><b>04</b> · Sentence · coach concept · synthetic data</div>
+    <h1 class="thesis">Your workout is <span class="tok">one sentence</span> the coach keeps <span class="chg">rewriting</span>.</h1>
+
+    <div class="trio">
+      <div>
+        <h2>How it feels</h2>
+        <p>Like reading one very good paragraph that happens to be about you. A huge soft serif, wide margins, a single full stop to press. Nothing to scan and nothing to dismiss; the screen is always the sentence you are about to live.</p>
+      </div>
+      <div>
+        <h2>How the coach speaks</h2>
+        <p>As an editor, in the first person and plain words. It never opens a warning screen. It strikes a number inside your own sentence, writes the correction into it, and footnotes the evidence with your own figures.</p>
+      </div>
+      <div class="trade">
+        <h2>The trade-off</h2>
+        <p>Prose is slow to skim. You cannot compare five lifts at a glance the way a grid lets you, and a long session makes a long paragraph. It is built for the set in your hand, not for studying the week.</p>
+      </div>
+    </div>
+
+    <div class="legend" aria-label="How to read the paragraph">
+      <em>Reading the paragraph</em>
+      <span><span class="tok">185</span> a number you can change</span>
+      <span><span class="done">You pressed 185 for 9</span> a set you finished</span>
+      <span><span class="chg">three fewer</span> an edit from the coach</span>
+      <span><span style="color: var(--rest-text)">Rest — 1:48 more</span> a rest in progress</span>
+      <span><i class="l-stop"></i>the check accepts what the sentence says</span>
+      <span><i class="ring"></i>a deload mark, off until you set it</span>
+    </div>
+  </div>
+</header>
+
+<main class="stage">
+<div class="wrap">
+<div class="row">
+
+<!-- ============================ F1 · Lifting ============================ -->
+<figure class="slot">
+  <figcaption><span class="fid">F1</span> Lifting</figcaption>
+  <div class="phone f1" data-frame="F1">
+    <div class="status"><span>10:24</span>
+      <svg class="sysicons" viewBox="0 0 66 14" aria-hidden="true"><rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="5.5" width="3" height="7.5" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0.5" width="3" height="12.5" rx="1"/><path d="M26 5.4a9 9 0 0 1 12 0M28.5 8.2a5.5 5.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="32" cy="11.2" r="1.5"/><rect x="44" y="1" width="19" height="11.5" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="46" y="3" width="14" height="7.5" rx="1.6"/></svg>
+    </div>
+
+    <div class="page">
+      <div class="run"><span>Upper A <i>· week 4 · <span class="tnum">23:24</span></i></span>
+        <span class="sess"><button class="dltog" type="button" aria-pressed="false" aria-label="This session was a deload"><i class="ring"></i>Deload</button></span>
+      </div>
+      <p class="night"><i>Last night</i> · slept 5 h 48 m (usually 7 h 21 m) · HRV 38 ms (baseline 52) · resting HR 61 (baseline 55)</p>
+
+      <p class="flow"><span class="open"><span>Bench.</span><button class="dltog" type="button" aria-pressed="false" aria-label="Bench: this was a deload"><i class="ring"></i>This was a deload</button></span></p>
+
+      <div class="sets">
+        <div class="warm"><button class="flag w" type="button" aria-label="Set type: warm-up. Tap a flag to choose W, working, D or F">W</button><span>45 × 10, 95 × 8, 135 × 5, 165 × 3.</span><span class="fhint">tap flag: W · D · F</span></div>
+        <div class="setl is-done"><button class="flag" type="button" aria-label="Set 1, working set">1</button><p class="st">Pressed <span class="done">185 for 9</span>, RPE 8.</p><span class="prev">prev <b>185 × 10</b></span></div>
+      </div>
+
+      <div class="rest2" role="timer" aria-label="Rest, 58 seconds more of 2:30">
+        <p class="rc">Rest — <b>0:58</b> more</p>
+        <div class="rctl"><button type="button" aria-label="Minus 15 seconds">−15s</button><button type="button" aria-label="Plus 15 seconds">+15s</button><button class="skip" type="button" aria-label="Skip rest">Skip</button></div>
+      </div>
+      <div class="rprog"><i style="width: 61%"></i></div>
+      <p class="rnote">Started on set 1’s full stop. Full 2:30 recommended; skip if you must.</p>
+
+      <div class="cur">
+        <button class="flag" type="button" aria-label="Set 2, working set">2</button>
+        <p class="now">Now <button class="tok" type="button" data-bind="load" aria-label="Load, 185 pounds">185</button> for <button class="tok on" type="button" data-bind="reps" aria-label="Reps, 9">9</button>, <span class="nw">RPE <button class="tok blank" type="button" data-bind="rpe" aria-label="RPE, not set yet. Target 8"></button><button class="stop" type="button" aria-label="Check: accept 185 pounds for 9 reps"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 14.5l5.5 5.5L22 8.5"/></svg></button></span></p>
+        <div class="gloss">
+          <span class="logs">The check accepts <b><span data-out="load">185</span> × <span data-out="reps">9</span><span class="rpeout"></span></b>. <span class="rpehint">RPE is yours to set.</span></span>
+          <span>Previous <b>185 × 10</b> · target RPE 8</span>
+        </div>
+      </div>
+
+      <div class="sets" style="margin-top: 12px">
+        <div class="setl"><button class="flag" type="button" aria-label="Set 3, working set">3</button><p class="st">Then 185 for 9.</p><span class="prev">prev <b>185 × 9</b></span></div>
+        <div class="setl"><button class="flag" type="button" aria-label="Set 4, working set">4</button><p class="st">Then 185 for 9.</p><span class="prev">prev <b>185 × 9</b></span></div>
+      </div>
+
+      <p class="later">Then <span class="nw"><span class="ft">T-bar rows</span><button class="rtog" type="button" aria-pressed="false" aria-label="T-bar rows: this was a deload"></button></span> at 90, <span class="nw"><span class="ft">incline press</span><button class="rtog" type="button" aria-pressed="false" aria-label="Incline press: this was a deload"></button></span> with the 55s, <span class="nw"><span class="ft">pulldowns</span><button class="rtog" type="button" aria-pressed="false" aria-label="Pulldowns: this was a deload"></button></span> at 140, <span class="nw"><span class="ft">lateral raises</span><button class="rtog" type="button" aria-pressed="false" aria-label="Lateral raises: this was a deload"></button></span> at 15. <span class="swlab nw"><i class="ring"></i>= deload switch</span></p>
+    </div>
+
+    <div class="dock" aria-label="Set 2 entry">
+      <div class="drow">
+        <div class="dl"><b>Load</b><span>lb</span></div>
+        <div class="step"><button class="sb" type="button" aria-label="Minus 5 pounds">−</button><output>185</output><button class="sb" type="button" aria-label="Plus 5 pounds">+</button></div>
+      </div>
+      <div class="drow focus">
+        <div class="dl"><b>Reps</b><span>prev 10</span></div>
+        <div class="chips" data-field="reps"><button class="chip" type="button">8</button><button class="chip sel" type="button">9</button><button class="chip" type="button">10</button><button class="chip" type="button">11</button><button class="chip" type="button">12</button></div>
+      </div>
+      <div class="drow">
+        <div class="dl"><b>RPE</b><span>target 8</span></div>
+        <div class="chips" data-field="rpe"><button class="chip" type="button">6</button><button class="chip" type="button">7</button><button class="chip" type="button">8</button><button class="chip" type="button">9</button><button class="chip" type="button">10</button></div>
+      </div>
+    </div>
+    <i class="home"></i>
+  </div>
+</figure>
+
+<!-- ============================ F2 · The flag ============================ -->
+<figure class="slot">
+  <figcaption><span class="fid">F2</span> The flag</figcaption>
+  <div class="phone f2" data-frame="F2">
+    <div class="status"><span>10:24</span>
+      <svg class="sysicons" viewBox="0 0 66 14" aria-hidden="true"><rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="5.5" width="3" height="7.5" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0.5" width="3" height="12.5" rx="1"/><path d="M26 5.4a9 9 0 0 1 12 0M28.5 8.2a5.5 5.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="32" cy="11.2" r="1.5"/><rect x="44" y="1" width="19" height="11.5" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="46" y="3" width="14" height="7.5" rx="1.6"/></svg>
+    </div>
+
+    <div class="page">
+      <div class="run"><span class="mk"><i>Coach’s mark</i> <i>· <span class="tnum">24:10</span></i></span>
+        <span class="sess"><button class="dltog" type="button" aria-pressed="false" aria-label="This session was a deload"><i class="ring"></i>Deload</button></span>
+      </div>
+
+      <div class="edit">
+        <p class="rw"><span class="hw">Bench.</span> You pressed<br><span class="done nw">185 for 9</span>, then<br><del class="del">9</del> <ins class="six" aria-label="6 reps">6</ins>,<br><span class="nw">at <ins class="nn">RPE 10</ins><span class="rstop" aria-hidden="true"></span></span></p>
+        <p class="ins"><span class="chg">That’s three fewer than your first set — you usually drop less than one. I had you at 8 or 9, so this is <span class="sg">3.4<span class="sig">σ</span></span> beyond your usual drop.</span><sup>1</sup></p>
+      </div>
+
+      <div class="reps" role="img" aria-label="Set one: nine reps. Set two: six reps, with empty rings where eight to nine were expected.">
+        <div class="rrow"><span class="rl">Set 1</span><span class="dots"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="rn">9</span></div>
+        <div class="rrow"><span class="rl">Set 2</span><span class="dots bad"><i></i><i></i><i></i><i></i><i></i><i></i><i class="x f"></i><i class="x"></i><i class="x"></i></span><span class="rn">6</span></div>
+      </div>
+
+      <div class="fn">
+        <p class="lede"><sup>1</sup>Over twelve sessions your set-one-to-two drop averages <b>0.6 reps (± 0.7)</b>. Today’s was <b>3</b>, at RPE 10. My read, most likely first:</p>
+        <ol class="why">
+          <li><span class="n">1</span><span><b>Short rest.</b> You took 1:32 of the 2:30 prescribed, 61%. The likeliest main driver.</span></li>
+          <li><span class="n">2</span><span><b>Low recovery</b> may add to it: HRV 27% under baseline after 5 h 48 m of sleep.</span></li>
+          <li><span class="n">3</span><span><b>No sign of strength loss.</b> Set one puts your max at 253 lb, on your 249–254 trend.</span></li>
+        </ol>
+      </div>
+    </div>
+
+    <button class="next" type="button"><span>Here’s what I’d do</span><span class="go"><svg viewBox="0 0 22 22" aria-hidden="true"><path d="M4 11h14M12 5l6 6-6 6"/></svg></span></button>
+    <i class="home"></i>
+  </div>
+</figure>
+
+<!-- ============================ F3 · Next best action · today ============================ -->
+<figure class="slot">
+  <figcaption><span class="fid">F3</span> Next best action · today</figcaption>
+  <div class="phone f3" data-frame="F3">
+    <div class="status"><span>10:24</span>
+      <svg class="sysicons" viewBox="0 0 66 14" aria-hidden="true"><rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="5.5" width="3" height="7.5" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0.5" width="3" height="12.5" rx="1"/><path d="M26 5.4a9 9 0 0 1 12 0M28.5 8.2a5.5 5.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="32" cy="11.2" r="1.5"/><rect x="44" y="1" width="19" height="11.5" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="46" y="3" width="14" height="7.5" rx="1.6"/></svg>
+    </div>
+
+    <div class="page">
+      <div class="run"><span>Bench <i>· the rest of it · <span class="tnum">24:31</span></i></span>
+        <span class="sess"><button class="dltog" type="button" aria-pressed="false" aria-label="This session was a deload"><i class="ring"></i>Deload</button></span>
+      </div>
+      <p class="lead">Three ways to finish bench. <b>I’d take the first.</b> Tap one to choose.</p>
+
+      <input class="rd" type="radio" name="rewrite" id="rw-a" checked aria-label="Rewrite A: finish at 165">
+      <label class="opt" for="rw-a" data-l="a">
+        <span class="pick">The coach’s pick</span>
+        <span class="txt">Finish with <span class="tk">165</span> for <span class="tk">8</span>, twice, at <span class="tk">RPE 8</span>, and rest the full <span class="tk">2:30</span>; the timer starts on the check. Incline becomes <span class="nw"><span class="tk">two sets</span><i class="pt"></i></span></span>
+        <span class="cons">Pulling stays as written. Chest finishes at 15 of 16 weekly sets, inside your 12–18, and the session runs a minute shorter. Thursday’s bench still holds at 185. Per side: 45 + 10 + 5.</span>
+      </label>
+
+      <input class="rd" type="radio" name="rewrite" id="rw-b" aria-label="Rewrite B: stay at 185, rest three minutes">
+      <label class="opt" for="rw-b" data-l="b">
+        <span class="txt">Stay at <span class="tk">185</span>, rest <span class="tk">three minutes</span>, stop one short of <span class="nw">failure<i class="pt"></i></span></span>
+        <span class="cons">Expect six or seven reps, and more fatigue carried into Thursday.</span>
+      </label>
+
+      <input class="rd" type="radio" name="rewrite" id="rw-c" aria-label="Rewrite C: leave bench here">
+      <label class="opt" for="rw-c" data-l="c">
+        <span class="txt">Leave bench here and move to <span class="nw">rows<i class="pt"></i></span></span>
+        <span class="cons">Gives up two productive sets: chest ends the week at 14 of 16.</span>
+      </label>
+    </div>
+
+    <div class="act">
+      <button class="accept" type="button"><span>Write it in</span><span class="dot"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9"/></svg></span></button>
+      <div class="acts2">
+        <button class="quiet" type="button">Keep my original</button>
+      </div>
+    </div>
+    <i class="home"></i>
+  </div>
+</figure>
+
+<!-- ============================ F4 · Plan applied ============================ -->
+<figure class="slot">
+  <figcaption><span class="fid">F4</span> Plan applied</figcaption>
+  <div class="phone f4" data-frame="F4">
+    <div class="status"><span>10:24</span>
+      <svg class="sysicons" viewBox="0 0 66 14" aria-hidden="true"><rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="5.5" width="3" height="7.5" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0.5" width="3" height="12.5" rx="1"/><path d="M26 5.4a9 9 0 0 1 12 0M28.5 8.2a5.5 5.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="32" cy="11.2" r="1.5"/><rect x="44" y="1" width="19" height="11.5" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="46" y="3" width="14" height="7.5" rx="1.6"/></svg>
+    </div>
+
+    <div class="page">
+      <div class="run"><span>Upper A <i>· week 4 · <span class="tnum">24:52</span></i></span>
+        <span class="sess"><button class="dltog" type="button" aria-pressed="false" aria-label="This session was a deload"><i class="ring"></i>Deload</button></span>
+      </div>
+
+      <p class="flow"><span class="open"><span>Bench.</span><button class="dltog" type="button" aria-pressed="false" aria-label="Bench: this was a deload"><i class="ring"></i>This was a deload</button></span></p>
+
+      <div class="whyline">
+        <p>Backed off after a short-rest grinder; keeps two productive sets.</p>
+        <button class="undo" type="button" aria-label="Undo the coach's change to sets 3 and 4"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3L2 6l3 3M2.5 6H10a4 4 0 0 1 0 8H6"/></svg>Undo</button>
+      </div>
+
+      <div class="sets">
+        <div class="warm"><button class="flag w" type="button" aria-label="Set type: warm-up. Tap a flag to choose W, working, D or F">W</button><span>45 × 10, 95 × 8, 135 × 5, 165 × 3.</span><span class="fhint">tap flag: W · D · F</span></div>
+        <div class="setl is-done"><button class="flag" type="button" aria-label="Set 1, working set">1</button><p class="st">Pressed <span class="done">185 for 9</span>, RPE 8.</p><span class="prev">prev <b>185 × 10</b></span></div>
+        <div class="setl is-done"><button class="flag" type="button" aria-label="Set 2, working set">2</button><p class="st">Pressed <span class="done">185 for 6</span>, RPE 10.</p><span class="prev">prev <b>185 × 10</b></span></div>
+      </div>
+
+      <div class="rest2" role="timer" aria-label="Rest, 1 minute 48 seconds more. Full 2:30 recommended">
+        <p class="rc">Rest — <b>1:48</b> more</p>
+        <div class="rctl"><button type="button" aria-label="Minus 15 seconds">−15s</button><button type="button" aria-label="Plus 15 seconds">+15s</button><button class="skip" type="button" aria-label="Skip rest">Skip</button></div>
+      </div>
+      <div class="rprog"><i style="width: 28%"></i></div>
+      <p class="rnote">Started on set 2’s full stop. Full 2:30 recommended; skip if you must.</p>
+
+      <div class="cur is-chg">
+        <button class="flag" type="button" aria-label="Set 3, working set">3</button>
+        <p class="now chgd">Now <del class="del">185</del> <ins>165</ins> for <ins>8</ins>, <span class="nw">RPE <button class="tok blank" type="button" data-bind="rpe" aria-label="RPE, not set yet. Target 8"></button><button class="stop" type="button" aria-label="Check: accept 165 pounds for 8 reps"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 14.5l5.5 5.5L22 8.5"/></svg></button></span></p>
+        <div class="gloss">
+          <span class="logs">Check accepts <b><span data-out="load">165</span> × <span data-out="reps">8</span></b>. Changed from 185 × 9.</span>
+          <span>Previous <b>185 × 9</b> · target RPE 8.</span>
+        </div>
+      </div>
+
+      <div class="sets" style="margin-top: 8px">
+        <div class="setl is-chg"><button class="flag" type="button" aria-label="Set 4, working set">4</button><p class="st chgd">Then <del class="del">185</del> <ins>165</ins> for <ins>8</ins>.</p><span class="prev">prev <b>185 × 9</b></span></div>
+      </div>
+
+      <p class="later">Then <span class="nw"><span class="ft">incline press</span><button class="rtog" type="button" aria-pressed="false" aria-label="Incline press: this was a deload"></button></span> drops to <span class="chg">two sets</span>; <span class="nw"><span class="ft">rows</span><button class="rtog" type="button" aria-pressed="false" aria-label="T-bar rows: this was a deload"></button></span>, <span class="nw"><span class="ft">pulldowns</span><button class="rtog" type="button" aria-pressed="false" aria-label="Pulldowns: this was a deload"></button></span> and <span class="nw"><span class="ft">raises</span><button class="rtog" type="button" aria-pressed="false" aria-label="Lateral raises: this was a deload"></button></span> stay as written. <span class="swlab nw"><i class="ring"></i>= deload switch</span></p>
+      <p class="latwhy">Incline trimmed so chest lands at 15 of 16 weekly sets.</p>
+    </div>
+
+    <div class="dock" aria-label="Set 3 entry">
+      <div class="drow focus">
+        <div class="dl"><b>Load</b><span>lb</span></div>
+        <div class="step"><button class="sb" type="button" aria-label="Minus 5 pounds">−</button><output>165</output><button class="sb" type="button" aria-label="Plus 5 pounds">+</button></div>
+      </div>
+      <div class="drow">
+        <div class="dl"><b>Reps</b><span>prev 9</span></div>
+        <div class="chips" data-field="reps"><button class="chip" type="button">6</button><button class="chip" type="button">7</button><button class="chip sel" type="button">8</button><button class="chip" type="button">9</button><button class="chip" type="button">10</button></div>
+      </div>
+      <div class="drow">
+        <div class="dl"><b>RPE</b><span>target 8</span></div>
+        <div class="chips" data-field="rpe"><button class="chip" type="button">6</button><button class="chip" type="button">7</button><button class="chip" type="button">8</button><button class="chip" type="button">9</button><button class="chip" type="button">10</button></div>
+      </div>
+    </div>
+    <i class="home"></i>
+  </div>
+</figure>
+
+<!-- ============================ F5 · Next session ============================ -->
+<figure class="slot">
+  <figcaption><span class="fid">F5</span> Next session</figcaption>
+  <div class="phone f5" data-frame="F5">
+    <div class="status"><span>10:24</span>
+      <svg class="sysicons" viewBox="0 0 66 14" aria-hidden="true"><rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="5.5" width="3" height="7.5" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0.5" width="3" height="12.5" rx="1"/><path d="M26 5.4a9 9 0 0 1 12 0M28.5 8.2a5.5 5.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="32" cy="11.2" r="1.5"/><rect x="44" y="1" width="19" height="11.5" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="46" y="3" width="14" height="7.5" rx="1.6"/></svg>
+    </div>
+
+    <div class="page">
+      <div class="kicker">Thu 5 Nov · Upper A</div>
+      <h2 class="day">Thursday.</h2>
+
+      <p class="cl" data-t="Hold">Bench holds at <button class="tok" type="button">185</button> for four sets of <button class="tok" type="button">8–10</button>, resting <button class="tok" type="button">2:30</button>, and the timer will recommend the full time.</p>
+      <p class="cl up" data-t="Raise"><i>When</i> your first two sets at 185 both reach <button class="tok" type="button">9</button> at RPE 9 or easier, we go to <button class="tok" type="button">190</button>.</p>
+      <p class="cl" data-t="If low"><i>If</i> your HRV is under <button class="tok" type="button">45</button> that morning, start at <button class="tok" type="button">175</button>.</p>
+      <p class="cl watch" data-t="Watch"><span class="sw"><i>If</i> bench slips again with normal recovery, you get a light pressing week: pressing a tenth lighter, one set fewer.</span></p>
+
+      <p class="because"><b>Why hold?</b> Set one put your max at 253, on your 249–254 trend: no sign of strength loss. Short rest and a rough night are likelier.</p>
+
+      <div class="skip">
+        <p>If an injury keeps you out, skipping Thursday doesn’t count as a failure or a missed progression; bench waits at 185.</p>
+        <button class="skipbtn" type="button">Injured, skip</button>
+      </div>
+    </div>
+    <i class="home"></i>
+  </div>
+</figure>
+
+<!-- ============================ F6 · Your choice · the morning sentence ============================ -->
+<figure class="slot">
+  <figcaption><span class="fid">F6</span> Your choice · the morning sentence</figcaption>
+  <div class="phone f6 morning" data-frame="F6">
+    <div class="status"><span>10:24</span>
+      <svg class="sysicons" viewBox="0 0 66 14" aria-hidden="true"><rect x="0" y="8" width="3" height="5" rx="1"/><rect x="5" y="5.5" width="3" height="7.5" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0.5" width="3" height="12.5" rx="1"/><path d="M26 5.4a9 9 0 0 1 12 0M28.5 8.2a5.5 5.5 0 0 1 7 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="32" cy="11.2" r="1.5"/><rect x="44" y="1" width="19" height="11.5" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".45"/><rect x="46" y="3" width="14" height="7.5" rx="1.6"/></svg>
+    </div>
+
+    <div class="page">
+      <div class="kick6"><div class="kicker">Saturday 31 October</div>
+        <button class="dltog" type="button" aria-pressed="false" aria-label="Plan this session as a deload"><i class="ring"></i>Deload day</button>
+      </div>
+      <h2 class="hello">Good morning.</h2>
+      <p class="night night6"><i>Last night</i> · slept 5 h 48 m (usually 7 h 21 m) · HRV 38 ms (baseline 52) · resting HR 61 (baseline 55)</p>
+
+      <div class="read">
+        <p>Upper A is on. Bench opens at 185 for four sets of 8–10, and after a short night I would expect your second set to land at <span class="band">7–9</span>, most likely 8 or 9. Take the full 2:30 between bench sets; short rests can cost more than usual.</p>
+        <p class="plan6">Then <span class="nw"><span class="ft">T-bar rows</span><button class="rtog" type="button" aria-pressed="false" aria-label="T-bar rows: this was a deload"></button>,</span> <span class="nw"><span class="ft">incline press</span><button class="rtog" type="button" aria-pressed="false" aria-label="Incline press: this was a deload"></button>,</span> <span class="nw"><span class="ft">pulldowns</span><button class="rtog" type="button" aria-pressed="false" aria-label="Pulldowns: this was a deload"></button></span> and <span class="nw"><span class="ft">lateral raises</span><button class="rtog" type="button" aria-pressed="false" aria-label="Lateral raises: this was a deload"></button>,</span> as written.</p>
+        <span class="go">Start Upper A<button class="stop" type="button" aria-label="Start Upper A"><svg viewBox="0 0 28 28" aria-hidden="true"><path d="M6 14.5l5.5 5.5L22 8.5"/></svg></button></span>
+      </div>
+    </div>
+    <i class="home"></i>
+  </div>
+</figure>
+
+</div>
+</div>
+</main>
+
+<footer>
+  <div class="wrap"><p class="foot-note">Design exploration only. Every number is synthetic scenario data from the shared brief. Colours are the production tokens in palette.css; type is Fraunces (display and prose) and Inter (docked entry).</p></div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  /* Progressive enhancement only. Every frame is complete without this. */
+  /* deload marks: quiet toggles, off by default */
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[aria-pressed]");
+    if (t) t.setAttribute("aria-pressed", t.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  });
+  function bind(phone) {
+    var dock = phone.querySelector(".dock");
+    if (!dock) return;
+    var out = dock.querySelector("output");
+    function put(key, text) {
+      Array.prototype.forEach.call(phone.querySelectorAll('[data-bind="' + key + '"],[data-out="' + key + '"]'), function (n) {
+        n.textContent = text;
+        n.classList.remove("blank");
+      });
+    }
+    dock.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b || !dock.contains(b)) return;
+      var group = b.closest(".chips");
+      if (b.classList.contains("chip") && group) {
+        Array.prototype.forEach.call(group.querySelectorAll(".chip"), function (c) { c.classList.remove("sel"); });
+        b.classList.add("sel");
+        var key = group.getAttribute("data-field");
+        var v = b.textContent.trim();
+        put(key, v);
+        if (key === "rpe") {
+          Array.prototype.forEach.call(phone.querySelectorAll(".rpeout"), function (n) { n.textContent = ", RPE " + v; });
+          Array.prototype.forEach.call(phone.querySelectorAll(".rpehint"), function (n) { n.style.display = "none"; });
+        }
+      } else if (b.classList.contains("sb") && out) {
+        var step = (b.getAttribute("aria-label") || "").indexOf("Plus") === 0 ? 5 : -5;
+        var load = Math.max(0, (parseInt(out.textContent, 10) || 0) + step);
+        out.textContent = load;
+        put("load", String(load));
+      }
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".phone"), bind);
+
+  var stop = document.querySelector(".f1 .stop");
+  if (stop) stop.addEventListener("click", function () {
+    stop.classList.add("logged");
+    setTimeout(function () { stop.classList.remove("logged"); }, 1400);
+  });
+})();
+</script>
+</body>
+</html>

@@ -14,19 +14,323 @@
     "sets"
   ],
   "properties": {
-    "contractVersion": { "const": "comprehensive-fitness-active-draft/2.0.0" },
-    "version": { "const": 2 },
-    "workoutId": { "type": "string", "minLength": 1, "maxLength": 128 },
-    "savedAt": { "type": "string", "format": "date-time" },
-    "dataRevision": { "type": "integer", "minimum": 0 },
-    "draftSequence": { "type": "integer", "minimum": 0 },
-    "session": { "type": "object" },
-    "exercises": { "type": "array", "items": { "type": "object" } },
-    "sets": { "type": "array", "items": { "type": "object" } },
-    "timer": { "type": ["object", "null"] },
-    "resolvedActions": { "type": "array", "items": { "type": "object" } }
+    "contractVersion": {
+      "const": "comprehensive-fitness-active-draft/2.0.0"
+    },
+    "version": {
+      "const": 2
+    },
+    "workoutId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "savedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dataRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "draftSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "session": {
+      "$ref": "#/$defs/session"
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "sets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/set"
+      }
+    },
+    "timer": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "resolvedActions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
   },
   "additionalProperties": true,
   "x-contract-version": "comprehensive-fitness-active-draft/2.0.0",
-  "x-preservation": "Entered incomplete values, identity, order, notes, and timer context are recoverable."
+  "x-preservation": "Entered incomplete values, identity, order, notes, and timer context are recoverable.",
+  "$defs": {
+    "coachingPrescription": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "engineVersion",
+        "parameterVersion",
+        "evaluationId",
+        "createdAt",
+        "inputDigest",
+        "stableTargets",
+        "exercises",
+        "sets"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "comprehensive-fitness-coach/1.0.0"
+        },
+        "engineVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameterVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evaluationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "inputDigest": {
+          "type": "string",
+          "pattern": "^fnv1a64:[a-f0-9]{16}$"
+        },
+        "stableTargets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "exerciseId",
+              "variantIdentity",
+              "resistanceType",
+              "targetVersion",
+              "roles"
+            ],
+            "properties": {
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "variantIdentity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "targetVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "roles": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "exercises": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "exerciseId"
+            ],
+            "properties": {
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "sets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "setId",
+              "exerciseId",
+              "role",
+              "position",
+              "sequenceIndex",
+              "anchor",
+              "targetRpe",
+              "target",
+              "revisions"
+            ],
+            "properties": {
+              "setId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sequenceIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "revisions": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-runtime-validation": "ComprehensiveFitnessCoach.validatePrescription plus current-model cross-ownership validation. Deleted exercise/set ids and engine virtual rows are allowed; other owners are rejected. Strict import rejects invalid coaching atomically; local recovery suppresses it and preserves logging."
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "isDeload": {
+          "type": "boolean"
+        },
+        "coachingPrescription": {
+          "$ref": "#/$defs/coachingPrescription"
+        },
+        "coachingSuspensions": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": [
+              "scope",
+              "reason",
+              "at"
+            ],
+            "properties": {
+              "scope": {
+                "enum": [
+                  "session",
+                  "exercise"
+                ]
+              },
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "reason": {
+                "enum": [
+                  "deload_changed",
+                  "readiness_changed",
+                  "exception_overridden",
+                  "exercise_substituted",
+                  "row_removed",
+                  "role_changed",
+                  "evaluation_failed",
+                  "coach_off"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "scope": {
+                      "const": "exercise"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "exerciseId"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "exerciseId"
+                    ]
+                  }
+                }
+              }
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "set": {
+      "type": "object",
+      "properties": {
+        "targetRestSeconds": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 3600
+        },
+        "loadSource": {
+          "enum": [
+            "accepted_target",
+            "entered",
+            "prefill_previous"
+          ]
+        },
+        "repsSource": {
+          "enum": [
+            "accepted_target",
+            "entered",
+            "prefill_previous"
+          ]
+        },
+        "rpeSource": {
+          "enum": [
+            "typed",
+            "unknown"
+          ]
+        },
+        "completionOrder": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "loadTouched": {
+          "type": "boolean"
+        },
+        "repsTouched": {
+          "type": "boolean"
+        },
+        "rpeTouched": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
 }

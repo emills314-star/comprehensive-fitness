@@ -17,6 +17,7 @@ const {
   buildAnalyticsEvidenceFixture,
   buildEmptyAnalyticsSettingsFixture
 } = require("./fixtures/analytics-settings.fixture");
+const { closeLoadedBarSheet, enterRpe, focusExercise, openSetOptions } = require("./fixtures/loaded-bar.helpers");
 
 const VISUAL_SET_3_ID = "public-synthetic-active-bench-set-3";
 const VISUAL_SET_4_ID = "public-synthetic-active-bench-set-4";
@@ -60,7 +61,9 @@ function buildM1ProgressiveFixture() {
     id: VISUAL_SET_3_ID,
     completed: false,
     completedAt: "",
-    rpe: 0,
+    weight: "",
+    reps: "",
+    rpe: "",
     sequence: 2,
     sequenceIndex: 2,
     setNumber: 3,
@@ -260,18 +263,38 @@ test("m1 V3 progressive workout retains every functional control in the compact 
     nextSetId: VISUAL_SET_3_ID
   });
 
-  await expect(page.locator('.set-logged[data-set-mode="logged"]')).toHaveCount(2);
-  await expect(page.locator('.set-current-editor[data-set-mode="current"]')).toHaveCount(1);
-  await expect(page.locator('.set-pending-line[data-set-mode="pending"]')).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "Mark set complete" })).toBeVisible();
+  await expect(page.locator('.loaded-bar-row[data-set-mode="logged"]')).toHaveCount(2);
+  await expect(page.locator('.loaded-bar-row[data-set-mode="current"]')).toHaveCount(1);
+  await expect(page.locator('.loaded-bar-row[data-set-mode="pending"]')).toHaveCount(1);
+  await expect(page.locator(`[data-action="toggle-set"][data-set-id="${VISUAL_SET_3_ID}"]`)).toBeVisible();
   await expect(page.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
   await expect(page.locator('.active-session-menu [aria-label="Workout menu"]')).toBeVisible();
   await expect(page.locator("[data-workout-rollup]")).toHaveCount(0);
-  await expect(page.locator(".active-session-header .timer-bar")).toHaveCount(1);
+  await expect(page.locator(".loaded-bar-rest-clamp")).toHaveCount(1);
+  await expect(page.locator(".active-session-header .timer-bar")).toHaveCount(0);
   await expect(page.locator(".set-block .timer-bar")).toHaveCount(0);
-  await expect(page.locator(`[data-action="set-weight"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("185");
-  await expect(page.locator(`[data-action="set-reps"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("8");
-  await expect(page.locator(".set-tools-disclosure")).toHaveCount(4);
+  const load = page.locator(`[data-action="set-weight"][data-set-id="${VISUAL_SET_3_ID}"]`);
+  const reps = page.locator(`[data-action="set-reps"][data-set-id="${VISUAL_SET_3_ID}"]`);
+  // Coach contract §9 and PLAN R5: targets are placeholders until accepted.
+  await expect(load).toHaveValue("");
+  await expect(load).toHaveAttribute("placeholder", "185");
+  await expect(reps).toHaveValue("");
+  await expect(reps).toHaveAttribute("placeholder", "8");
+  await expect(page.locator(`[data-action="set-rpe"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("");
+  const benchSetIds = [IDS.activeBenchSet1, IDS.activeBenchSet2, VISUAL_SET_3_ID, VISUAL_SET_4_ID];
+  for (const setId of benchSetIds) {
+    const sheet = await openSetOptions(page, setId);
+    await expect(sheet.locator('[data-action="set-rest-seconds"]')).toBeVisible();
+    await expect(sheet.locator('[data-action="toggle-skip-set"]')).toBeVisible();
+    await expect(sheet.locator('[data-action="delete-set"]')).toBeVisible();
+    await closeLoadedBarSheet(page);
+  }
+  await focusExercise(page, IDS.activeRowExercise);
+  await expect(page.locator(".loaded-bar-row")).toHaveCount(2);
+  for (const setId of [IDS.activeRowSet1, IDS.activeRowSet2]) {
+    await expect(page.locator(`[data-action="toggle-set"][data-set-id="${setId}"]`)).toBeVisible();
+  }
+  await focusExercise(page, IDS.activeBenchExercise);
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
 
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
@@ -289,6 +312,18 @@ test("m1 V3 progressive workout retains every functional control in the compact 
       caret: "hide"
     });
   }
+
+  await page.locator(`[data-action="toggle-set"][data-set-id="${VISUAL_SET_3_ID}"]`).click();
+  await expect(page.locator(`[data-action="toggle-set"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate((setId) => {
+    const set = data.sets.find((item) => item.id === setId);
+    return { weight: set.weight, reps: set.reps, rpe: set.rpe, loadSource: set.loadSource, repsSource: set.repsSource };
+  }, VISUAL_SET_3_ID)).toEqual({ weight: 185, reps: 8, rpe: "", loadSource: "prefill_previous", repsSource: "prefill_previous" });
+  await enterRpe(page, VISUAL_SET_3_ID, "7.5");
+  expect(await page.evaluate((setId) => {
+    const set = data.sets.find((item) => item.id === setId);
+    return { completed: set.completed, rpe: set.rpe, rpeSource: set.rpeSource };
+  }, VISUAL_SET_3_ID)).toEqual({ completed: true, rpe: 7.5, rpeSource: "typed" });
 });
 
 test("m2 core views keep Today and Progress persistent while routines remain contextual", async ({ page }, testInfo) => {
@@ -596,15 +631,15 @@ test("m6 first-run and recoverable system states remain honest", async ({ page }
   }
 });
 
-test("m7 workout utilities stay in the compact header while Finish stays in the dock", async ({ page }, testInfo) => {
+test("m7 workout utilities and Finish stay in the compact session header", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m7 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM1ProgressiveFixture());
   await openActiveWorkout(page);
-  const dock = page.locator(".session-dock");
-  await expect(dock).toBeVisible();
+  const header = page.locator(".active-session-header.loaded-bar-session");
+  await expect(header).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
-  await expect(dock.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
+  await expect(header.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
   const headerMenu = page.locator(".active-session-menu");
   await headerMenu.locator(":scope > summary").click();
   await expect(headerMenu.getByRole("button", { name: /Save as routine/ })).toBeVisible();

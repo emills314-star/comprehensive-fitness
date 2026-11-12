@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const backupContract = require("../backup-contract.js");
+const { syntheticCoachBackup } = require("../tests/fixtures/synthetic-coach-backup.js");
 
 const root = path.resolve(__dirname, "..");
 const fixtureRoot = path.join(root, "tests", "fixtures", "redesign-m0");
@@ -85,6 +86,14 @@ assert.deepEqual(
   "Historical recommendation snapshots must survive compatibility round-trip"
 );
 assert.equal(legacyV1RoundTrip.exercises[0].executionQualityAssessment, "controlled");
+
+const coachFixture = syntheticCoachBackup();
+const coachRoundTrip = backupContract.decodeLegacyBackup(JSON.parse(backupContract.serializeBackupExport(coachFixture)));
+assert.deepEqual(preservationProjection(coachRoundTrip), preservationProjection(coachFixture), "Coach prescriptions, suspensions, role defaults, units, touched fields, and actual provenance must preserve complete observations");
+assert.deepEqual(canonical(coachRoundTrip.skippedSessions), canonical(coachFixture.skippedSessions), "Injury skips must round-trip in their own collection");
+assert.deepEqual(canonical(coachRoundTrip.settings), canonical(coachFixture.settings), "Coach/equipment owner settings must round-trip without activating or erasing show choice");
+assert.equal("coachingPrescription" in legacyV1RoundTrip.sessions[0], false, "Legacy sessions must never acquire an invented coach prescription");
+assert.equal("rpeSource" in legacyV1RoundTrip.sets[0], false, "Legacy observations must never acquire invented typed RPE provenance");
 
 const legacyV2RoundTrip = backupContract.createBackupExport(legacyV2);
 assert.equal("mesocycles" in legacyV2RoundTrip, false, "New exports must not recreate obsolete planner collections");

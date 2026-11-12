@@ -86,6 +86,7 @@ foreach ($asset in $compatibilityAssets) {
 $publicFiles = @(
   @{ Source = "index.html"; Destination = "index.html" },
   @{ Source = "app-foundation.js"; Destination = "app-foundation.js" },
+  @{ Source = "app-coach.js"; Destination = "app-coach.js" },
   @{ Source = "app-views.js"; Destination = "app-views.js" },
   @{ Source = "app-analysis.js"; Destination = "app-analysis.js" },
   @{ Source = "app-workout.js"; Destination = "app-workout.js" },
@@ -99,6 +100,8 @@ $publicFiles = @(
   @{ Source = "exception-resolver.js"; Destination = "exception-resolver.js" },
   @{ Source = "prescription-engine.js"; Destination = "prescription-engine.js" },
   @{ Source = "rest-completion-controller.js"; Destination = "rest-completion-controller.js" },
+  @{ Source = "coach-engine.js"; Destination = "coach-engine.js" },
+  @{ Source = "loaded-bar.js"; Destination = "loaded-bar.js" },
   @{ Source = "backup-contract.js"; Destination = "backup-contract.js" },
   @{ Source = "sw.js"; Destination = "sw.js" },
   @{ Source = "resources\secondary-page.css"; Destination = "resources\secondary-page.css" },

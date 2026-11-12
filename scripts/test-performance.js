@@ -37,7 +37,9 @@ assert.match(html, /visibilityState === "hidden" && hasActiveWorkout\(\)\) persi
 
 assert.doesNotMatch(inputHandler, /hypertrophyAnalysis|weeklyMuscleVolume|fatigueFlags|calculateWorkoutAnalysis/, "Input handlers must not run completed-history analysis");
 assert.match(inputHandler, /const writeSetInput[\s\S]*patchSetValue\(target\.dataset\.setId, field, target\.value, false\)/, "Visible set input must update locally through the validated mutation boundary without a full render");
-assert.match(inputHandler, /action === "set-reps"\) writeSetInput\("reps"\)/, "Visible rep input must use the local validated writer");
+const repInputBranch = inputHandler.match(/if \(action === "set-reps"\) \{([^}]+)\}/)?.[1] || "";
+assert.match(repInputBranch, /writeSetInput\("reps"\);\s*syncLoadedBarRepPips\(target\.dataset\.setId, target\.value\);/, "Visible reps update through the local validated writer before syncing only their visual pips");
+assert.doesNotMatch(repInputBranch, /\brender\s*\(|renderAfterInteractionFrame|replaceSetBlockDom/, "Typing reps must not replace the input subtree or schedule a full render");
 assert.match(inputHandler, /action === "set-weight"\) writeSetInput\("weight"\)/, "Visible load input must use the local validated writer");
 assert.match(inputHandler, /action === "set-rpe"\) writeSetInput\("rpe"\)/, "Visible RPE input must use the local validated writer");
 assert.match(inputHandler, /accepted === false[\s\S]*target\.value = String\(setById/, "Rejected set input must restore the persisted visible value without a full render");

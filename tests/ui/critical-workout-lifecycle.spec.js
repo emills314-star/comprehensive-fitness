@@ -163,8 +163,9 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await templateCard.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
-  await expect(page.locator(".active-session-ready")).toHaveText("Ready");
-  await expect(page.locator(".exercise-card")).toHaveCount(1);
+  await expect(page.locator(".loaded-bar-rest-clamp")).toHaveCount(0);
+  await expect(page.locator(".loaded-bar-focus")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Complete set 1", exact: true })).toBeEnabled();
 
   const active = await waitForPersisted(page, (stored) => stored?.sessions?.some((session) => session.templateId === templateId && session.workoutStarted && !session.submitted), "template start must persist one active workout");
   const activeSession = active.sessions.find((session) => session.templateId === templateId && session.workoutStarted && !session.submitted);
@@ -172,27 +173,37 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   expect(activeSession.readinessMode).toBe("usual");
   expect(activeExercise?.name).toBe(EXERCISE_NAME);
 
-  const firstWorkingSet = page.locator(".exercise-card .set-block:not(.warmup), .exercise-card [id^=set-]:not(.warmup)").filter({
-    has: page.locator('[data-action="toggle-set"]')
-  }).first();
+  const firstWorkingSet = page.locator(".loaded-bar-focus .loaded-bar-row").first();
   const completion = firstWorkingSet.locator('[data-action="toggle-set"]');
-  await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(1);
+  await expect(firstWorkingSet).toHaveAttribute("data-set-mode", "current");
+  const load = firstWorkingSet.locator('[data-action="set-weight"]');
+  const reps = firstWorkingSet.locator('[data-action="set-reps"]');
+  await expect(load).toHaveValue("");
+  // This new straight role has no matching historical load or routine default.
+  await expect(load).toHaveAttribute("placeholder", "");
+  await expect(reps).toHaveValue("");
+  await expect(reps).toHaveAttribute("placeholder", "8");
+  await load.fill("145");
   await completion.click();
   await expect(completion).toHaveAttribute("aria-pressed", "true");
-  await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(0);
-  await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
+  await expect(firstWorkingSet).toHaveAttribute("data-set-mode", "logged");
+  await expect(load).toHaveValue("145");
+  await expect(reps).toHaveValue("8");
   await expect(firstWorkingSet).toHaveClass(/completed/);
-  await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 2 sets");
-  const timer = page.locator(".active-session-header .timer-bar");
+  await expect(page.locator('.loaded-bar-focus .loaded-bar-row')).toHaveCount(2);
+  await expect(page.locator('.loaded-bar-focus [data-action="toggle-set"][aria-pressed="true"]')).toHaveCount(1);
+  const timer = page.locator(".loaded-bar-rest-clamp");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await expect(firstWorkingSet.locator(".timer-bar"), "the M1 rest strip must not be nested inside a logged set").toHaveCount(0);
+  await timer.locator(".loaded-bar-rest-options > summary").click();
   await page.locator('[data-action="toggle-timer"]').click();
   await expect(page.locator('[data-action="toggle-timer"]')).toHaveText("Resume");
   await page.locator('[data-action="toggle-timer"]').click();
   await page.locator('[data-action="adjust-timer"][data-seconds="15"]').click();
   await page.locator('[data-action="skip-timer"]').click();
-  await expect(page.locator(".active-session-header .timer-bar")).toHaveCount(0);
-  await expect(page.locator(".active-session-ready")).toHaveText("Ready");
+  await expect(timer).toHaveCount(0);
+  await expect(page.locator('[data-action="start-timer"]')).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Complete set 2", exact: true })).toBeEnabled();
 
   await page.locator('[data-action="request-submit-workout"]').click();
   await expect(page.getByText("Log this workout as completed?", { exact: true })).toBeVisible();

@@ -54,6 +54,17 @@ assert.equal(timerWasCanceled("timer-1", 1001), true);
 assert.equal(timerWasCanceled("timer-1", 1000 + 26 * 60 * 60 * 1000 + 1), false);
 
 const source = fs.readFileSync("sw.js", "utf8");
+assert.match(source, /const CACHE_NAME = "comprehensive-fitness-pwa-v107";/, "Coach plumbing must advance the installed shell version");
+const packaging = fs.readFileSync("scripts/sync-web.ps1", "utf8");
+const verification = fs.readFileSync("scripts/verify-pwa.ps1", "utf8");
+const verificationList = verification.slice(verification.indexOf("$publicFiles = @("), verification.indexOf("$compatibilityAssets = @("));
+const markerList = verification.match(/foreach \(\$needle in @\([^\n]+\)\) \{/)?.[0] || "";
+for (const file of ["coach-engine.js", "loaded-bar.js", "app-coach.js"]) {
+  assert(APP_SHELL.includes(`/${file}`), `${file} must be installed in the versioned shell`);
+  assert(packaging.includes(`@{ Source = "${file}"; Destination = "${file}" }`), `${file} must be packaged`);
+  assert(verificationList.includes(`"${file}"`), `${file} must be parity-checked`);
+  assert(markerList.includes(`"${file}"`), `${file} must be a required HTML marker`);
+}
 assert.match(source, /if \(!isPublicCacheUrl\(url\.href, self\.location\.origin\)\) return;/);
 assert.match(source, /fetch\(noStoreRequest\(event\.request\)\)/);
 assert.doesNotMatch(source, /if \(response\.ok\) caches\.open/, "No generic successful response may be cached");

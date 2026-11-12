@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loaded Bar v1 &mdash; coach UI built on the real engine</title>
+<!--
+  Loaded Bar, v1-faithful. Every target, reason line and step on this page is read from
+  coach-concepts/loaded-bar-v1.scenario.json, which was produced by running the real coach-engine.js
+  (v1.0.3) on a synthetic scenario. The plate swap is derived by a greedy calculator (45 lb bar;
+  45, 35, 25, 10, 5, 2.5 lb). Colour comes only from palette.css tokens. No scripts.
+-->
+<link rel="stylesheet" href="palette.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+/* =====================================================================
+   0. LOCAL TOKENS (type only - no colour is defined in this file)
+   ===================================================================== */
+:root{
+  --f-sign:"Bebas Neue","Oswald","Impact","Arial Narrow",sans-serif;
+  --f-text:"Work Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--surface)}
+body{font-family:var(--f-text);font-size:14px;line-height:1.4;color:var(--text);background:var(--surface);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;text-align:inherit}
+svg{display:block}
+b,strong{font-weight:700}
+.defs{position:absolute;width:0;height:0;overflow:hidden}
+
+/* =====================================================================
+   1. PAGE - concept header, bar rail, frame row
+   ===================================================================== */
+.page{padding:44px 44px 84px;max-width:2700px;margin:0 auto}
+.cover{display:flex;flex-wrap:wrap;gap:36px 60px;align-items:center}
+.cover-id{display:flex;gap:34px;align-items:center;flex:1 1 700px}
+.cover-id .rd{flex:none}
+.cv-k{font:600 13px/1 var(--f-text);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.cv-h{font:400 118px/.84 var(--f-sign);letter-spacing:.012em;margin:12px 0 16px}
+.cv-t{font:500 20px/1.42 var(--f-text);max-width:30em}
+.cv-t b{color:var(--green-2);font-weight:700}
+.cover-three{flex:2 1 860px;display:grid;grid-template-columns:repeat(3,minmax(250px,1fr))}
+.cv3{padding:2px 30px 2px 26px;border-left:3px solid var(--text)}
+.cv3:nth-child(1){border-left-color:var(--action)}
+.cv3:nth-child(3){border-left-color:var(--amber)}
+.cv3 h2{font:400 28px/1 var(--f-sign);letter-spacing:.07em;margin-bottom:9px}
+.cv3 p{font:400 15.5px/1.5 var(--f-text);color:var(--text)}
+.cv3 p em{font-style:normal;font-weight:600}
+
+.rail{display:flex;align-items:center;height:96px;margin:30px 0 40px}
+.rail i{display:block;flex:none;border-radius:4px}
+.rail .a45{width:26px;height:96px;background:var(--text)}
+.rail .a25{width:22px;height:78px;background:var(--action)}
+.rail .a10{width:17px;height:56px;background:var(--current-dark);box-shadow:inset 0 0 0 2px var(--action)}
+.rail .acol{width:16px;height:42px;background:var(--text);margin:0 3px}
+.rail .ash{width:11px;height:34px;background:var(--line-strong);border-radius:2px}
+.rail .asl{width:34px;height:20px;background:var(--line);border-radius:2px}
+.rail .asft{flex:1;height:14px;border-radius:2px;background:
+  repeating-linear-gradient(45deg,color-mix(in srgb,var(--muted) 50%,transparent) 0 1px,transparent 1px 4px),
+  repeating-linear-gradient(-45deg,color-mix(in srgb,var(--muted) 50%,transparent) 0 1px,transparent 1px 4px),
+  var(--line);box-shadow:inset 0 -3px 0 var(--line-strong)}
+.rail .g{width:3px;flex:none;background:transparent}
+
+.stage{display:flex;flex-wrap:wrap;gap:46px 32px;align-items:flex-start}
+.fr{width:390px}
+.fr-cap{display:flex;align-items:center;gap:12px;height:40px;margin-bottom:12px}
+.fr-cap .fn{display:grid;place-items:center;width:44px;height:36px;border-radius:5px;background:var(--text);color:var(--on-action);font:400 26px/1 var(--f-sign);letter-spacing:.04em}
+.fr-cap .ft{font:400 26px/1 var(--f-sign);letter-spacing:.05em}
+.fr-cap .fs{display:block;font:500 13px/1.25 var(--f-text);color:var(--muted)}
+.phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:38px;background:var(--bg);
+  box-shadow:0 0 0 1px var(--line-strong),0 22px 46px color-mix(in srgb,var(--text) 14%,transparent);display:flex;flex-direction:column}
+.sb{flex:none;height:40px;padding:15px 26px 0;display:flex;justify-content:space-between;align-items:center;font:600 15px/1 var(--f-text);color:var(--text)}
+.sb-i{display:flex;gap:6px;align-items:center}
+.sb-i svg{height:12px;width:auto;fill:var(--text)}
+.sb-i .st{fill:none;stroke:var(--text);stroke-width:1.5}
+.scr{flex:1;min-height:0;position:relative;padding:0 16px}
+
+/* =====================================================================
+   2. SVG PARTS - steel, plates, collar, hooks, roundels, equipment
+   ===================================================================== */
+.gs0{stop-color:var(--line)}.gs1{stop-color:var(--bg)}.gs2{stop-color:var(--line)}.gs3{stop-color:var(--line-strong)}
+.gd0{stop-color:var(--line-strong)}.gd1{stop-color:var(--muted-2)}
+.kn{stroke:var(--muted);stroke-width:.8;fill:none;opacity:.6}
+.ht{stroke:var(--amber);stroke-width:2.2}
+.bar{display:block;overflow:visible}
+.bar .sleeve,.bar .shaft{stroke:var(--line-strong);stroke-width:1}
+.bar .cap,.bar .sh{stroke:var(--muted-2);stroke-width:1}
+.bar .ring{stroke:var(--muted-2);stroke-width:1.5}
+.bar .floor{stroke:var(--line-strong);stroke-width:2.4;stroke-dasharray:1 6;stroke-linecap:round}
+.pl-b{stroke:none}
+.p45 .pl-b{fill:var(--text)}
+.p25 .pl-b{fill:var(--action)}
+.p10 .pl-b{fill:var(--current-dark);stroke:var(--action);stroke-width:2}
+.p5 .pl-b{fill:var(--bg);stroke:var(--text);stroke-width:2}
+.p2 .pl-b{fill:var(--panel-2);stroke:var(--muted);stroke-width:1.6}
+.pl-rim{fill:none;stroke:color-mix(in srgb,var(--on-action) 26%,transparent);stroke-width:1.2}
+.p10 .pl-rim,.p5 .pl-rim,.p2 .pl-rim{stroke:color-mix(in srgb,var(--action) 30%,transparent)}
+.pl-hi{fill:color-mix(in srgb,var(--on-action) 34%,transparent)}
+.p10 .pl-hi,.p5 .pl-hi,.p2 .pl-hi{fill:color-mix(in srgb,var(--on-action) 85%,transparent)}
+.pl-n{font-family:var(--f-sign);fill:var(--on-action);letter-spacing:.05em}
+.p10 .pl-n{fill:var(--green-2)}.p5 .pl-n{fill:var(--text)}.p2 .pl-n{fill:var(--muted)}
+.pl-l{font-family:var(--f-sign);letter-spacing:.05em;fill:var(--text)}
+.p25 .pl-l{fill:var(--green-2)}.p10 .pl-l{fill:var(--green-2)}.p2 .pl-l{fill:var(--muted)}
+.pl-halo{fill:none;stroke:var(--action);stroke-width:2;stroke-dasharray:3 3}
+.pl.ghost .pl-b{fill:color-mix(in srgb,var(--bg) 78%,transparent);stroke:var(--muted-2);stroke-width:1.7;stroke-dasharray:4 3}
+.pl.ghost .pl-n,.pl.ghost .pl-l{fill:var(--muted-2)}
+.pl.ghost.lockg .pl-b{stroke:var(--green-2);fill:var(--panel-2)}
+.pl.ghost.lockg .pl-n,.pl.ghost.lockg .pl-l{fill:var(--green-2)}
+.strike{stroke:var(--muted);stroke-width:2.2;stroke-linecap:round}
+.col-b{fill:var(--text)}.col-lever{fill:var(--muted)}.col-pin{fill:var(--line-strong)}
+.col-hi{fill:color-mix(in srgb,var(--on-action) 32%,transparent)}
+.col.rest .col-b{fill:var(--rest-accent)}.col.rest .col-lever{fill:var(--rest-text)}.col.rest .col-pin{fill:var(--rest-text)}
+.col.rest .col-hi{fill:color-mix(in srgb,var(--bg) 60%,transparent)}
+.col.flag .col-b{fill:var(--amber)}.col.flag .col-lever{fill:var(--text)}
+.hk-post,.hk-foot{fill:var(--text)}.hk-arm,.hk-lip{fill:var(--muted)}
+.rd-b{fill:var(--text)}.rd-rim{fill:none;stroke:color-mix(in srgb,var(--on-action) 30%,transparent);stroke-width:1.5}
+.rd-hub{fill:var(--bg);stroke:var(--muted-2);stroke-width:1.5}
+.rd-n{font-family:var(--f-sign);fill:var(--on-action);letter-spacing:.05em}
+.rd.p25 .rd-b{fill:var(--action)}
+.rd.p10 .rd-b{fill:var(--current-dark);stroke:var(--action);stroke-width:3}
+.rd.p10 .rd-rim{stroke:color-mix(in srgb,var(--action) 35%,transparent)}.rd.p10 .rd-n{fill:var(--green-2)}
+.rd.p5 .rd-b{fill:var(--bg);stroke:var(--text);stroke-width:2.5}
+.rd.p5 .rd-rim{stroke:color-mix(in srgb,var(--text) 25%,transparent)}.rd.p5 .rd-n{fill:var(--text)}
+.rd.p2 .rd-b{fill:var(--panel-2);stroke:var(--muted);stroke-width:2}.rd.p2 .rd-n{fill:var(--muted)}
+.rd.ok .rd-b{fill:var(--success);stroke:none}.rd.ok .rd-n{fill:var(--on-action)}
+.rd.rest .rd-b{fill:var(--rest-accent);stroke:none}.rd.rest .rd-n{fill:var(--rest-text)}
+.rd.rest .rd-rim{stroke:color-mix(in srgb,var(--rest-text) 35%,transparent)}
+.rd.warn .rd-b{fill:var(--amber);stroke:none}.rd.warn .rd-n{fill:var(--bg)}
+.rd.off .rd-b{fill:var(--bg);stroke:var(--muted-2);stroke-dasharray:4 3;stroke-width:2}.rd.off .rd-n{fill:var(--muted)}.rd.off .rd-rim{stroke:transparent}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.sw.p45{background:var(--text)}.sw.p25{background:var(--action)}
+.sw.p10{background:var(--current-dark);box-shadow:inset 0 0 0 1.5px var(--action)}
+.sw.p5{background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--text)}
+.sw.p2{background:var(--panel-2);box-shadow:inset 0 0 0 1.5px var(--muted)}
+.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.eqa{flex:none}
+.eq-h{fill:var(--text)}.eq-h2{fill:var(--muted)}.eq-g{fill:var(--line-strong)}
+.eq-lever{stroke:var(--line-strong);stroke-width:4;stroke-linecap:round;fill:none}
+.eq-pivot{fill:var(--muted)}
+.eq-rod{stroke:var(--line-strong);stroke-width:1.4}
+.eq-slab{fill:var(--line)}.eq-slab.lift{fill:var(--action)}
+.eq-pin{stroke:var(--text);stroke-width:2.2;stroke-linecap:round}.eq-pinhead{fill:var(--text)}
+.eq-cable{stroke:var(--text);stroke-width:1.5;fill:none}
+
+/* =====================================================================
+   3. SHARED SCREEN COMPONENTS
+   ===================================================================== */
+.top{display:flex;justify-content:space-between;align-items:flex-end;height:52px;padding-bottom:2px}
+.kick{font:600 12px/1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.nm{font:400 34px/.9 var(--f-sign);letter-spacing:.02em}
+.clk{text-align:right;font:400 32px/.86 var(--f-sign);letter-spacing:.03em}
+.clk small{display:block;font:600 11px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+
+.hero{position:relative}
+.hero .bar{position:relative}
+.hero-n{position:absolute;left:0;top:2px;font:400 100px/.8 var(--f-sign);letter-spacing:.01em;display:flex;align-items:flex-end;gap:5px}
+.hero-n small{font:400 30px/1 var(--f-sign);letter-spacing:.06em;color:var(--muted);padding-bottom:3px}
+.ledger{position:absolute;left:0;top:118px;width:236px}
+.lr{display:grid;grid-template-columns:66px 1fr auto;align-items:baseline;gap:6px;height:26px;border-top:1.5px solid var(--line);font:400 20px/26px var(--f-sign);letter-spacing:.04em}
+.lr:first-child{border-top:0}
+.lk{font:600 11.5px/26px var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lx{white-space:nowrap}
+.lx u{text-decoration:none;color:var(--muted);padding:0 3px}
+.lr b{font-weight:400;text-align:right;min-width:40px}
+.lr.tot{border-top:2.5px solid var(--text);font-size:24px}
+.lr.tot b{color:var(--green-2)}
+
+/* rep pips - chunky plates standing in a row. Tap one to set reps; tap LOG for the prefilled number. */
+.pips{display:flex;gap:3px;align-items:flex-end}
+.pip{flex:1 1 0;min-width:0;height:56px;border-radius:6px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font:400 21px/1 var(--f-sign);letter-spacing:.03em;position:relative}
+.pip:nth-child(6){margin-left:10px}
+.pip.tgt{background:var(--action);color:var(--on-action);box-shadow:inset 0 -5px 0 var(--green-2),inset 3px 0 0 color-mix(in srgb,var(--on-action) 30%,transparent)}
+.pip.opt{border:2px dashed color-mix(in srgb,var(--action) 55%,transparent);color:var(--action);background:var(--panel-2)}
+.pip.ok{background:var(--success);color:var(--on-action);box-shadow:inset 0 -5px 0 color-mix(in srgb,var(--text) 35%,var(--success)),inset 3px 0 0 color-mix(in srgb,var(--on-action) 30%,transparent)}
+.pip.hit{background:var(--amber);color:var(--on-action);box-shadow:inset 0 -5px 0 color-mix(in srgb,var(--text) 40%,var(--amber)),inset 3px 0 0 color-mix(in srgb,var(--on-action) 30%,transparent)}
+.pip.gst,.pip.gst2{border:2px dashed var(--amber);color:var(--amber);background:color-mix(in srgb,var(--panel-3) 80%,transparent)}
+.pip.gst{opacity:.55}
+.pips.fix .pip{flex:none;width:30px}
+
+.mpips{display:flex;gap:2px}
+.mp{display:block;width:13px;height:22px;border-radius:3px}
+.mp.ok{background:var(--success)}.mp.hit{background:var(--amber)}
+.mp.q{background:transparent;box-shadow:inset 0 0 0 1.6px var(--line-strong)}
+.mp.e{background:transparent;box-shadow:inset 0 0 0 1.6px var(--line);border-radius:3px}
+
+/* LOG - a barbell grip: knurled caps either side of the sleeve */
+.log{display:flex;width:100%;height:62px;border-radius:9px;overflow:hidden;box-shadow:0 0 0 2px var(--green-2)}
+.log-main{flex:1;display:flex;align-items:center;justify-content:center;gap:12px;background:var(--action);color:var(--on-action);font:400 36px/1 var(--f-sign);letter-spacing:.05em;box-shadow:inset 0 -6px 0 var(--green-2)}
+.log-main .ic{width:28px;height:28px;stroke-width:3}
+.log-main small{font:600 12.5px/1 var(--f-text);letter-spacing:.08em;opacity:.9}
+.log-cap{flex:none;width:38px;background:var(--green-2);
+  background-image:repeating-linear-gradient(45deg,color-mix(in srgb,var(--on-action) 30%,transparent) 0 1px,transparent 1px 4px),repeating-linear-gradient(-45deg,color-mix(in srgb,var(--on-action) 30%,transparent) 0 1px,transparent 1px 4px)}
+.log.locked{box-shadow:0 0 0 2px var(--line-strong)}
+.log.locked .log-main{background:var(--panel-2);color:var(--muted);box-shadow:none}
+.log.locked .log-cap{background-color:var(--line-strong);background-image:repeating-linear-gradient(45deg,color-mix(in srgb,var(--bg) 40%,transparent) 0 1px,transparent 1px 4px),repeating-linear-gradient(-45deg,color-mix(in srgb,var(--bg) 40%,transparent) 0 1px,transparent 1px 4px)}
+
+/* set rows */
+.set{display:flex;align-items:center;gap:10px;height:34px}
+.set .no{flex:none;width:24px;font:400 26px/1 var(--f-sign);color:var(--text)}
+.set .sv{font:400 24px/1 var(--f-sign);letter-spacing:.04em;white-space:nowrap}
+.set .sv i{font-style:normal;color:var(--muted);padding:0 2px}
+.set .rir{white-space:nowrap;margin-left:auto;font:600 12px/1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.set .tk{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--success);color:var(--on-action)}
+.set .tk .ic{width:16px;height:16px;stroke-width:3.2}
+.set.q{opacity:.78}
+.set.q .sv{color:var(--muted)}
+.set.q .no{color:var(--muted-2)}
+.set.flagged .tk{background:var(--amber)}
+.set.flagged .sv b{color:var(--amber)}
+
+.act{border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 2px var(--action);padding:10px 10px 10px}
+.act-h{display:flex;align-items:baseline;gap:10px;height:26px}
+.act-n{font:400 28px/1 var(--f-sign);letter-spacing:.04em;color:var(--green-2)}
+.act-t{font:600 12.5px/1 var(--f-text);letter-spacing:.06em;text-transform:uppercase}
+.act-p{margin-left:auto;font:600 12.5px/1 var(--f-text);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.act-p b{font:400 20px/1 var(--f-sign);color:var(--text);letter-spacing:.04em;margin-left:3px}
+.act .pips{margin:6px 0 10px}
+
+.rest{display:flex;align-items:center;gap:10px;height:34px}
+.rest-t{flex:none;font:400 22px/1 var(--f-sign);letter-spacing:.05em;color:var(--rest-text)}
+.rest-t b{font-weight:400}
+.rest .clampsvg{flex:1;min-width:0;width:100%;height:auto}
+.rest-g{flex:none;font:600 12.5px/1 var(--f-text);letter-spacing:.06em;color:var(--muted)}
+.cl-sleeve{stroke:var(--line-strong);stroke-width:1}
+.cl-fill{fill:var(--rest-accent)}
+.cl-tick{stroke:var(--muted-2);stroke-width:1.4}
+.cl-lab{font:600 12px var(--f-text);fill:var(--muted)}
+.cl-lab.end{fill:var(--rest-text);font-weight:700}
+.cl-stop{fill:var(--muted-2)}.cl-stop.locked{fill:var(--text)}
+.cl-collar{fill:var(--rest-accent);stroke:var(--rest-text);stroke-width:1.6}
+.cl-lever{fill:var(--rest-text)}.cl-hi{fill:color-mix(in srgb,var(--bg) 65%,transparent)}
+
+/* up-next rack of equipment rows */
+.up-h{display:flex;justify-content:space-between;align-items:baseline;height:24px;font:600 12px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--text)}
+.up-h b{font:400 20px/1 var(--f-sign);letter-spacing:.06em;color:var(--text)}
+.up-r{display:flex;align-items:center;gap:12px;height:46px;border-bottom:1.5px solid var(--line)}
+.up-r > div{flex:1;min-width:0}
+.up-r strong{display:block;font:600 14px/1.15 var(--f-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.up-r span{display:block;font:400 12.5px/1.2 var(--f-text);color:var(--muted);margin-top:2px;white-space:nowrap}
+.up-r em{font:400 28px/1 var(--f-sign);font-style:normal;letter-spacing:.03em;text-align:right;white-space:nowrap}
+.up-r em small{font:400 16px/1 var(--f-sign);color:var(--muted);margin-left:2px}
+.up-r.chg{background:var(--panel-2)}
+.up-r .chip{display:inline-block;margin-left:6px;padding:3px 6px 2px;border-radius:3px;background:var(--action);color:var(--on-action);font:400 14px/1 var(--f-sign);letter-spacing:.07em;vertical-align:1px}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;height:56px;border-radius:9px;font:400 28px/1 var(--f-sign);letter-spacing:.06em;width:100%}
+.btn.pri{background:var(--action);color:var(--on-action);box-shadow:inset 0 -5px 0 var(--green-2)}
+.btn.sec{background:var(--bg);color:var(--green-2);box-shadow:inset 0 0 0 2px var(--action)}
+.btn.sm{height:44px;font-size:22px}
+.btn.ghost{background:transparent;color:var(--muted);box-shadow:inset 0 0 0 1.5px var(--line-strong);font-size:22px;height:46px}
+.btn.hurt{background:var(--bg);color:var(--red);box-shadow:inset 0 0 0 1.5px var(--red);font:600 14px/1 var(--f-text);letter-spacing:.02em;height:46px;gap:7px}
+.btn.hurt .ic{width:18px;height:18px;stroke-width:2.4}
+.btn.hurt.lnk{box-shadow:none;background:transparent;height:44px}
+
+/* =====================================================================
+   4. F2 - THE FLAG (hang-tag on the collar)
+   ===================================================================== */
+.f2 .scr > *{position:absolute;left:16px;right:16px}
+.pband{position:absolute}
+.pb-h{display:flex;justify-content:space-between;align-items:baseline;height:26px}
+.pb-h .l{font:400 26px/1 var(--f-sign);letter-spacing:.04em}
+.pb-h .l b{font-weight:400;color:var(--amber)}
+.pb-h .r{font:600 12px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--amber)}
+.pb-row{position:relative;height:66px;margin-top:2px}
+.pb-row .pips{position:absolute;left:0;bottom:0;width:100%;z-index:2}
+.pz{position:absolute;top:0;bottom:-2px;border-radius:7px;background:var(--success-dark);box-shadow:inset 0 0 0 1.5px var(--success)}
+.pz.edge{background:transparent;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--success) 45%,transparent);border-style:none}
+.pz-l{position:absolute;top:-2px;font:600 12px/1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--success);white-space:nowrap}
+.pb-f{display:flex;align-items:center;gap:8px;height:22px;margin-top:6px;font:500 13px/1 var(--f-text);color:var(--text)}
+.pb-f i{display:block;width:18px;height:0;border-top:2px dashed var(--amber)}
+
+.tag{transform-origin:calc(100% - 26px) 17px;transform:rotate(-.55deg);background:var(--panel-3);border:2.5px solid var(--amber);border-radius:8px;
+  box-shadow:0 14px 26px color-mix(in srgb,var(--amber) 26%,transparent),0 3px 0 color-mix(in srgb,var(--amber) 55%,transparent);overflow:hidden}
+.tag-hz{position:relative;height:36px;display:flex;align-items:center;justify-content:space-between;padding:0 54px 0 12px;
+  background:repeating-linear-gradient(-45deg,var(--amber) 0 9px,color-mix(in srgb,var(--amber) 62%,var(--panel-3)) 9px 18px);
+  color:var(--on-action);font:400 21px/1 var(--f-sign);letter-spacing:.1em;border-bottom:2.5px solid var(--amber)}
+.tag-hz span{background:var(--text);padding:5px 8px 3px;border-radius:3px}
+.tag-hz .gro{position:absolute;right:11px;top:7px;width:18px;height:18px;border-radius:50%;background:var(--bg);box-shadow:inset 0 0 0 2.5px var(--amber)}
+.tag-body{padding:10px 14px 14px}
+.tag-top{display:flex;align-items:center;gap:12px}
+.sd{flex:none;display:flex;align-items:flex-end;gap:4px;color:var(--amber);height:92px}
+.sd b{font:400 112px/.78 var(--f-sign);letter-spacing:-.005em;font-weight:400}
+.sd span{font:400 30px/1 var(--f-sign);letter-spacing:.06em;padding-bottom:5px}
+.tag-ttl h3{font:400 36px/.92 var(--f-sign);letter-spacing:.035em;color:var(--text)}
+.tag-ttl p{font:500 14px/1.35 var(--f-text);margin-top:6px}
+.tag-ttl p b{font-weight:800;color:var(--amber)}
+.gauge{margin:6px 0 0}
+.gauge svg{width:100%;height:auto}
+.g-rule{fill:url(#gSteel);stroke:var(--line-strong);stroke-width:1}
+.g-zone{fill:var(--success-dark);stroke:var(--success);stroke-width:1.6}
+.g-tick{stroke:var(--muted);stroke-width:1.5}
+.g-num{font:600 12.5px var(--f-text);fill:var(--muted)}
+.g-cap{font:600 12px var(--f-text);fill:var(--success);letter-spacing:.06em}
+.g-cap.a{fill:var(--amber)}
+.g-dim{stroke:var(--amber);stroke-width:2;fill:none;stroke-linecap:round}
+.g-dimt{font:400 19px var(--f-sign);fill:var(--amber);letter-spacing:.08em}
+.g-mk{fill:var(--amber)}.g-mkl{fill:var(--text)}
+.why-h{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px;padding-bottom:3px;border-bottom:2px solid var(--text);font:600 12px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.why-h b{font:400 21px/1 var(--f-sign);letter-spacing:.07em;color:var(--text)}
+.why{list-style:none}
+.why li{display:flex;gap:10px;align-items:flex-start;padding:7px 0 7px;border-bottom:1.5px dashed color-mix(in srgb,var(--amber) 50%,transparent)}
+.why li:last-child{border-bottom:0}
+.why .rd{flex:none;margin-top:1px}
+.why h5{font:400 22px/1 var(--f-sign);letter-spacing:.05em;display:flex;align-items:center;gap:8px}
+.why h5 em{font:600 11px/1 var(--f-text);font-style:normal;letter-spacing:.08em;text-transform:uppercase;background:var(--text);color:var(--panel-3);padding:3px 6px 3px;border-radius:3px}
+.why h5 em.good{background:var(--success);color:var(--on-action)}
+.why p{font:400 13.5px/1.34 var(--f-text);margin-top:2px}
+.why p b{font-weight:700}
+.rm{height:7px;border-radius:4px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--rest-text);margin-top:5px;overflow:hidden;position:relative}
+.rm i{position:absolute;left:0;top:0;bottom:0;background:var(--rest-accent)}
+.tag-cta{margin-top:8px}
+.cord{position:absolute;left:0;top:0;width:390px;height:844px;pointer-events:none}
+.cord path,.cord ellipse{fill:none;stroke:var(--amber);stroke-width:2.6;stroke-linecap:round}
+.cord .knot{fill:var(--amber);stroke:none}
+.f2 .hero-n{font-size:64px;top:-2px}
+.f2 .hero-n small{font-size:24px}
+.f2 .ledger{display:none}
+.f2-per{position:absolute;left:0;top:70px;font:400 22px/1 var(--f-sign);letter-spacing:.05em;color:var(--muted)}
+.f2-per .sw{margin:0 3px 0 6px}
+
+/* =====================================================================
+   5. F3 - OPTIONS: three loaded bars
+   ===================================================================== */
+.f3 .scr{display:flex;flex-direction:column;gap:8px}
+.f3-h{padding-top:0}
+.f3-h .nm{font-size:32px}
+.opt.rec .eachs{top:62px}
+.f3-h p.say{font:500 14px/1.35 var(--f-text);margin-top:5px;color:var(--text)}
+.opt{position:relative;border-radius:12px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line-strong);padding:10px 12px}
+.opt.rec{box-shadow:inset 0 0 0 3px var(--action);background:var(--surface);padding:10px 12px 10px}
+.opt-badge{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px 0 7px;border-radius:4px;background:var(--action);color:var(--on-action);font:400 17px/1 var(--f-sign);letter-spacing:.09em}
+.opt-badge .ic{width:14px;height:14px;stroke-width:3.4}
+.opt-badge.alt{background:var(--text)}
+.opt-top{display:flex;align-items:center;gap:10px}
+.opt-top .opt-m{margin-left:auto;font:600 12px/1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--green-2)}
+.opt.rec .bwrap{position:relative;height:100px;margin:2px -2px 0}
+.opt.rec .hero-n{font-size:66px;top:-2px}
+.opt.rec .hero-n small{font-size:22px}
+.eachs{position:absolute;left:0;top:62px;font:600 12px/1.25 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eachs b{display:block;font:400 22px/1 var(--f-sign);letter-spacing:.04em;color:var(--text);margin-top:2px}
+.swap{display:flex;align-items:center;gap:8px;margin-top:4px;font:500 13.5px/1.2 var(--f-text)}
+.swap .eq{display:flex;align-items:center;gap:6px;flex:none}
+.swap .eq .ic{width:16px;height:16px;color:var(--green-2);stroke-width:3}
+.swap .plus{font:700 15px/1 var(--f-text);color:var(--muted)}
+.swap .x2{flex:none;font:400 20px/1 var(--f-sign);letter-spacing:.06em;color:var(--green-2)}
+.opt p.why-a{font:500 13.5px/1.35 var(--f-text);margin-top:6px}
+.opt p.why-a b{font-weight:700}
+.opt.alt{display:flex;gap:10px;align-items:center;padding:8px 8px 8px 8px}
+.opt.alt .mini{flex:none;width:112px;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.opt.alt .mini svg{width:112px;height:auto}
+.opt.alt .tg{display:inline-block;font:400 15px/1 var(--f-sign);letter-spacing:.08em;padding:3px 7px 2px;border-radius:3px;background:var(--rest-accent);color:var(--rest-text)}
+.opt.alt .tg.cap{background:var(--line);color:var(--text)}
+.opt.alt .tx{flex:1;min-width:0}
+.opt.alt h4{font:400 24px/1 var(--f-sign);letter-spacing:.05em}
+.opt.alt p{font:400 13px/1.3 var(--f-text);margin-top:3px;color:var(--text)}
+.opt.alt .pick{flex:none;width:56px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font:600 11.5px/1 var(--f-text);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:center}
+.opt.alt .pick i{display:block;width:26px;height:26px;border-radius:50%;box-shadow:inset 0 0 0 2.5px var(--line-strong);background:var(--bg)}
+.delta{margin-left:auto;font-weight:700;color:var(--green-2);white-space:nowrap}
+.down{border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--line);padding:8px 12px 9px}
+.down-h{display:flex;justify-content:space-between;align-items:baseline;font:600 12px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.down-h b{font:400 19px/1 var(--f-sign);letter-spacing:.07em;color:var(--text)}
+.down-g{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.dn{display:flex;align-items:center;gap:9px}
+.dn strong{display:block;font:600 12.5px/1.15 var(--f-text)}
+.dn span{display:block;font:400 12.5px/1.2 var(--f-text);color:var(--muted)}
+.dn .big{font:400 24px/1 var(--f-sign);letter-spacing:.04em;white-space:nowrap}
+.dn .big s{color:var(--muted-2);text-decoration:line-through;text-decoration-thickness:2px}
+.dn .big em{font-style:normal;color:var(--green-2)}
+.meter{position:relative;height:12px;margin-top:5px;border-radius:3px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line-strong)}
+.meter .band{position:absolute;top:0;bottom:0;background:var(--success-dark);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--success) 55%,transparent)}
+.meter .val{position:absolute;left:0;top:3px;bottom:3px;background:var(--success);border-radius:2px}
+.down-f{margin-top:5px;font:500 12.5px/1.2 var(--f-text);color:var(--muted)}
+.acts-r{display:grid;grid-template-columns:1fr 1.25fr;gap:8px;margin-top:6px}
+
+/* =====================================================================
+   6. F4 - PLAN APPLIED
+   ===================================================================== */
+.banner{display:flex;align-items:center;gap:10px;height:44px;padding:0 10px 0 12px;border-radius:9px;background:var(--text);color:var(--on-action)}
+.banner .ic{width:20px;height:20px;stroke-width:3}
+.banner b{font:400 21px/1 var(--f-sign);letter-spacing:.07em}
+.banner span{font:500 12.5px/1.2 var(--f-text);opacity:.92}
+.banner .undo{margin-left:auto;display:flex;align-items:center;gap:5px;height:34px;padding:0 10px;border-radius:6px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--on-action) 55%,transparent);font:400 18px/1 var(--f-sign);letter-spacing:.08em}
+.banner .undo .ic{width:15px;height:15px;stroke-width:2.8}
+.newtag{position:absolute;display:flex;align-items:center;justify-content:center;height:22px;padding:0 7px;border-radius:4px;background:var(--action);color:var(--on-action);font:400 16px/1 var(--f-sign);letter-spacing:.09em;white-space:nowrap}
+.newtag::after{content:"";position:absolute;left:50%;bottom:-5px;margin-left:-5px;border:5px solid transparent;border-bottom:0;border-top-color:var(--action)}
+.hold{display:flex;align-items:center;gap:12px}
+.hold-n{flex:none;font:400 62px/.8 var(--f-sign);letter-spacing:.02em;color:var(--rest-text)}
+.hold-n small{display:block;font:600 11.5px/1.1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.hold-t{flex:1;font:500 13.5px/1.35 var(--f-text)}
+.hold-t b{font-weight:700}
+.f4 .clwrap{padding:4px 2px 0}
+
+/* =====================================================================
+   7. F5 - NEXT SESSION
+   ===================================================================== */
+.hang{position:absolute;width:92px;border-radius:6px;background:var(--text);color:var(--on-action);text-align:center;padding:9px 6px 8px;box-shadow:0 8px 14px color-mix(in srgb,var(--text) 22%,transparent)}
+.hang::before{content:"";position:absolute;left:50%;top:6px;margin-left:-5px;width:10px;height:10px;border-radius:50%;background:var(--bg)}
+.hang b{display:block;margin-top:12px;font:400 38px/.9 var(--f-sign);letter-spacing:.08em}
+.hang span{display:block;margin-top:2px;font:600 11.5px/1.15 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--on-action) 82%,transparent)}
+.lockl{position:absolute;display:flex;align-items:center;gap:4px;font:400 20px/1 var(--f-sign);letter-spacing:.07em;color:var(--green-2);white-space:nowrap}
+.lockl .ic{width:15px;height:15px;stroke-width:2.8}
+.rx{display:flex;justify-content:space-between;align-items:center;height:48px;border-top:2.5px solid var(--text);border-bottom:1.5px solid var(--line);margin-top:6px}
+.rx .big{font:400 32px/1 var(--f-sign);letter-spacing:.04em}
+.rx .big i{font-style:normal;color:var(--muted);padding:0 3px}
+.rx .meta{text-align:right;font:600 12px/1.25 var(--f-text);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.rx .meta b{display:block;font:400 19px/1 var(--f-sign);letter-spacing:.05em;color:var(--rest-text)}
+.rule{display:flex;gap:10px;align-items:flex-start;padding:9px 0 9px;border-bottom:1.5px solid var(--line)}
+.rule .rd{flex:none;margin-top:1px}
+.rule h4{font:400 22px/1 var(--f-sign);letter-spacing:.06em;display:flex;align-items:center;gap:8px}
+.rule h4 em{font:600 11px/1 var(--f-text);font-style:normal;letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;border-radius:3px;background:var(--panel-2);color:var(--green-2);box-shadow:inset 0 0 0 1px var(--action)}
+.rule p{font:400 13.5px/1.36 var(--f-text);margin-top:3px}
+.rule p b{font-weight:700}
+.rule .math{display:block;margin-top:4px;font:400 20px/1 var(--f-sign);letter-spacing:.05em;color:var(--green-2)}
+.rule.alt{align-items:center;gap:10px}
+.rule.alt .mini{flex:none;width:128px}
+.rule.alt .mini svg{width:128px;height:auto}
+.rule.alt .tx{flex:1;min-width:0}
+.watch{display:flex;gap:10px;align-items:center;margin-top:8px;padding:9px 12px 9px 10px;border-radius:8px;background:var(--panel-3);box-shadow:inset 0 0 0 2px var(--amber)}
+.watch .wt{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--amber);color:var(--on-action)}
+.watch .wt .ic{width:22px;height:22px;stroke-width:2.6}
+.watch h4{font:400 21px/1 var(--f-sign);letter-spacing:.07em;color:var(--amber)}
+.watch p{font:500 13.5px/1.34 var(--f-text);margin-top:2px}
+.watch p b{font-weight:700}
+
+/* =====================================================================
+   8. F6 - RELOAD
+   ===================================================================== */
+.read{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:6px;padding:6px 0 8px;border-bottom:2.5px solid var(--text)}
+.read .rb small{display:block;font:600 11.5px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.read .rb b{font:400 84px/.78 var(--f-sign);letter-spacing:.015em;font-weight:400}
+.read .rb.now b{color:var(--text)}
+.read .rb.tgt{text-align:right}
+.read .rb.tgt b{color:var(--green-2)}
+.read .dl{align-self:center;display:flex;flex-direction:column;align-items:center;gap:2px;font:400 26px/1 var(--f-sign);letter-spacing:.06em;color:var(--green-2)}
+.read .dl .ic{width:30px;height:30px;stroke-width:2.4}
+.steps{list-style:none;margin-top:4px}
+.stp{display:flex;align-items:center;gap:12px;min-height:62px;padding:6px 0;border-bottom:1.5px solid var(--line)}
+.stp .rd{flex:none}
+.stp h5{font:400 26px/1 var(--f-sign);letter-spacing:.05em}
+.stp p{font:500 13.5px/1.3 var(--f-text);color:var(--muted);margin-top:3px}
+.stp .rt{margin-left:auto;text-align:right;font:400 30px/1 var(--f-sign);letter-spacing:.03em}
+.stp .rt small{display:block;font:600 11px/1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.stp.done h5{color:var(--success)}.stp.done .rt{color:var(--success)}
+.stp.cur{background:var(--panel-2);margin:0 -8px;padding:6px 8px;border-radius:9px;border-bottom:0;box-shadow:inset 0 0 0 2px var(--action)}
+.stp.cur h5{color:var(--green-2)}.stp.cur .rt{color:var(--green-2)}
+.stp.up h5{color:var(--text)}
+.f6 .bwrap{position:relative;margin:6px -2px 0}
+.side-l{position:absolute;font:600 11.5px/1 var(--f-text);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.slide-a{fill:none;stroke:var(--action);stroke-width:2.4;stroke-linecap:round}
+.slide-t{font:400 18px var(--f-sign);fill:var(--green-2);letter-spacing:.08em}
+
+@media (prefers-reduced-motion:no-preference){
+  @keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .swap .eq .ic,.slide-a{animation:nudge 1.8s ease-in-out infinite}
+  .pl.ghost.pulse .pl-b,.pl-halo{animation:pulse 2.2s ease-in-out infinite}
+}
+/* ----- additions ----- */
+.flow .scr{display:flex;flex-direction:column;gap:6px}
+u.pl{text-decoration:none;color:var(--muted);padding:0 2px}
+.pb-f .a{color:var(--amber);font-weight:700}
+.pb-f .s{margin-left:auto;color:var(--success);font-weight:700}
+.clk.rest{color:var(--rest-text)}
+.clk.rest small{color:var(--muted)}
+.dn .big i{font-style:normal;font-size:17px;color:var(--muted)}
+.hcord{fill:none;stroke:var(--text);stroke-width:2.4;stroke-linecap:round}
+.lead{position:absolute;width:0;border-left:2px dashed var(--green-2)}
+.eachs{position:absolute;left:0;top:100px;font:600 12px/1.25 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.f5 .eachs b{display:block;font:400 24px/1 var(--f-sign);letter-spacing:.04em;color:var(--text);margin-top:2px}
+.f3-h .say{font:500 14px/1.35 var(--f-text);margin-top:5px}
+.f3-h .nm{font-size:32px}
+/* ----- round 2 ----- */
+.log-main .lm{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.log-main .lm b{font:400 32px/.9 var(--f-sign);letter-spacing:.05em}
+.log-main .lm small{font:600 12px/1 var(--f-text);letter-spacing:.06em;text-transform:uppercase;opacity:1}
+.f2 .hero::before{content:"";position:absolute;left:-16px;right:-16px;top:-30px;bottom:-14px;background:radial-gradient(ellipse 60% 70% at 86% 50%,color-mix(in srgb,var(--amber) 24%,transparent),transparent 72%);pointer-events:none}
+.f2 .hero .bar{position:relative}
+.f2 .pip{height:50px}
+.pb-h{height:22px}
+.pb-h .l{font-size:24px}
+.pb-row{height:56px}
+.pb-f{height:20px;padding-right:28px;margin-top:4px}
+.f2-per{top:62px;font-size:21px}
+.tag-hz{height:32px;font-size:19px}
+.tag-hz span{padding:4px 8px 2px}
+.tag-hz .gro{top:5px}
+.tag-body{padding:8px 12px 12px}
+.sd{height:84px}
+.sd b{font-size:104px}
+.tag-ttl h3{font-size:32px}
+.tag-ttl p{font-size:13.5px;margin-top:5px}
+.gauge{margin-top:4px}
+.why-h{margin:6px 0 0}
+.why li{padding:5px 0}
+.why h5{font-size:21px}
+.tag-cta{height:50px;margin-top:6px}
+.opt.rec .bwrap{margin-top:8px;height:118px}
+.opt.rec .eachs{top:72px}
+.set{gap:9px}
+.dn .big .ar{font-style:normal;color:var(--muted);font-size:20px;padding:0 1px}
+.say2{font:500 13.5px/1.35 var(--f-text);padding:2px 2px 0}
+.f4 .hold{margin-top:2px}
+.f6 .read{padding-bottom:6px}
+.f6 .stp{min-height:62px}
+.f6 .read .rb b{font-size:92px}
+.f6 .btn{margin-top:auto;margin-bottom:10px}
+@media (prefers-reduced-motion:no-preference){@keyframes sway{0%{transform:rotate(-1.05deg)}100%{transform:rotate(-.1deg)}}.tag{animation:sway 4.8s ease-in-out infinite alternate}}
+.f6c{padding-top:2px}
+.banner{height:52px;padding-right:6px}
+.banner .undo{height:44px;padding:0 12px}
+.clk small{white-space:nowrap}
+/* ----- round 3 ----- */
+.pside{position:absolute;left:0;font:600 12px/1.2 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pside b{display:block;font:400 30px/1 var(--f-sign);letter-spacing:.04em;color:var(--text);margin-top:3px}
+.ctl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
+.step{display:flex;align-items:stretch;height:48px;border-radius:10px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line-strong);overflow:hidden}
+.sbtn{flex:none;width:46px;display:grid;place-items:center;color:var(--green-2)}
+.sbtn:first-child{box-shadow:inset -1.5px 0 var(--line)}
+.sbtn:last-child{box-shadow:inset 1.5px 0 var(--line)}
+.sbtn .ic{width:22px;height:22px;stroke-width:3}
+.sval{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.sval small{font:600 11.5px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sval b{font:400 28px/.9 var(--f-sign);letter-spacing:.03em}
+.act .pips{margin:6px 0 8px}
+.act{padding-bottom:10px}
+
+/* F2 round 3: lead with the numbers, shorter tag */
+.pips.fix{gap:5px}
+.pips.fix .pip{width:29px}
+.tag{height:auto}
+.lead2{display:flex;align-items:flex-end;gap:12px;height:80px}
+.n6{font:400 112px/.72 var(--f-sign);color:var(--amber);letter-spacing:-.01em}
+.ex{padding-bottom:2px}
+.ex span{display:block;font:700 12.5px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--text)}
+.ex b{display:block;font:400 64px/.78 var(--f-sign);letter-spacing:.02em;margin-top:6px}
+.out{margin-top:8px}
+.out h3{font:400 30px/.95 var(--f-sign);letter-spacing:.05em;color:var(--text)}
+.out p{font:500 14px/1.3 var(--f-text);margin-top:2px}
+.out p b{color:var(--amber);font-weight:800;font-size:15px}
+.gauge{margin-top:6px}
+.g-cap{font:700 11.5px var(--f-text);letter-spacing:.08em}
+
+/* F3 round 3: the swap is the hero of option A */
+.swaphero{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:8px 2px 2px}
+.sw-col{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sw-l{font:700 12px/1 var(--f-text);letter-spacing:.12em;text-transform:uppercase;color:var(--green-2)}
+.sw-pair{display:flex;align-items:center;gap:8px}
+.sw-pair .plus{font:700 22px/1 var(--f-text);color:var(--muted)}
+.swaphero > .ic{width:46px;height:46px;stroke-width:3;color:var(--action);margin-top:14px}
+.sw-x2{display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:12px}
+.sw-x2 b{font:400 50px/.86 var(--f-sign);letter-spacing:.02em;color:var(--green-2)}
+.sw-x2 span{font:700 12px/1.1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.opt.rec .bwrap{margin:6px -2px 0;height:96px}
+.opt.rec .hero-n{font-size:52px;top:0}
+.opt.rec .hero-n small{font-size:20px}
+.opt.rec .eachs{top:60px}
+.opt.rec .why-a{margin-top:4px}
+@media (prefers-reduced-motion:no-preference){.swaphero > .ic{animation:nudge 1.8s ease-in-out infinite}}
+
+/* F4 round 3 */
+.f4 .hold-n{font-size:52px}
+.f4 .hold{gap:10px}
+
+/* F5 round 3: conditions attached to the plate and to the bar they govern */
+.callout{position:absolute;padding:8px 10px 8px;border-radius:9px;background:var(--panel-2);box-shadow:inset 0 0 0 2px var(--green-2)}
+.callout h4{display:flex;align-items:center;gap:6px;font:400 22px/1 var(--f-sign);letter-spacing:.07em;color:var(--green-2)}
+.callout h4 .ic{width:16px;height:16px;stroke-width:3}
+.callout p{font:500 13px/1.3 var(--f-text);margin-top:3px}
+.callout p b{font-weight:800}
+.callout .math{display:block;margin-top:3px;font:400 18px/1 var(--f-sign);letter-spacing:.05em;color:var(--green-2)}
+.rx2{position:absolute;left:0;width:252px}
+.rx2 .big{font:400 40px/1 var(--f-sign);letter-spacing:.04em}
+.rx2 .big i{font-style:normal;color:var(--muted);padding:0 3px}
+.rx2 .meta{margin-top:6px;font:700 12px/1.25 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--rest-text)}
+.alt175{display:flex;gap:12px;align-items:center;padding:6px 0;border-top:2.5px solid var(--text);border-bottom:1.5px solid var(--line)}
+.a-bar{position:relative;flex:none;width:184px;height:112px}
+.a-tx{flex:1;min-width:0}
+.a-tx h4{font:400 24px/1 var(--f-sign);letter-spacing:.05em}
+.a-tx p{font:400 13px/1.3 var(--f-text);margin-top:4px}
+.a-tx p b{font-weight:700}
+.a-tx .math{display:block;margin-top:5px;font:400 17px/1.1 var(--f-sign);letter-spacing:.04em;color:var(--green-2)}
+.hang.cond{padding:6px 4px 6px;background:var(--panel-2);color:var(--green-2);box-shadow:inset 0 0 0 2px var(--action)}
+.hang.cond::before{margin-left:-4px;width:8px;height:8px;top:5px;box-shadow:inset 0 0 0 1.5px var(--action);background:var(--bg)}
+.hang.cond b{margin-top:10px;font-size:25px;letter-spacing:.06em}
+.watch{margin-top:2px}
+/* ----- round 3b ----- */
+.f2-per{top:74px}
+.lead2{height:70px}
+.n6{font-size:100px}
+.ex b{font-size:58px}
+.d2{position:absolute;left:128px;top:4px;display:flex;flex-direction:column;gap:2px}
+.d2 b{font:400 24px/1 var(--f-sign);letter-spacing:.05em;color:var(--green-2)}
+.d2 span{font:700 13px/1 var(--f-text);letter-spacing:.06em;color:var(--muted)}
+.nw{white-space:nowrap}
+.a-bar{height:136px}
+.a-tx .math{font-size:15px;letter-spacing:.02em}
+.hang.cond b{font-size:22px;letter-spacing:.05em;white-space:nowrap;margin-top:9px}
+.f5 .btn{margin-top:auto;margin-bottom:10px}
+/* ----- round 3c ----- */
+.a-bar{height:150px}
+.f3 .scr{gap:6px}
+.f5 .scr{gap:12px}
+/* ----- round 4: logging contract (set table, RPE, rest controls) + deload switches ----- */
+.flow .scr{gap:4px}
+.sess{display:flex;align-items:center;gap:6px;height:44px}
+.sess-l{flex:1;min-width:0;font:600 12px/1 var(--f-text);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.exr{display:flex;align-items:center;justify-content:space-between;height:44px}
+.exr .nm{font-size:32px}
+.dls{display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 2px 0 8px;font:700 11.5px/1 var(--f-text);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.dls-t{position:relative;flex:none;display:block;width:36px;height:14px;border-radius:7px;background:linear-gradient(var(--bg),var(--line) 55%,var(--line-strong));box-shadow:inset 0 0 0 1px var(--line-strong)}
+.dls-t b{position:absolute;left:-2px;top:-5px;width:15px;height:24px;border-radius:4px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--muted-2),0 1px 2px color-mix(in srgb,var(--text) 18%,transparent)}
+.dls-t.on{background:var(--line-strong)}
+.dls-t.on b{left:23px;background:var(--text);box-shadow:none}
+.dls.q{width:44px;padding:0;justify-content:center}
+.dls.q .dls-t{width:30px}
+.dls.q .dls-t.on b{left:17px}
+
+.stbl{display:flex;flex-direction:column;gap:3px}
+.th,.sr{display:grid;grid-template-columns:28px minmax(0,1fr) 52px 46px 50px 46px;column-gap:6px;align-items:center;padding:0 6px}
+.th{height:16px;font:700 11px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+.th span:nth-child(n+3){text-align:center}
+.sr{height:36px;border-radius:8px}
+.sr .fl{font:400 24px/1 var(--f-sign);text-align:center;color:var(--text)}
+.sr .wf{display:grid;place-items:center;height:22px;border-radius:4px;background:var(--text);color:var(--on-action);font-size:17px;letter-spacing:.04em}
+.sr .pv{font:400 20px/1 var(--f-sign);letter-spacing:.03em;color:var(--muted);white-space:nowrap}
+.sr .pvw{grid-column:2 / 6;font:500 12.5px/1.2 var(--f-text);color:var(--muted);white-space:nowrap}
+.sr .v{font:400 24px/1 var(--f-sign);letter-spacing:.03em;text-align:center}
+.sr .ck{justify-self:center;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--success);color:var(--on-action)}
+.sr .ck .ic{width:15px;height:15px;stroke-width:3.4}
+.sr.w{height:30px;background:transparent}
+.sr.done{background:var(--success-dark)}
+.sr.done.flagged .v:nth-child(4),.sr.done.flagged .v:nth-child(5){color:var(--amber)}
+.sr.done.flagged .ck{background:var(--amber)}
+.sr.q{opacity:.85}
+.sr.q .v,.sr.q .fl{color:var(--muted)}
+.sr.q .ck{background:transparent;box-shadow:inset 0 0 0 2px var(--line-strong)}
+.sr.q.chg .v.n{color:var(--green-2);font-weight:400}
+.sr.q.chg{box-shadow:inset 3px 0 0 var(--action)}
+.legend{font:500 11.5px/1.2 var(--f-text);color:var(--muted-2);padding:0 6px}
+
+.act{border-radius:12px;background:var(--surface);box-shadow:inset 0 0 0 2px var(--action);padding:4px 0 8px}
+.sr.cur{height:54px}
+.sr .fl.cur{color:var(--green-2);font-size:30px}
+.fld{height:46px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:var(--bg);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--action) 45%,transparent)}
+.fld b{font:400 26px/.9 var(--f-sign);letter-spacing:.03em;color:var(--muted)}
+.fld s{font:600 11px/1 var(--f-text);color:var(--muted-2);text-decoration-thickness:1.5px}
+.fld.chg b{color:var(--green-2)}
+.fld.rpe{box-shadow:none;border:2px dashed var(--line-strong);background:transparent}
+.fld.rpe b{font-size:22px;color:var(--muted-2)}
+.fld.rpe small{font:700 11px/1 var(--f-text);letter-spacing:.02em;color:var(--muted)}
+.ckb{justify-self:center;width:46px;height:46px;border-radius:10px;background:var(--action);color:var(--on-action);display:grid;place-items:center;box-shadow:inset 0 -4px 0 var(--green-2)}
+.ckb .ic{width:26px;height:26px;stroke-width:3.4}
+.pline{display:flex;align-items:center;gap:6px;padding:0 6px;margin-top:2px}
+.pline .pips{flex:1;min-width:0;gap:2px}
+.pline .pip{height:40px;font-size:16px;border-radius:5px;padding-bottom:4px}
+.pline .pip:nth-child(6){margin-left:6px}
+.mbtn{flex:none;width:44px;height:44px;border-radius:9px;display:grid;place-items:center;background:var(--bg);color:var(--green-2);box-shadow:inset 0 0 0 1.5px var(--line-strong)}
+.mbtn .ic{width:20px;height:20px;stroke-width:3}
+.rpel{display:flex;align-items:center;gap:6px;padding:0 6px;margin-top:6px}
+.rlab{flex:1;display:flex;flex-direction:column;gap:2px}
+.rlab b{font:400 22px/1 var(--f-sign);letter-spacing:.07em}
+.rlab span{font:600 11.5px/1 var(--f-text);letter-spacing:.04em;color:var(--muted)}
+.rchip{flex:none;width:44px;height:44px;border-radius:9px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line-strong);font:400 24px/1 var(--f-sign);color:var(--text)}
+.rchip.tgt{box-shadow:none;border:2px dashed var(--action);color:var(--green-2)}
+
+.rest2{display:flex;align-items:center;gap:4px;height:44px;padding:0 0 0 6px}
+.rest2 .rest-t{flex:none;font:400 22px/1 var(--f-sign);letter-spacing:.05em;color:var(--rest-text)}
+.rest2 .clampsvg{flex:1;min-width:0;height:auto}
+.rest2 .rest-g{flex:none;font:600 12px/1 var(--f-text);letter-spacing:.04em;color:var(--muted);margin-right:2px}
+.rbtn{flex:none;width:44px;height:44px;border-radius:9px;display:grid;place-items:center;background:var(--bg);color:var(--rest-text);font:400 19px/1 var(--f-sign);letter-spacing:.05em;box-shadow:inset 0 0 0 1.5px var(--rest-accent)}
+.rbtn.skip{color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line-strong)}
+
+.cstrip{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 12px;border-radius:10px;background:var(--panel-2);box-shadow:inset 3px 0 0 var(--action)}
+.cstrip > div{flex:1;min-width:0}
+.cstrip b{display:block;font:400 21px/1 var(--f-sign);letter-spacing:.06em;color:var(--green-2)}
+.cstrip p{font:500 13px/1.3 var(--f-text);margin-top:3px}
+.undo2{flex:none;display:flex;align-items:center;gap:6px;height:44px;padding:0 12px;border-radius:9px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--action);color:var(--green-2);font:400 19px/1 var(--f-sign);letter-spacing:.07em}
+.undo2 .ic{width:16px;height:16px;stroke-width:2.8}
+
+.up-h{gap:8px}
+.up-h span:nth-of-type(1){margin-left:auto}
+.up-h .colh{width:44px;text-align:center;font:700 11px/1 var(--f-text);letter-spacing:.02em}
+.up-r{height:44px;gap:10px}
+.up-r strong{font-size:13.5px}
+.up-r span{font-size:12px}
+.up-r em{font-size:26px}
+.up-r.chg .chip{font-size:13px}
+.night{font:500 12px/1.35 var(--f-text);color:var(--muted);padding:2px 2px 0}
+.night b{font:700 11px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;margin-right:7px;color:var(--text)}
+
+.acts-r.one{grid-template-columns:1fr}
+.note{font:500 13.5px/1.35 var(--f-text);padding:0 2px}
+.note b{font-weight:800}
+.acts5{display:grid;grid-template-columns:1.35fr 1fr;gap:8px}
+.acts5 .btn{height:52px}
+.acts5 .btn.hurt{font-size:15px}
+/* ----- round 4b ----- */
+.f5 .scr{gap:8px}
+.up-h{gap:4px}
+.legend{white-space:nowrap}
+/* ----- round 4c: slimmer header rows (44 px tap areas kept) ----- */
+.sess{height:36px}
+.exr{height:40px}
+.sess .dls{margin:-4px 0}
+.f4 .scr{gap:8px}
+/* ----- round 5: rest model, inline coach line ----- */
+.rest-l{flex:none;display:flex;flex-direction:column;gap:3px;width:98px}
+.rest-l .rest-t{line-height:.9}
+.rest-s{font:600 11.5px/1 var(--f-text);letter-spacing:.02em;color:var(--muted);white-space:nowrap}
+.legend{display:flex;justify-content:space-between;gap:8px}
+.legend .ic{width:11px;height:11px;stroke-width:3.6;vertical-align:-1px}
+.cline{display:flex;align-items:center;gap:4px;padding:2px 0 2px 9px;border-left:3px solid var(--action);margin:2px 0}
+.cline p{flex:1;font:500 13px/1.3 var(--f-text)}
+.cline p b{font-weight:800;color:var(--green-2)}
+.undo3{flex:none;display:flex;align-items:center;gap:5px;height:44px;padding:0 6px 0 8px;font:400 19px/1 var(--f-sign);letter-spacing:.07em;color:var(--green-2)}
+.undo3 .ic{width:16px;height:16px;stroke-width:2.8}
+/* ----- round 5b ----- */
+.rest-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;justify-content:center}
+.rest-m .clampsvg{flex:none;width:100%;height:auto}
+.rest2 .rest-t{padding-right:2px}
+.rest-l{display:none}
+.legend span{white-space:nowrap}
+.cline p{text-wrap:balance}
+.undo3{font-size:17px;padding:0 2px 0 6px}
+.legend .ic{display:inline-block}
+
+/* =====================================================================
+   V1 ADDITIONS (spec: coach-concepts/LOADED_BAR_SPEC.md)
+   ===================================================================== */
+.rd.p35 .rd-b{fill:var(--green-2)}
+.p35 .pl-b{fill:var(--green-2)}.p35 .pl-n{fill:var(--on-action)}
+.th,.sr{grid-template-columns:24px minmax(0,1fr) 46px 44px 48px 44px;column-gap:4px}
+.sr .pv{font-size:18px}
+.sr .pvw{grid-column:2 / 6}
+.sr .v{font-size:23px}
+.sr.cur{height:52px}
+.ckb{width:44px;height:44px}
+.fld b{color:var(--muted)}
+.fld.chg{box-shadow:inset 0 0 0 2px var(--amber)}
+.fld.chg b{color:var(--amber)}
+.fld s{color:var(--muted)}
+.fld.rpe small{font-size:11px;letter-spacing:0}
+.pips.vo{gap:3px}
+.pips.vo .pip{height:30px;font-size:15px;border-radius:5px;padding-bottom:3px}
+.pline{margin-top:0;gap:8px}
+.pline .pips{flex:1}
+.sr.q.rev{box-shadow:inset 3px 0 0 var(--amber)}
+.act.rev .undo3{flex:none}
+.finish{flex:none;height:40px;padding:0 14px;border-radius:9px;box-shadow:inset 0 0 0 1.5px var(--line-strong);font:400 20px/1 var(--f-sign);letter-spacing:.07em;color:var(--text)}
+.menu{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:9px;color:var(--text)}
+.menu .ic{width:24px;height:24px;fill:currentColor;stroke:none}
+.sess .dls{margin-left:auto}
+.sess-l{flex:none}
+.hero .ctag{position:absolute;bottom:0;max-width:304px;text-align:right;font:600 13px/1.3 var(--f-text);color:var(--amber);padding:0 11px 3px 0;border-bottom:1.5px solid var(--amber)}
+.acord{fill:none;stroke:var(--amber);stroke-width:2.2;stroke-linecap:round}
+.aknot{fill:var(--amber)}
+.swapb{padding:0}
+.swapb-eq{display:flex;align-items:center;gap:8px;min-height:58px}
+.swapb-eq .plus{font:700 20px/1 var(--f-text);color:var(--muted)}
+.swapb-eq .arr{width:36px;height:36px;color:var(--action);stroke-width:3;flex:none}
+.swapb-eq .x2{margin-left:auto;font:700 12px/1.2 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right}
+.swapb h3{font:400 31px/1 var(--f-sign);letter-spacing:.05em;color:var(--green-2);margin-top:4px}
+@media (prefers-reduced-motion:no-preference){.swapb-eq .arr{animation:nudge 1.8s ease-in-out infinite}}
+
+/* F1 today */
+.v1.f1 .scr{display:flex;flex-direction:column;gap:9px;padding-top:6px}
+.today-h .nm.xl{font-size:50px;line-height:.9}
+.today-h .sub{font:500 14px/1.3 var(--f-text);color:var(--muted);margin-top:4px}
+.exl{list-style:none}
+.exl li{display:flex;align-items:center;gap:12px;height:66px;border-bottom:1.5px solid var(--line)}
+.exl li > svg{flex:none}
+.exl li > div{flex:1;min-width:0}
+.exl strong{display:block;font:600 15px/1.2 var(--f-text)}
+.exl span{display:block;font:400 12.5px/1.25 var(--f-text);color:var(--muted);margin-top:2px}
+.exl .tg{color:var(--green-2);font-weight:700}
+.exl em{font:400 22px/1 var(--f-sign);font-style:normal;letter-spacing:.04em;color:var(--muted)}
+.exl li.lead{height:74px}
+.exl li.lead strong{font-size:16px}
+.note2{font:500 12.5px/1.35 var(--f-text);color:var(--muted)}
+.note2.q{font-size:12px}
+.worse{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 12px;border-radius:10px;box-shadow:inset 0 0 0 1.5px var(--line-strong);background:var(--bg)}
+.worse .dls-t{margin-left:6px}
+.worse b{display:block;font:700 14px/1.2 var(--f-text)}
+.worse small{display:block;font:500 12.5px/1.25 var(--f-text);color:var(--muted);margin-top:2px}
+.v1.f1 .acts5{margin-top:2px}
+.v1.f1 .night{padding:0}
+
+/* F6 sheet */
+.dim .scrim{position:absolute;left:0;right:0;top:0;bottom:0;z-index:5;background:color-mix(in srgb,var(--text) 44%,transparent)}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:6;background:var(--bg);border-radius:22px 22px 0 0;padding:10px 16px 22px;box-shadow:0 -12px 32px color-mix(in srgb,var(--text) 20%,transparent)}
+.grab{display:block;width:44px;height:5px;border-radius:3px;background:var(--line-strong);margin:0 auto 12px}
+.sheet h3{font:400 32px/1 var(--f-sign);letter-spacing:.04em}
+.sh-k{font:700 12px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sg{height:78px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:var(--bg);box-shadow:inset 0 0 0 1.5px var(--line-strong);color:var(--text)}
+.sg b{font:400 36px/1 var(--f-sign);letter-spacing:.03em}
+.sg span{font:600 12px/1 var(--f-text);color:var(--muted)}
+.sg.on{background:var(--action);color:var(--on-action);box-shadow:inset 0 -4px 0 var(--green-2)}
+.sg.on span{color:var(--on-action)}
+.sh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 0 14px;margin-top:14px;border-top:1.5px solid var(--line);border-bottom:1.5px solid var(--line)}
+.sh-row b{display:block;font:700 16px/1.2 var(--f-text)}
+.sh-row span{display:block;font:500 13px/1.3 var(--f-text);color:var(--muted);margin-top:2px}
+.sheet .btn{margin-top:14px;width:100%}
+
+/* F7 history */
+.hl{list-style:none}
+.he{display:grid;grid-template-columns:50px 76px 1fr;gap:10px;align-items:center;min-height:86px;border-bottom:1.5px solid var(--line);padding:6px 0}
+.he-d b{display:block;font:400 34px/.9 var(--f-sign);letter-spacing:.02em}
+.he-d span{display:block;font:700 11.5px/1.1 var(--f-text);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.he-t strong{display:block;font:600 15px/1.2 var(--f-text)}
+.he-t span{display:block;font:400 12.5px/1.3 var(--f-text);color:var(--muted);margin-top:3px}
+.dltag{display:inline-block;margin-left:8px;padding:3px 7px 2px;border-radius:3px;box-shadow:inset 0 0 0 1.5px var(--muted);font:700 11px/1 var(--f-text);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);vertical-align:1px}
+.dlg .pl-b{fill:transparent;stroke:var(--muted-2);stroke-width:1.4;stroke-dasharray:3 2}
+.dlg .pl-n,.dlg .pl-l{fill:var(--muted-2)}
+.dlg .pl-rim,.dlg .pl-hi{display:none}
+.skipg i{display:block;width:62px;height:0;border-top:2px dashed var(--line-strong)}
+.v1.flow .scr .today-h{padding-bottom:2px}
+
+/* page header: engine strip */
+.eng{width:100%;border-collapse:collapse;font:500 13.5px/1.35 var(--f-text)}
+.eng th{font:700 11.5px/1 var(--f-text);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:0 14px 8px 0;border-bottom:2px solid var(--text)}
+.eng td{padding:9px 14px 9px 0;border-bottom:1.5px solid var(--line);vertical-align:top}
+.eng td:first-child{font:400 22px/1 var(--f-sign);letter-spacing:.05em;white-space:nowrap}
+.eng td em{font-style:normal;font-weight:700;color:var(--green-2)}
+.eng td q{quotes:none;font-weight:600;color:var(--amber)}
+.engwrap{margin:0 0 36px;max-width:1500px}
+.v1note{font:500 16px/1.5 var(--f-text);max-width:62em;margin:0 0 18px}
+.v1note b{font-weight:800}
+.key .dkey{gap:14px}.key .dkey .dls-t{margin-right:4px}
+
+.key{list-style:none;display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin:0 0 34px;font:500 14px/1.2 var(--f-text);color:var(--text)}
+.key li{display:flex;align-items:center;gap:8px}
+.key .sep{width:2px;height:22px;background:var(--line-strong)}
+.kc{display:block;width:14px;height:14px;border-radius:3px}
+.kc-a{background:var(--amber)}.kc-g{background:var(--rest-accent)}.kc-s{background:var(--success)}.kc-b{background:var(--action)}
+</style>
+</head>
+<body>
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+    <linearGradient id="gSteel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="gs0"/><stop offset=".3" class="gs1"/><stop offset=".62" class="gs2"/><stop offset="1" class="gs3"/></linearGradient>
+    <linearGradient id="gSteelD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="gd0"/><stop offset="1" class="gd1"/></linearGradient>
+    <pattern id="knurl" width="4.2" height="4.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 .5H4.2M.5 0V4.2" class="kn"/></pattern>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><path d="M0 0V6" class="ht"/></pattern>
+  </defs></svg>
+<main class="page">
+  <header class="cover">
+    <div class="cover-id">
+      <svg class="rd p10 " viewBox="0 0 150 150" width="150" height="150" aria-hidden="true"><circle class="rd-b" cx="75" cy="75" r="73.5"/><circle class="rd-rim" cx="75" cy="75" r="60"/><circle class="rd-hub" cx="75" cy="75" r="16.5"/><text class="rd-n" x="75" y="45" font-size="51" text-anchor="middle" dominant-baseline="central">10</text><text class="rd-n" x="75" y="114" font-size="51" text-anchor="middle" dominant-baseline="central">v1</text></svg>
+      <div>
+        <p class="cv-k">Coach concept 10 &middot; built on the v1 engine</p>
+        <h1 class="cv-h">Loaded Bar</h1>
+        <p class="cv-t">The same bar, now showing <b>only what the v1 coach engine decides</b>: a start target per set, then one step on the next untouched set with one reason line.</p>
+      </div>
+    </div>
+    <div class="cover-three">
+      <div class="cv3"><h2>How it feels</h2><p>The set table sits right under the real equipment, loaded exactly to the active set's target. When the engine changes a load, the bar changes with it and the plate swap is spelled out.</p></div>
+      <div class="cv3"><h2>How the coach speaks</h2><p>In the engine's own sentences, word for word, on a one-line tag hung from the collar. It says nothing the rule did not decide.</p></div>
+      <div class="cv3"><h2>The trade-off</h2><p>v1 is quieter than the first concept: no statistical flag, no ranked causes, no options, no changes to other lifts or weekly volume. A rep step moves no plates, so the bar only changes when the load does.</p></div>
+    </div>
+  </header>
+  <p class="v1note"><b>This page is v1 behaviour, not a wish list.</b> The scenario below was produced by running <code>coach-engine.js</code> unmodified on synthetic data (bench, 4 sets, 8&ndash;10 reps, rest 2:30, 5 lb increment, history Oct 3, 10, 17 and 24). Every number and sentence in the frames is copied from that output; Previous values come from the same history.</p>
+  <div class="engwrap"><table class="eng">
+    <thead><tr><th>Moment</th><th>Logged</th><th>Targets after</th><th>The engine says (verbatim)</th></tr></thead>
+    <tbody>
+    <tr><td>Start &middot; Sat 31 Oct</td><td>Last time 185 &times; 10, 10, 9, 8</td><td><em>185 &times; 10 &middot; 185 &times; 10 &middot; 185 &times; 9 &middot; 185 &times; 8</em></td><td><q>Holding 185 lb: last time 10, 10, 9, 8 reps; typed RPE was 9 or lower.</q> <span style="color:var(--muted)">(code hold)</span></td></tr>
+    <tr><td>After set 1</td><td>185 &times; 9 @ RPE 8</td><td>No change</td><td>No revision, so no reason line.</td></tr>
+    <tr><td>After set 2</td><td>185 &times; 6 @ RPE 10</td><td>Set 3: 185 &times; 9 &rarr; <em>185 &times; 8</em></td><td><q>Set 3: -1 rep because set 2 was RPE 10.</q></td></tr>
+    <tr><td>After set 3</td><td>185 &times; 7 @ RPE 10</td><td>Set 4: 185 &times; 8 &rarr; <em>180 &times; 8</em></td><td><q>Set 4: -5 lb because set 3 was RPE 10.</q> <span style="color:var(--muted)">UI derives the plate swap: Swap each 25 for 10 + 10 + 2.5.</span></td></tr>
+    <tr><td>Next &middot; Thu 5 Nov</td><td>Set 4 done 180 &times; 8 @ RPE 9</td><td><em>185 &times; 10 &middot; 185 &times; 8 &middot; 185 &times; 8 &middot; 180 &times; 8</em></td><td><q>+1 rep: last time 9, 6, 7, 8 reps; typed RPE was 10 or lower.</q> <span style="color:var(--muted)">(code add_reps)</span></td></tr>
+    </tbody></table></div>
+  <ul class="key" aria-label="Key">
+    <li><svg class="rd p45 " viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><circle class="rd-b" cx="15" cy="15" r="13.5"/><circle class="rd-rim" cx="15" cy="15" r="12"/><text class="rd-n" x="15" y="15.56" font-size="14" text-anchor="middle" dominant-baseline="central">45</text></svg><span>45</span></li>
+    <li><svg class="rd p35 " viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><circle class="rd-b" cx="15" cy="15" r="13.5"/><circle class="rd-rim" cx="15" cy="15" r="12"/><text class="rd-n" x="15" y="15.56" font-size="14" text-anchor="middle" dominant-baseline="central">35</text></svg><span>35</span></li>
+    <li><svg class="rd p25 " viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><circle class="rd-b" cx="15" cy="15" r="13.5"/><circle class="rd-rim" cx="15" cy="15" r="12"/><text class="rd-n" x="15" y="15.56" font-size="14" text-anchor="middle" dominant-baseline="central">25</text></svg><span>25</span></li>
+    <li><svg class="rd p10 " viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><circle class="rd-b" cx="15" cy="15" r="13.5"/><circle class="rd-rim" cx="15" cy="15" r="12"/><text class="rd-n" x="15" y="15.56" font-size="14" text-anchor="middle" dominant-baseline="central">10</text></svg><span>10</span></li>
+    <li><svg class="rd p5 " viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><circle class="rd-b" cx="15" cy="15" r="13.5"/><circle class="rd-rim" cx="15" cy="15" r="12"/><text class="rd-n" x="15" y="15.56" font-size="14" text-anchor="middle" dominant-baseline="central">5</text></svg><span>5</span></li>
+    <li><svg class="rd p2 " viewBox="0 0 30 30" width="30" height="30" aria-hidden="true"><circle class="rd-b" cx="15" cy="15" r="13.5"/><circle class="rd-rim" cx="15" cy="15" r="12"/><text class="rd-n" x="15" y="15.48" font-size="12" text-anchor="middle" dominant-baseline="central">2.5</text></svg><span>2.5 lb &middot; 45 lb bar &middot; greedy from the largest</span></li>
+    <li class="sep"></li>
+    <li><i class="kc kc-a"></i><span>Amber: the coach changed a target</span></li>
+    <li><i class="kc kc-g"></i><span>Gold: rest clamp</span></li>
+    <li><i class="kc kc-s"></i><span>Green: logged</span></li>
+    <li><i class="kc kc-b"></i><span>Blue: what to do next</span></li>
+  </ul>
+  <div class="stage">
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F1</span><div><span class="ft">Today</span><span class="fs">Planned Upper A &middot; Start, or skip for injury</span></div></div>
+    <div class="phone v1 f1" data-frame="F1" aria-label="F1 Today">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <header class="today-h">
+          <p class="kick">Sat 31 Oct &middot; planned</p>
+          <h2 class="nm xl">Upper A</h2>
+          <p class="sub">Hypertrophy block 2 &middot; week 4 of 6</p>
+        </header>
+        <p class="night"><b>Last night &middot; Sat 31 Oct</b>Sleep 5 h 48 m, below your usual 7 h 21 m &middot; HRV 38 ms, below your 52 &middot; resting HR 61, above your 55</p>
+        <ul class="exl">
+          <li class="lead"><svg class="bar" viewBox="0 0 92 50" width="92" height="50" role="img" aria-label="Bench bar loaded to 185"><rect class="shaft" x="-2" y="21.5" width="25" height="7" fill="url(#gSteel)"/><rect class="knurl" x="6" y="21.5" width="22" height="7" fill="url(#knurl)"/><line class="ring" x1="6" x2="6" y1="21.5" y2="28.5"/><line class="ring" x1="28" x2="28" y1="21.5" y2="28.5"/><rect class="sleeve" x="23" y="19" width="69" height="12" rx="2" fill="url(#gSteel)"/><rect class="cap" x="84" y="20" width="8" height="10" rx="4" fill="url(#gSteelD)"/><rect class="sh" x="23" y="15" width="6" height="20" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="32" y="4.5" width="16" height="41" rx="3"/><rect class="pl-rim" x="34.5" y="7.5" width="11" height="35" rx="2"/><rect class="pl-hi" x="33.8" y="9.5" width="2" height="31" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="40" y="-0.5">45</text></g><g class="pl p25 "><rect class="pl-b" x="50" y="8.5" width="14" height="33" rx="3"/><rect class="pl-rim" x="52.5" y="11.5" width="9" height="27" rx="2"/><rect class="pl-hi" x="51.8" y="13.5" width="2" height="23" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="57" y="3.5">25</text></g><g class="col steel"><rect class="col-lever" x="70.8" y="4" width="6.4" height="9" rx="2.5"/><rect class="col-b" x="69" y="10" width="10" height="30" rx="3.5"/><rect class="col-hi" x="71" y="14" width="2" height="22" rx="1"/><circle class="col-pin" cx="74" cy="13" r="1.6"/></g></svg><div><strong>Barbell Bench Press</strong><span class="tg">10 &middot; 10 &middot; 9 &middot; 8 reps at 185 lb</span></div><em>4 sets</em></li>
+          <li><svg class="eqa" viewBox="0 0 64 40" width="92" height="44" aria-hidden="true">
+    <path class="eq-lever" d="M7 33 L48 14"/>
+    <circle class="eq-pivot" cx="7" cy="33" r="4"/>
+    <g transform="rotate(-24 50 14)"><rect class="eq-h" x="45" y="-1" width="8" height="30" rx="2"/><rect class="eq-h2" x="54" y="2" width="6" height="24" rx="2"/></g>
+  </svg><div><strong>Chest-Supported T-Bar Row</strong><span class="tg">12 &middot; 12 &middot; 11 &middot; 10 reps at 90 lb</span></div><em>4 sets</em></li>
+          <li><svg class="eqa" viewBox="0 0 64 40" width="92" height="44" aria-hidden="true"><rect class="eq-h" x="5" y="3" width="11" height="16" rx="3"/><rect class="eq-h" x="39" y="3" width="11" height="16" rx="3"/><rect class="eq-g" x="16" y="9" width="23" height="4" rx="1.5"/><rect class="eq-h" x="11" y="21" width="11" height="16" rx="3"/><rect class="eq-h" x="45" y="21" width="11" height="16" rx="3"/><rect class="eq-g" x="22" y="27" width="23" height="4" rx="1.5"/></svg><div><strong>Incline Dumbbell Press</strong><span class="tg">12 &middot; 12 &middot; 11 reps at 55s</span></div><em>3 sets</em></li>
+          <li><svg class="eqa" viewBox="0 0 64 44" width="92" height="44" aria-hidden="true"><line class="eq-rod" x1="20" x2="20" y1="1" y2="44"/><line class="eq-rod" x1="44" x2="44" y1="1" y2="44"/><rect class="eq-slab lift" x="22" y="2" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="4.5" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="7" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="9.5" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="12" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="14.5" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="17" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="19.5" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="22" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="24.5" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="27" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="29.5" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="32" width="20" height="1.4" rx="1"/><rect class="eq-slab lift" x="22" y="34.5" width="20" height="1.4" rx="1"/><rect class="eq-slab " x="22" y="37" width="20" height="1.4" rx="1"/><rect class="eq-slab " x="22" y="39.5" width="20" height="1.4" rx="1"/><line class="eq-pin" x1="22" x2="55" y1="35.25" y2="35.25"/><circle class="eq-pinhead" cx="56" cy="35.25" r="3.5"/></svg><div><strong>Lat Pulldown</strong><span class="tg">12 &middot; 11 &middot; 11 reps at 140 lb</span></div><em>3 sets</em></li>
+          <li><svg class="eqa" viewBox="0 0 64 44" width="92" height="44" aria-hidden="true"><line class="eq-rod" x1="20" x2="20" y1="1" y2="44"/><line class="eq-rod" x1="44" x2="44" y1="1" y2="44"/><rect class="eq-slab lift" x="22" y="2" width="20" height="2.23" rx="1"/><rect class="eq-slab lift" x="22" y="5.33" width="20" height="2.23" rx="1"/><rect class="eq-slab lift" x="22" y="8.67" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="12" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="15.33" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="18.67" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="22" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="25.33" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="28.67" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="32" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="35.33" width="20" height="2.23" rx="1"/><rect class="eq-slab " x="22" y="38.67" width="20" height="2.23" rx="1"/><line class="eq-pin" x1="22" x2="55" y1="9.83" y2="9.83"/><circle class="eq-pinhead" cx="56" cy="9.83" r="3.5"/><path class="eq-cable" d="M32 2 V0"/></svg><div><strong>Cable Lateral Raise</strong><span class="tg">15 &middot; 15 &middot; 13 reps at 15 lb</span></div><em>3 sets</em></li>
+        </ul>
+        <p class="note2">Start targets, set by the v1 coach from your last sessions. You can change any value as you log.</p>
+        <button class="worse" type="button" aria-pressed="false"><i class="dls-t"><b></b></i><span><b>Worse than usual today</b><small>No increases, and one set fewer per lift.</small></span></button>
+        <div class="acts5"><button class="btn pri" type="button">Start</button><button class="btn hurt" type="button">Injured &mdash; skip</button></div>
+        <p class="note2 q">Skipping for injury is not a failure and not a missed session.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F2</span><div><span class="ft">Logging set 2</span><span class="fs">Bench 185 &middot; set 1 logged &middot; set 2 up with placeholders</span></div></div>
+    <div class="phone v1 flow" data-frame="F2" aria-label="F2 Logging set 2">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <div class="sess"><span class="sess-l">Upper A &middot; 23:19</span><button class="dls" type="button" aria-pressed="false" aria-label="This whole session was a deload"><i class="dls-t"><b></b></i><span>Session deload</span></button><button class="finish" type="button">Finish</button></div>
+        <header class="exr"><h2 class="nm">Barbell Bench Press</h2><button class="menu" type="button" aria-label="Exercise menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></header>
+        <section class="hero" style="height:114px">
+          <svg class="bar" viewBox="0 0 358 114" width="358" height="114" role="img" aria-label="Barbell loaded to 185 pounds, each side 45 + 25"><rect class="shaft" x="-16" y="52.5" width="283" height="9" fill="url(#gSteel)"/><rect class="knurl" x="22" y="52.5" width="207" height="9" fill="url(#knurl)"/><line class="ring" x1="22" x2="22" y1="52.5" y2="61.5"/><line class="ring" x1="229" x2="229" y1="52.5" y2="61.5"/><rect class="sleeve" x="267" y="49" width="91" height="16" rx="2" fill="url(#gSteel)"/><rect class="cap" x="347" y="50" width="11" height="14" rx="5" fill="url(#gSteelD)"/><rect class="sh" x="267" y="44" width="8" height="26" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="278" y="3.5" width="23" height="107" rx="3"/><rect class="pl-rim" x="280.5" y="6.5" width="18" height="101" rx="2"/><rect class="pl-hi" x="279.8" y="8.5" width="2" height="97" rx="1"/><text class="pl-n" font-size="21" text-anchor="middle" transform="translate(296.85 26.75) rotate(-90)">45</text></g><g class="pl p25 "><rect class="pl-b" x="303" y="14" width="20" height="86" rx="3"/><rect class="pl-rim" x="305.5" y="17" width="15" height="80" rx="2"/><rect class="pl-hi" x="304.8" y="19" width="2" height="76" rx="1"/><text class="pl-n" font-size="18" text-anchor="middle" transform="translate(319.3 32) rotate(-90)">25</text></g><g class="col steel"><rect class="col-lever" x="330.34" y="29.7" width="8.32" height="11.7" rx="2.5"/><rect class="col-b" x="328" y="37.5" width="13" height="39" rx="3.5"/><rect class="col-hi" x="330" y="41.5" width="2" height="31" rx="1"/><circle class="col-pin" cx="334.5" cy="41.4" r="1.6"/></g></svg>
+          <div class="hero-n" style="font-size:62px">185<small style="font-size:22px">LB</small></div>
+          <div class="pside" style="top:62px"><span>Each side</span><b><i class="sw p45"></i>45 <u class="pl">+</u> <i class="sw p25"></i>25</b></div>
+          
+        </section>
+        <div class="stbl">
+          <div class="th"><span>Set</span><span>Previous</span><span>Lb</span><span>Reps</span><span>RPE</span><span></span></div>
+          <div class="sr w"><span class="fl wf">W</span><span class="pvw">4 warm-ups &middot; 45 &middot; 95 &middot; 135 &middot; 165</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">1</span><span class="pv">185 &times; 10 @ 7.5</span><span class="v">185</span><span class="v">9</span><span class="v">8</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="rest2"><span class="rest-t">Rest 0:58</span><div class="rest-m"><svg class="clampsvg" viewBox="0 0 120 30" width="120" height="30" role="img" aria-label="Rest 92s of 150s"><rect class="cl-sleeve" x="4" y="13" width="104" height="8" rx="3" fill="url(#gSteel)"/><rect class="cl-fill" x="4" y="13" width="54.29" height="8" rx="3"/><rect class="cl-stop " x="98" y="7" width="16" height="20" rx="3"/><rect class="cl-collar" x="50.29" y="7" width="16" height="20" rx="3.5"/><rect class="cl-lever" x="53.29" y="1" width="10" height="8" rx="2"/><rect class="cl-hi" x="52.79" y="11" width="2" height="12" rx="1"/></svg><span class="rest-s">of 2:30</span></div><button class="rbtn" type="button" aria-label="15 seconds less rest">&minus;15</button><button class="rbtn" type="button" aria-label="15 seconds more rest">+15</button><button class="rbtn skip" type="button" aria-label="Skip rest">Skip</button></div>
+          <div class="act">
+          <div class="sr cur"><span class="fl cur">2</span><span class="pv">185 &times; 10 @ 8</span>
+            <button class="fld ph" type="button" aria-label="Load, placeholder 185"><b>185</b></button>
+            <button class="fld ph" type="button" aria-label="Reps, placeholder 10"><b>10</b></button>
+            <button class="fld rpe" type="button" aria-label="RPE, empty. Target band 7 to 9"><b>&mdash;</b><small>target 7&ndash;9</small></button>
+            <button class="ckb" type="button" aria-label="Accept the load and reps and complete the set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></button></div>
+          <div class="pline"><div class="pips vo"><span class="pip tgt">1</span><span class="pip tgt">2</span><span class="pip tgt">3</span><span class="pip tgt">4</span><span class="pip tgt">5</span><span class="pip tgt">6</span><span class="pip tgt">7</span><span class="pip tgt">8</span><span class="pip tgt">9</span><span class="pip tgt">10</span></div></div>
+        </div>
+          <div class="sr q"><span class="fl">3</span><span class="pv">185 &times; 9 @ 8.5</span><span class="v">185</span><span class="v">9</span><span class="v">&middot;</span><span class="ck"></span></div>
+          <div class="sr q"><span class="fl">4</span><span class="pv">185 &times; 8 @ 9</span><span class="v">185</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div>
+        </div>
+        <section class="up"><div class="up-h"><b>Up next</b><span>then 2 more lifts</span></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 40" width="48" height="30" aria-hidden="true">
+    <path class="eq-lever" d="M7 33 L48 14"/>
+    <circle class="eq-pivot" cx="7" cy="33" r="4"/>
+    <g transform="rotate(-24 50 14)"><rect class="eq-h" x="45" y="-1" width="8" height="30" rx="2"/><rect class="eq-h2" x="54" y="2" width="6" height="24" rx="2"/></g>
+  </svg><div><strong>Chest-Supported T-Bar Row</strong><span>12 &middot; 12 &middot; 11 &middot; 10 reps</span></div><em>90<small>LB</small></em></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 40" width="48" height="30" aria-hidden="true"><rect class="eq-h" x="5" y="3" width="11" height="16" rx="3"/><rect class="eq-h" x="39" y="3" width="11" height="16" rx="3"/><rect class="eq-g" x="16" y="9" width="23" height="4" rx="1.5"/><rect class="eq-h" x="11" y="21" width="11" height="16" rx="3"/><rect class="eq-h" x="45" y="21" width="11" height="16" rx="3"/><rect class="eq-g" x="22" y="27" width="23" height="4" rx="1.5"/></svg><div><strong>Incline Dumbbell Press</strong><span>12 &middot; 12 &middot; 11 reps</span></div><em>55s</em></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 30" width="48" height="30" aria-hidden="true"><line class="eq-rod" x1="20" x2="20" y1="1" y2="30"/><line class="eq-rod" x1="44" x2="44" y1="1" y2="30"/><rect class="eq-slab lift" x="22" y="2" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="3.63" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="5.25" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="6.88" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="8.5" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="10.13" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="11.75" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="13.38" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="15" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="16.63" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="18.25" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="19.88" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="21.5" width="20" height="0.52" rx="1"/><rect class="eq-slab lift" x="22" y="23.13" width="20" height="0.52" rx="1"/><rect class="eq-slab " x="22" y="24.75" width="20" height="0.52" rx="1"/><rect class="eq-slab " x="22" y="26.38" width="20" height="0.52" rx="1"/><line class="eq-pin" x1="22" x2="55" y1="23.44" y2="23.44"/><circle class="eq-pinhead" cx="56" cy="23.44" r="3.5"/></svg><div><strong>Lat Pulldown</strong><span>12 &middot; 11 &middot; 11 reps</span></div><em>140<small>LB</small></em></div></section>
+      </div>
+    </div>
+  </section>
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F3</span><div><span class="ft">After set 2</span><span class="fs">Set 2 logged 185 &times; 6 @ 10 &middot; set 3 revised 9 to 8 reps</span></div></div>
+    <div class="phone v1 flow" data-frame="F3" aria-label="F3 After set 2">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <div class="sess"><span class="sess-l">Upper A &middot; 24:22</span><button class="dls" type="button" aria-pressed="false" aria-label="This whole session was a deload"><i class="dls-t"><b></b></i><span>Session deload</span></button><button class="finish" type="button">Finish</button></div>
+        <header class="exr"><h2 class="nm">Barbell Bench Press</h2><button class="menu" type="button" aria-label="Exercise menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></header>
+        <section class="hero" style="height:140px">
+          <svg class="bar" viewBox="0 0 358 114" width="358" height="114" role="img" aria-label="Barbell loaded to 185 pounds, each side 45 + 25"><rect class="shaft" x="-16" y="52.5" width="283" height="9" fill="url(#gSteel)"/><rect class="knurl" x="22" y="52.5" width="207" height="9" fill="url(#knurl)"/><line class="ring" x1="22" x2="22" y1="52.5" y2="61.5"/><line class="ring" x1="229" x2="229" y1="52.5" y2="61.5"/><rect class="sleeve" x="267" y="49" width="91" height="16" rx="2" fill="url(#gSteel)"/><rect class="cap" x="347" y="50" width="11" height="14" rx="5" fill="url(#gSteelD)"/><rect class="sh" x="267" y="44" width="8" height="26" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="278" y="3.5" width="23" height="107" rx="3"/><rect class="pl-rim" x="280.5" y="6.5" width="18" height="101" rx="2"/><rect class="pl-hi" x="279.8" y="8.5" width="2" height="97" rx="1"/><text class="pl-n" font-size="21" text-anchor="middle" transform="translate(296.85 26.75) rotate(-90)">45</text></g><g class="pl p25 "><rect class="pl-b" x="303" y="14" width="20" height="86" rx="3"/><rect class="pl-rim" x="305.5" y="17" width="15" height="80" rx="2"/><rect class="pl-hi" x="304.8" y="19" width="2" height="76" rx="1"/><text class="pl-n" font-size="18" text-anchor="middle" transform="translate(319.3 32) rotate(-90)">25</text></g><g class="col flag"><rect class="col-lever" x="330.34" y="29.7" width="8.32" height="11.7" rx="2.5"/><rect class="col-b" x="328" y="37.5" width="13" height="39" rx="3.5"/><rect class="col-hi" x="330" y="41.5" width="2" height="31" rx="1"/><circle class="col-pin" cx="334.5" cy="41.4" r="1.6"/></g><path class="acord" d="M334.5 76.5 C 334.5 101.25 334.5 118 334.5 126"/><ellipse class="acord" cx="334.5" cy="57" rx="3.2" ry="11.5"/><circle class="aknot" cx="334.5" cy="126" r="3.4"/></svg>
+          <div class="hero-n" style="font-size:62px">185<small style="font-size:22px">LB</small></div>
+          <div class="pside" style="top:62px"><span>Each side</span><b><i class="sw p45"></i>45 <u class="pl">+</u> <i class="sw p25"></i>25</b></div>
+          <p class="ctag" style="right:17.5px">Set 3: -1 rep because set 2 was RPE 10.</p>
+        </section>
+        <div class="stbl">
+          <div class="th"><span>Set</span><span>Previous</span><span>Lb</span><span>Reps</span><span>RPE</span><span></span></div>
+          <div class="sr w"><span class="fl wf">W</span><span class="pvw">4 warm-ups &middot; 45 &middot; 95 &middot; 135 &middot; 165</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">1</span><span class="pv">185 &times; 10 @ 7.5</span><span class="v">185</span><span class="v">9</span><span class="v">8</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">2</span><span class="pv">185 &times; 10 @ 8</span><span class="v">185</span><span class="v">6</span><span class="v">10</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="rest2"><span class="rest-t">Rest 2:18</span><div class="rest-m"><svg class="clampsvg" viewBox="0 0 120 30" width="120" height="30" role="img" aria-label="Rest 12s of 150s"><rect class="cl-sleeve" x="4" y="13" width="104" height="8" rx="3" fill="url(#gSteel)"/><rect class="cl-fill" x="4" y="13" width="10.56" height="8" rx="3"/><rect class="cl-stop " x="98" y="7" width="16" height="20" rx="3"/><rect class="cl-collar" x="6.56" y="7" width="16" height="20" rx="3.5"/><rect class="cl-lever" x="9.56" y="1" width="10" height="8" rx="2"/><rect class="cl-hi" x="9.06" y="11" width="2" height="12" rx="1"/></svg><span class="rest-s">of 2:30</span></div><button class="rbtn" type="button" aria-label="15 seconds less rest">&minus;15</button><button class="rbtn" type="button" aria-label="15 seconds more rest">+15</button><button class="rbtn skip" type="button" aria-label="Skip rest">Skip</button></div>
+          <div class="act rev">
+          <div class="sr cur"><span class="fl cur">3</span><span class="pv">185 &times; 9 @ 8.5</span>
+            <button class="fld ph" type="button" aria-label="Load, placeholder 185"><b>185</b></button>
+            <button class="fld ph chg" type="button" aria-label="Reps, placeholder 8"><b>8</b><s>9</s></button>
+            <button class="fld rpe" type="button" aria-label="RPE, empty. Target band 7 to 9"><b>&mdash;</b><small>target 7&ndash;9</small></button>
+            <button class="ckb" type="button" aria-label="Accept the load and reps and complete the set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></button></div>
+          <div class="pline"><div class="pips vo"><span class="pip tgt">1</span><span class="pip tgt">2</span><span class="pip tgt">3</span><span class="pip tgt">4</span><span class="pip tgt">5</span><span class="pip tgt">6</span><span class="pip tgt">7</span><span class="pip tgt">8</span><span class="pip gst2">9</span></div><button class="undo3" type="button" aria-label="Undo the coach's change to this set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 8"/></svg>Undo</button></div>
+        </div>
+          <div class="sr q"><span class="fl">4</span><span class="pv">185 &times; 8 @ 9</span><span class="v">185</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div>
+        </div>
+        <section class="up"><div class="up-h"><b>Up next</b><span>then 3 more lifts</span></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 40" width="48" height="30" aria-hidden="true">
+    <path class="eq-lever" d="M7 33 L48 14"/>
+    <circle class="eq-pivot" cx="7" cy="33" r="4"/>
+    <g transform="rotate(-24 50 14)"><rect class="eq-h" x="45" y="-1" width="8" height="30" rx="2"/><rect class="eq-h2" x="54" y="2" width="6" height="24" rx="2"/></g>
+  </svg><div><strong>Chest-Supported T-Bar Row</strong><span>12 &middot; 12 &middot; 11 &middot; 10 reps</span></div><em>90<small>LB</small></em></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 40" width="48" height="30" aria-hidden="true"><rect class="eq-h" x="5" y="3" width="11" height="16" rx="3"/><rect class="eq-h" x="39" y="3" width="11" height="16" rx="3"/><rect class="eq-g" x="16" y="9" width="23" height="4" rx="1.5"/><rect class="eq-h" x="11" y="21" width="11" height="16" rx="3"/><rect class="eq-h" x="45" y="21" width="11" height="16" rx="3"/><rect class="eq-g" x="22" y="27" width="23" height="4" rx="1.5"/></svg><div><strong>Incline Dumbbell Press</strong><span>12 &middot; 12 &middot; 11 reps</span></div><em>55s</em></div></section>
+      </div>
+    </div>
+  </section>
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F4</span><div><span class="ft">After set 3</span><span class="fs">Set 3 logged 185 &times; 7 @ 10 &middot; set 4 now 180 &times; 8</span></div></div>
+    <div class="phone v1 flow" data-frame="F4" aria-label="F4 After set 3">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <div class="sess"><span class="sess-l">Upper A &middot; 27:05</span><button class="dls" type="button" aria-pressed="false" aria-label="This whole session was a deload"><i class="dls-t"><b></b></i><span>Session deload</span></button><button class="finish" type="button">Finish</button></div>
+        <header class="exr"><h2 class="nm">Barbell Bench Press</h2><button class="menu" type="button" aria-label="Exercise menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></header>
+        <section class="hero" style="height:140px">
+          <svg class="bar" viewBox="0 0 358 114" width="358" height="114" role="img" aria-label="Barbell loaded to 180 pounds, each side 45 + 10 + 10 + 2.5"><rect class="shaft" x="-16" y="52.5" width="261" height="9" fill="url(#gSteel)"/><rect class="knurl" x="22" y="52.5" width="185" height="9" fill="url(#knurl)"/><line class="ring" x1="22" x2="22" y1="52.5" y2="61.5"/><line class="ring" x1="207" x2="207" y1="52.5" y2="61.5"/><rect class="sleeve" x="245" y="49" width="113" height="16" rx="2" fill="url(#gSteel)"/><rect class="cap" x="347" y="50" width="11" height="14" rx="5" fill="url(#gSteelD)"/><rect class="sh" x="245" y="44" width="8" height="26" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="256" y="3.5" width="23" height="107" rx="3"/><rect class="pl-rim" x="258.5" y="6.5" width="18" height="101" rx="2"/><rect class="pl-hi" x="257.8" y="8.5" width="2" height="97" rx="1"/><text class="pl-n" font-size="21" text-anchor="middle" transform="translate(274.85 26.75) rotate(-90)">45</text></g><g class="pl p10 new"><rect class="pl-halo" x="277.5" y="22.5" width="22" height="69" rx="5"/><rect class="pl-b" x="281" y="26" width="15" height="62" rx="3"/><rect class="pl-rim" x="283.5" y="29" width="10" height="56" rx="2"/><rect class="pl-hi" x="282.8" y="31" width="2" height="52" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="288.5" y="21">10</text></g><g class="pl p10 new"><rect class="pl-halo" x="294.5" y="22.5" width="22" height="69" rx="5"/><rect class="pl-b" x="298" y="26" width="15" height="62" rx="3"/><rect class="pl-rim" x="300.5" y="29" width="10" height="56" rx="2"/><rect class="pl-hi" x="299.8" y="31" width="2" height="52" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="305.5" y="21">10</text></g><g class="pl p2 new"><rect class="pl-halo" x="311.5" y="37" width="15" height="40" rx="5"/><rect class="pl-b" x="315" y="40.5" width="8" height="33" rx="3"/><rect class="pl-rim" x="317.5" y="43.5" width="3" height="27" rx="2"/><rect class="pl-hi" x="316.8" y="45.5" width="2" height="23" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="319" y="35.5">2.5</text></g><g class="col flag"><rect class="col-lever" x="330.34" y="29.7" width="8.32" height="11.7" rx="2.5"/><rect class="col-b" x="328" y="37.5" width="13" height="39" rx="3.5"/><rect class="col-hi" x="330" y="41.5" width="2" height="31" rx="1"/><circle class="col-pin" cx="334.5" cy="41.4" r="1.6"/></g><path class="acord" d="M334.5 76.5 C 334.5 101.25 334.5 118 334.5 126"/><ellipse class="acord" cx="334.5" cy="57" rx="3.2" ry="11.5"/><circle class="aknot" cx="334.5" cy="126" r="3.4"/></svg>
+          <div class="hero-n" style="font-size:62px">180<small style="font-size:22px">LB</small></div>
+          <div class="pside" style="top:62px"><span>Each side</span><b><i class="sw p45"></i>45 <u class="pl">+</u> <i class="sw p10"></i>10 <u class="pl">+</u> <i class="sw p10"></i>10 <u class="pl">+</u> <i class="sw p2"></i>2.5</b></div>
+          <p class="ctag" style="right:17.5px">Set 4: -5 lb because set 3 was RPE 10.</p>
+        </section>
+        <section class="swapb" aria-label="Plate change">
+          <div class="swapb-eq"><svg class="rd p25 " viewBox="0 0 58 58" width="58" height="58" aria-hidden="true"><circle class="rd-b" cx="29" cy="29" r="27.5"/><circle class="rd-rim" cx="29" cy="29" r="23.2"/><text class="rd-n" x="29" y="30.16" font-size="29" text-anchor="middle" dominant-baseline="central">25</text></svg><svg class="ic arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg><svg class="rd p10 " viewBox="0 0 46 46" width="46" height="46" aria-hidden="true"><circle class="rd-b" cx="23" cy="23" r="21.5"/><circle class="rd-rim" cx="23" cy="23" r="18.4"/><text class="rd-n" x="23" y="23.92" font-size="23" text-anchor="middle" dominant-baseline="central">10</text></svg><span class="plus">+</span><svg class="rd p10 " viewBox="0 0 46 46" width="46" height="46" aria-hidden="true"><circle class="rd-b" cx="23" cy="23" r="21.5"/><circle class="rd-rim" cx="23" cy="23" r="18.4"/><text class="rd-n" x="23" y="23.92" font-size="23" text-anchor="middle" dominant-baseline="central">10</text></svg><span class="plus">+</span><svg class="rd p2 " viewBox="0 0 34 34" width="34" height="34" aria-hidden="true"><circle class="rd-b" cx="17" cy="17" r="15.5"/><circle class="rd-rim" cx="17" cy="17" r="13.6"/><text class="rd-n" x="17" y="17.56" font-size="14" text-anchor="middle" dominant-baseline="central">2.5</text></svg><span class="x2">each side</span></div>
+          <h3>Swap each 25 for 10 + 10 + 2.5</h3>
+        </section>
+        <div class="stbl">
+          <div class="th"><span>Set</span><span>Previous</span><span>Lb</span><span>Reps</span><span>RPE</span><span></span></div>
+          <div class="sr w"><span class="fl wf">W</span><span class="pvw">4 warm-ups &middot; 45 &middot; 95 &middot; 135 &middot; 165</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">1</span><span class="pv">185 &times; 10 @ 7.5</span><span class="v">185</span><span class="v">9</span><span class="v">8</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">2</span><span class="pv">185 &times; 10 @ 8</span><span class="v">185</span><span class="v">6</span><span class="v">10</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">3</span><span class="pv">185 &times; 9 @ 8.5</span><span class="v">185</span><span class="v">7</span><span class="v">10</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="rest2"><span class="rest-t">Rest 2:15</span><div class="rest-m"><svg class="clampsvg" viewBox="0 0 120 30" width="120" height="30" role="img" aria-label="Rest 15s of 150s"><rect class="cl-sleeve" x="4" y="13" width="104" height="8" rx="3" fill="url(#gSteel)"/><rect class="cl-fill" x="4" y="13" width="12.2" height="8" rx="3"/><rect class="cl-stop " x="98" y="7" width="16" height="20" rx="3"/><rect class="cl-collar" x="8.2" y="7" width="16" height="20" rx="3.5"/><rect class="cl-lever" x="11.2" y="1" width="10" height="8" rx="2"/><rect class="cl-hi" x="10.7" y="11" width="2" height="12" rx="1"/></svg><span class="rest-s">of 2:30</span></div><button class="rbtn" type="button" aria-label="15 seconds less rest">&minus;15</button><button class="rbtn" type="button" aria-label="15 seconds more rest">+15</button><button class="rbtn skip" type="button" aria-label="Skip rest">Skip</button></div>
+          <div class="act rev">
+          <div class="sr cur"><span class="fl cur">4</span><span class="pv">185 &times; 8 @ 9</span>
+            <button class="fld ph chg" type="button" aria-label="Load, placeholder 180"><b>180</b><s>185</s></button>
+            <button class="fld ph" type="button" aria-label="Reps, placeholder 8"><b>8</b></button>
+            <button class="fld rpe" type="button" aria-label="RPE, empty. Target band 7 to 9"><b>&mdash;</b><small>target 7&ndash;9</small></button>
+            <button class="ckb" type="button" aria-label="Accept the load and reps and complete the set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></button></div>
+          <div class="pline"><div class="pips vo"><span class="pip tgt">1</span><span class="pip tgt">2</span><span class="pip tgt">3</span><span class="pip tgt">4</span><span class="pip tgt">5</span><span class="pip tgt">6</span><span class="pip tgt">7</span><span class="pip tgt">8</span></div><button class="undo3" type="button" aria-label="Undo the coach's change to this set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7L4 12l5 5M4 12h10a6 6 0 0 1 0 8"/></svg>Undo</button></div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F5</span><div><span class="ft">Next session</span><span class="fs">Thu 5 Nov &middot; start targets from the engine</span></div></div>
+    <div class="phone v1 flow" data-frame="F5" aria-label="F5 Next session">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <div class="sess"><span class="sess-l">Planned &middot; Thu 5 Nov &middot; Upper A</span></div>
+        <header class="exr"><h2 class="nm">Barbell Bench Press</h2><button class="menu" type="button" aria-label="Exercise menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></header>
+        <section class="hero" style="height:158px">
+          <svg class="bar" viewBox="0 0 358 114" width="358" height="114" role="img" aria-label="Barbell loaded to 185 pounds, each side 45 + 25"><rect class="shaft" x="-16" y="52.5" width="283" height="9" fill="url(#gSteel)"/><rect class="knurl" x="22" y="52.5" width="207" height="9" fill="url(#knurl)"/><line class="ring" x1="22" x2="22" y1="52.5" y2="61.5"/><line class="ring" x1="229" x2="229" y1="52.5" y2="61.5"/><rect class="sleeve" x="267" y="49" width="91" height="16" rx="2" fill="url(#gSteel)"/><rect class="cap" x="347" y="50" width="11" height="14" rx="5" fill="url(#gSteelD)"/><rect class="sh" x="267" y="44" width="8" height="26" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="278" y="3.5" width="23" height="107" rx="3"/><rect class="pl-rim" x="280.5" y="6.5" width="18" height="101" rx="2"/><rect class="pl-hi" x="279.8" y="8.5" width="2" height="97" rx="1"/><text class="pl-n" font-size="21" text-anchor="middle" transform="translate(296.85 26.75) rotate(-90)">45</text></g><g class="pl p25 "><rect class="pl-b" x="303" y="14" width="20" height="86" rx="3"/><rect class="pl-rim" x="305.5" y="17" width="15" height="80" rx="2"/><rect class="pl-hi" x="304.8" y="19" width="2" height="76" rx="1"/><text class="pl-n" font-size="18" text-anchor="middle" transform="translate(319.3 32) rotate(-90)">25</text></g><g class="col steel"><rect class="col-lever" x="330.34" y="29.7" width="8.32" height="11.7" rx="2.5"/><rect class="col-b" x="328" y="37.5" width="13" height="39" rx="3.5"/><rect class="col-hi" x="330" y="41.5" width="2" height="31" rx="1"/><circle class="col-pin" cx="334.5" cy="41.4" r="1.6"/></g><path class="acord" d="M334.5 76.5 C 334.5 101.25 334.5 118 334.5 126"/><ellipse class="acord" cx="334.5" cy="57" rx="3.2" ry="11.5"/><circle class="aknot" cx="334.5" cy="126" r="3.4"/></svg>
+          <div class="hero-n" style="font-size:62px">185<small style="font-size:22px">LB</small></div>
+          <div class="pside" style="top:62px"><span>Each side</span><b><i class="sw p45"></i>45 <u class="pl">+</u> <i class="sw p25"></i>25</b></div>
+          <p class="ctag" style="right:17.5px">+1 rep: last time 9, 6, 7, 8 reps; typed RPE was 10 or lower.</p>
+        </section>
+        <div class="stbl">
+          <div class="th"><span>Set</span><span>Previous</span><span>Lb</span><span>Reps</span><span>RPE</span><span></span></div>
+          <div class="sr q"><span class="fl">1</span><span class="pv">185 &times; 9 @ 8</span><span class="v">185</span><span class="v">10</span><span class="v">&middot;</span><span class="ck"></span></div><div class="sr q"><span class="fl">2</span><span class="pv">185 &times; 6 @ 10</span><span class="v">185</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div><div class="sr q"><span class="fl">3</span><span class="pv">185 &times; 7 @ 10</span><span class="v">185</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div><div class="sr q rev"><span class="fl">4</span><span class="pv">180 &times; 8 @ 9</span><span class="v">180</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div>
+        </div>
+        <p class="note2">Set 4 starts at 180. Swap each 25 for 10 + 10 + 2.5 before it.</p>
+        <section class="up"><div class="up-h"><b>Up next</b><span>then 3 more lifts</span></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 40" width="48" height="30" aria-hidden="true">
+    <path class="eq-lever" d="M7 33 L48 14"/>
+    <circle class="eq-pivot" cx="7" cy="33" r="4"/>
+    <g transform="rotate(-24 50 14)"><rect class="eq-h" x="45" y="-1" width="8" height="30" rx="2"/><rect class="eq-h2" x="54" y="2" width="6" height="24" rx="2"/></g>
+  </svg><div><strong>Chest-Supported T-Bar Row</strong><span>12 &middot; 12 &middot; 11 &middot; 10 reps</span></div><em>90<small>LB</small></em></div><div class="up-r"><svg class="eqa" viewBox="0 0 64 40" width="48" height="30" aria-hidden="true"><rect class="eq-h" x="5" y="3" width="11" height="16" rx="3"/><rect class="eq-h" x="39" y="3" width="11" height="16" rx="3"/><rect class="eq-g" x="16" y="9" width="23" height="4" rx="1.5"/><rect class="eq-h" x="11" y="21" width="11" height="16" rx="3"/><rect class="eq-h" x="45" y="21" width="11" height="16" rx="3"/><rect class="eq-g" x="22" y="27" width="23" height="4" rx="1.5"/></svg><div><strong>Incline Dumbbell Press</strong><span>12 &middot; 12 &middot; 11 reps</span></div><em>55s</em></div></section>
+        <p class="note2 q">Targets are computed when you press Start.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F6</span><div><span class="ft">Exercise menu</span><span class="fs">Set-type picker and This was a deload</span></div></div>
+    <div class="phone v1 flow dim" data-frame="F6" aria-label="F6 Exercise menu">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <div class="sess"><span class="sess-l">Upper A &middot; 24:22</span><button class="dls" type="button" aria-pressed="false" aria-label="This whole session was a deload"><i class="dls-t"><b></b></i><span>Session deload</span></button><button class="finish" type="button">Finish</button></div>
+        <header class="exr"><h2 class="nm">Barbell Bench Press</h2><button class="menu" type="button" aria-label="Exercise menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></button></header>
+        <section class="hero" style="height:114px">
+          <svg class="bar" viewBox="0 0 358 114" width="358" height="114" role="img" aria-label="Barbell loaded to 185 pounds, each side 45 + 25"><rect class="shaft" x="-16" y="52.5" width="283" height="9" fill="url(#gSteel)"/><rect class="knurl" x="22" y="52.5" width="207" height="9" fill="url(#knurl)"/><line class="ring" x1="22" x2="22" y1="52.5" y2="61.5"/><line class="ring" x1="229" x2="229" y1="52.5" y2="61.5"/><rect class="sleeve" x="267" y="49" width="91" height="16" rx="2" fill="url(#gSteel)"/><rect class="cap" x="347" y="50" width="11" height="14" rx="5" fill="url(#gSteelD)"/><rect class="sh" x="267" y="44" width="8" height="26" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="278" y="3.5" width="23" height="107" rx="3"/><rect class="pl-rim" x="280.5" y="6.5" width="18" height="101" rx="2"/><rect class="pl-hi" x="279.8" y="8.5" width="2" height="97" rx="1"/><text class="pl-n" font-size="21" text-anchor="middle" transform="translate(296.85 26.75) rotate(-90)">45</text></g><g class="pl p25 "><rect class="pl-b" x="303" y="14" width="20" height="86" rx="3"/><rect class="pl-rim" x="305.5" y="17" width="15" height="80" rx="2"/><rect class="pl-hi" x="304.8" y="19" width="2" height="76" rx="1"/><text class="pl-n" font-size="18" text-anchor="middle" transform="translate(319.3 32) rotate(-90)">25</text></g><g class="col steel"><rect class="col-lever" x="330.34" y="29.7" width="8.32" height="11.7" rx="2.5"/><rect class="col-b" x="328" y="37.5" width="13" height="39" rx="3.5"/><rect class="col-hi" x="330" y="41.5" width="2" height="31" rx="1"/><circle class="col-pin" cx="334.5" cy="41.4" r="1.6"/></g></svg>
+          <div class="hero-n" style="font-size:62px">185<small style="font-size:22px">LB</small></div>
+          <div class="pside" style="top:62px"><span>Each side</span><b><i class="sw p45"></i>45 <u class="pl">+</u> <i class="sw p25"></i>25</b></div>
+          
+        </section>
+        <div class="stbl">
+          <div class="th"><span>Set</span><span>Previous</span><span>Lb</span><span>Reps</span><span>RPE</span><span></span></div>
+          <div class="sr w"><span class="fl wf">W</span><span class="pvw">4 warm-ups &middot; 45 &middot; 95 &middot; 135 &middot; 165</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">1</span><span class="pv">185 &times; 10 @ 7.5</span><span class="v">185</span><span class="v">9</span><span class="v">8</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr done"><span class="fl">2</span><span class="pv">185 &times; 10 @ 8</span><span class="v">185</span><span class="v">6</span><span class="v">10</span><span class="ck"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 7"/></svg></span></div>
+          <div class="sr q"><span class="fl">3</span><span class="pv">185 &times; 9 @ 8.5</span><span class="v">185</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div>
+          <div class="sr q"><span class="fl">4</span><span class="pv">185 &times; 8 @ 9</span><span class="v">185</span><span class="v">8</span><span class="v">&middot;</span><span class="ck"></span></div>
+        </div>
+        <div class="scrim"></div>
+        <aside class="sheet" aria-label="Exercise menu">
+          <i class="grab"></i>
+          <h3>Barbell Bench Press</h3>
+          <p class="sh-k">Set type &middot; set 3</p>
+          <div class="seg" role="radiogroup" aria-label="Set type">
+            <button type="button" class="sg" role="radio" aria-checked="false"><b>W</b><span>Warm-up</span></button>
+            <button type="button" class="sg on" role="radio" aria-checked="true"><b>3</b><span>Working</span></button>
+            <button type="button" class="sg" role="radio" aria-checked="false"><b>D</b><span>Drop</span></button>
+            <button type="button" class="sg" role="radio" aria-checked="false"><b>F</b><span>Failure</span></button>
+          </div>
+          <div class="sh-row">
+            <div><b>This was a deload</b><span>Left out of progression, records and trends.</span></div>
+            <button class="dls" type="button" aria-pressed="false" aria-label="This exercise was a deload"><i class="dls-t"><b></b></i><span>Off</span></button>
+          </div>
+          <button class="btn sec sm" type="button">Done</button>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="fr">
+    <div class="fr-cap"><span class="fn">F7</span><div><span class="ft">History</span><span class="fs">A skipped-injured entry and a Deload tag</span></div></div>
+    <div class="phone v1 flow" data-frame="F7" aria-label="F7 History">
+      <div class="sb"><span>10:24</span><span class="sb-i">
+      <svg viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx=".8"/><rect x="5" y="5.5" width="3" height="6.5" rx=".8"/><rect x="10" y="3" width="3" height="9" rx=".8"/><rect x="15" y="0" width="3" height="12" rx=".8"/></svg>
+      <svg viewBox="0 0 17 12" aria-hidden="true"><path class="st" d="M1.5 4.3a10 10 0 0 1 14 0M4 7a6.4 6.4 0 0 1 9 0"/><circle cx="8.5" cy="10" r="1.6"/></svg>
+      <svg viewBox="0 0 27 12" aria-hidden="true"><rect class="st" x=".75" y=".75" width="22" height="10.5" rx="3"/><rect x="2.5" y="2.5" width="14" height="7" rx="1.6"/><rect x="24.2" y="4" width="2" height="4" rx="1"/></svg>
+    </span></div>
+      <div class="scr">
+        <header class="today-h"><p class="kick">History</p><h2 class="nm xl">Upper A and Lower A</h2></header>
+        <ul class="hl">
+          <li class="he"><div class="he-d"><b>31</b><span>Sat Oct</span></div><div class="he-g"><svg class="bar" viewBox="0 0 74 40" width="74" height="40" role="img" aria-label="Bench"><rect class="shaft" x="-2" y="16.5" width="7" height="7" fill="url(#gSteel)"/><rect class="knurl" x="4" y="16.5" width="18" height="7" fill="url(#knurl)"/><line class="ring" x1="4" x2="4" y1="16.5" y2="23.5"/><line class="ring" x1="22" x2="22" y1="16.5" y2="23.5"/><rect class="sleeve" x="5" y="14" width="69" height="12" rx="2" fill="url(#gSteel)"/><rect class="cap" x="66" y="15" width="8" height="10" rx="4" fill="url(#gSteelD)"/><rect class="sh" x="5" y="10.5" width="6" height="19" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="14" y="3" width="16" height="34" rx="3"/><rect class="pl-rim" x="16.5" y="6" width="11" height="28" rx="2"/><rect class="pl-hi" x="15.8" y="8" width="2" height="24" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="22" y="-2">45</text></g><g class="pl p25 "><rect class="pl-b" x="32" y="6" width="14" height="28" rx="3"/><rect class="pl-rim" x="34.5" y="9" width="9" height="22" rx="2"/><rect class="pl-hi" x="33.8" y="11" width="2" height="18" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="39" y="1">25</text></g><g class="col steel"><rect class="col-lever" x="52.8" y="-0.3" width="6.4" height="8.7" rx="2.5"/><rect class="col-b" x="51" y="5.5" width="10" height="29" rx="3.5"/><rect class="col-hi" x="53" y="9.5" width="2" height="21" rx="1"/><circle class="col-pin" cx="56" cy="8.4" r="1.6"/></g></svg></div><div class="he-t"><strong>Upper A</strong><span>Bench 185 &times; 9 &middot; 185 &times; 6 &middot; 185 &times; 7 &middot; 180 &times; 8</span></div></li>
+          <li class="he"><div class="he-d"><b>28</b><span>Wed Oct</span></div><div class="he-g"><div class="skipg"><i></i></div></div><div class="he-t"><strong>Lower A</strong><span>Skipped &middot; injured</span></div></li>
+          <li class="he"><div class="he-d"><b>24</b><span>Sat Oct</span></div><div class="he-g"><svg class="bar" viewBox="0 0 74 40" width="74" height="40" role="img" aria-label="Bench"><rect class="shaft" x="-2" y="16.5" width="7" height="7" fill="url(#gSteel)"/><rect class="knurl" x="4" y="16.5" width="18" height="7" fill="url(#knurl)"/><line class="ring" x1="4" x2="4" y1="16.5" y2="23.5"/><line class="ring" x1="22" x2="22" y1="16.5" y2="23.5"/><rect class="sleeve" x="5" y="14" width="69" height="12" rx="2" fill="url(#gSteel)"/><rect class="cap" x="66" y="15" width="8" height="10" rx="4" fill="url(#gSteelD)"/><rect class="sh" x="5" y="10.5" width="6" height="19" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="14" y="3" width="16" height="34" rx="3"/><rect class="pl-rim" x="16.5" y="6" width="11" height="28" rx="2"/><rect class="pl-hi" x="15.8" y="8" width="2" height="24" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="22" y="-2">45</text></g><g class="pl p25 "><rect class="pl-b" x="32" y="6" width="14" height="28" rx="3"/><rect class="pl-rim" x="34.5" y="9" width="9" height="22" rx="2"/><rect class="pl-hi" x="33.8" y="11" width="2" height="18" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="39" y="1">25</text></g><g class="col steel"><rect class="col-lever" x="52.8" y="-0.3" width="6.4" height="8.7" rx="2.5"/><rect class="col-b" x="51" y="5.5" width="10" height="29" rx="3.5"/><rect class="col-hi" x="53" y="9.5" width="2" height="21" rx="1"/><circle class="col-pin" cx="56" cy="8.4" r="1.6"/></g></svg></div><div class="he-t"><strong>Upper A</strong><span>Bench 185 &times; 10 &middot; 185 &times; 10 &middot; 185 &times; 9 &middot; 185 &times; 8</span></div></li>
+          <li class="he"><div class="he-d"><b>21</b><span>Wed Oct</span></div><div class="he-g"><div class="dlg"><svg class="bar" viewBox="0 0 74 40" width="74" height="40" role="img" aria-label="Deload bar"><rect class="shaft" x="-2" y="16.5" width="23" height="7" fill="url(#gSteel)"/><rect class="knurl" x="4" y="16.5" width="18" height="7" fill="url(#knurl)"/><line class="ring" x1="4" x2="4" y1="16.5" y2="23.5"/><line class="ring" x1="22" x2="22" y1="16.5" y2="23.5"/><rect class="sleeve" x="21" y="14" width="53" height="12" rx="2" fill="url(#gSteel)"/><rect class="cap" x="66" y="15" width="8" height="10" rx="4" fill="url(#gSteelD)"/><rect class="sh" x="21" y="10.5" width="6" height="19" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="30" y="3" width="16" height="34" rx="3"/><rect class="pl-rim" x="32.5" y="6" width="11" height="28" rx="2"/><rect class="pl-hi" x="31.8" y="8" width="2" height="24" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="38" y="-2">45</text></g><g class="col steel"><rect class="col-lever" x="52.8" y="-0.3" width="6.4" height="8.7" rx="2.5"/><rect class="col-b" x="51" y="5.5" width="10" height="29" rx="3.5"/><rect class="col-hi" x="53" y="9.5" width="2" height="21" rx="1"/><circle class="col-pin" cx="56" cy="8.4" r="1.6"/></g></svg></div></div><div class="he-t"><strong>Lower A<span class="dltag">Deload</span></strong><span>Light day, left out of records and trends</span></div></li>
+          <li class="he"><div class="he-d"><b>17</b><span>Sat Oct</span></div><div class="he-g"><svg class="bar" viewBox="0 0 74 40" width="74" height="40" role="img" aria-label="Bench"><rect class="shaft" x="-2" y="16.5" width="7" height="7" fill="url(#gSteel)"/><rect class="knurl" x="4" y="16.5" width="18" height="7" fill="url(#knurl)"/><line class="ring" x1="4" x2="4" y1="16.5" y2="23.5"/><line class="ring" x1="22" x2="22" y1="16.5" y2="23.5"/><rect class="sleeve" x="5" y="14" width="69" height="12" rx="2" fill="url(#gSteel)"/><rect class="cap" x="66" y="15" width="8" height="10" rx="4" fill="url(#gSteelD)"/><rect class="sh" x="5" y="10.5" width="6" height="19" rx="2.5" fill="url(#gSteelD)"/><g class="pl p45 "><rect class="pl-b" x="14" y="3" width="16" height="34" rx="3"/><rect class="pl-rim" x="16.5" y="6" width="11" height="28" rx="2"/><rect class="pl-hi" x="15.8" y="8" width="2" height="24" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="22" y="-2">45</text></g><g class="pl p25 "><rect class="pl-b" x="32" y="6" width="14" height="28" rx="3"/><rect class="pl-rim" x="34.5" y="9" width="9" height="22" rx="2"/><rect class="pl-hi" x="33.8" y="11" width="2" height="18" rx="1"/><text class="pl-l" font-size="13" text-anchor="middle" x="39" y="1">25</text></g><g class="col steel"><rect class="col-lever" x="52.8" y="-0.3" width="6.4" height="8.7" rx="2.5"/><rect class="col-b" x="51" y="5.5" width="10" height="29" rx="3.5"/><rect class="col-hi" x="53" y="9.5" width="2" height="21" rx="1"/><circle class="col-pin" cx="56" cy="8.4" r="1.6"/></g></svg></div><div class="he-t"><strong>Upper A</strong><span>Bench 185 &times; 10 &middot; 185 &times; 9 &middot; 185 &times; 9 &middot; 185 &times; 8</span></div></li>
+        </ul>
+        <p class="note2">A skipped-injured day is not a failure and does not change progression. Deload entries are drawn dashed and stay out of records and trends.</p>
+      </div>
+    </div>
+  </section>
+  </div>
+</main>
+</body>
+</html>

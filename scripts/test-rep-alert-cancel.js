@@ -76,7 +76,12 @@ assert.match(resolvedActionSource, /resolvedAction\.action\?\.code[\s\S]*resolve
 assert.doesNotMatch(resolvedActionSource, /confidence|evidence|matrix|qualification/i, "Visible exception guidance must not expose legacy confidence or evidence details");
 assert.doesNotMatch(html, /function renderRolePrescriptionDetails\(/, "The deleted role-level prescription evidence renderer must not return");
 assert.doesNotMatch(setRendererSource, /set-progress-disclosure|Progress when/, "Normal set rows must not expose recommendation-era progression rationale");
-assert.match(setRendererSource, /class="set-tools-disclosure"/, "Secondary set controls remain available through one compact native disclosure");
+const setSheetSource = extractFunction("renderLoadedBarSetSheet");
+assert.match(setRendererSource, /data-action="set-type-sheet"/, "Each editable row opens its set-type and options sheet");
+assert.match(setSheetSource, /class="set-tools-disclosure loaded-bar-tools"/, "Secondary set controls remain available through the sheet's compact native disclosure");
+for (const action of ["toggle-skip-set", "delete-set", "add-warmup-set", "set-rest-seconds"]) {
+  assert.ok(setSheetSource.includes('data-action="' + action + '"'), action + " remains reachable in set options");
+}
 assert.match(html, /class="discard-workout-button"[^>]*>\$\{replacement \? "Replace workout" : "Discard workout"\}</, "Cancellation uses explicit discard or replacement wording");
 assert.match(html, /unsubmitted session will be permanently removed[\s\S]*Submitted history and routines stay intact/, "Cancellation must name permanent session loss and distinguish submitted history and routines that remain");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");

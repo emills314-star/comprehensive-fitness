@@ -1,6 +1,7 @@
 "use strict";
 
 const { test, expect } = require("@playwright/test");
+const { closeLoadedBarSheet, focusExercise, openExerciseOptions, openSetOptions } = require("./fixtures/loaded-bar.helpers");
 const fs = require("node:fs");
 const path = require("node:path");
 const {
@@ -204,18 +205,18 @@ test("M6 replaces an active rest timer when consecutive sets are completed", asy
   const first = await page.evaluate(() => ({ id: timer.id, duration: timer.durationSeconds }));
   expect(first.duration).toBe(60);
 
-  await page.evaluate((setId) => toggleSetCompletion(setId), IDS.activeBenchSet2);
+  await page.locator(`#set-${IDS.activeBenchSet2} [data-action="toggle-set"]`).click();
   const second = await page.evaluate(() => ({ id: timer.id, duration: timer.durationSeconds, intervals: Number(Boolean(timerInterval)) }));
   expect(second.id).not.toBe(first.id);
   expect(second.duration).toBe(90);
   expect(second.intervals).toBe(1);
-  await expect(page.locator(".active-session-header .timer-bar")).toHaveCount(1);
-  await expect(page.locator(".active-session-header .timer-bar")).toHaveAttribute("data-timer-id", second.id);
+  await expect(page.locator(".loaded-bar-rest-clamp")).toHaveCount(1);
+  await expect(page.locator(".loaded-bar-rest-clamp")).toHaveAttribute("data-timer-id", second.id);
 
-  const before = await page.locator(".active-session-header [data-timer-progress-label]").textContent();
+  const before = await page.locator(".loaded-bar-rest-clamp [data-timer-progress-label]").textContent();
   await page.evaluate(() => globalThis.__advanceM6Clock(2_000));
   await page.waitForTimeout(1_100);
-  const after = await page.locator(".active-session-header [data-timer-progress-label]").textContent();
+  const after = await page.locator(".loaded-bar-rest-clamp [data-timer-progress-label]").textContent();
   expect(after).not.toBe(before);
 });
 
@@ -276,24 +277,29 @@ test("M6 shows stable full variant targets and preserves historical execution qu
   test.setTimeout(120_000);
   await installFixture(page, m6Fixture());
 
-  const card = page.locator(`.exercise-card[aria-label="Exercise: ${LONG_VARIANT_NAME}"]`);
+  const card = await focusExercise(page, IDS.activeBenchExercise);
   await expect(card).toHaveCount(1);
-  await expect(card.locator(".exercise-name-full")).toHaveText(LONG_VARIANT_NAME);
-  const nameBox = await card.locator(".exercise-name-full").boundingBox();
+  await expect(card.locator(".loaded-bar-exercise-heading h2")).toHaveText(LONG_VARIANT_NAME);
+  const nameBox = await card.locator(".loaded-bar-exercise-heading h2").boundingBox();
   expect(nameBox?.width).toBeGreaterThanOrEqual(150);
   expect(nameBox?.height).toBeLessThanOrEqual(120);
-  await expect(card.locator(".exercise-target")).toHaveAttribute("aria-label", /Stable target: .*5-7.*7\.5-8\.5/);
+  const options = await openExerciseOptions(page, IDS.activeBenchExercise);
+  await expect(options.getByRole("spinbutton", { name: "Default minimum repetitions", exact: true })).toHaveValue("5");
+  await expect(options.getByRole("spinbutton", { name: "Default maximum repetitions", exact: true })).toHaveValue("7");
+  await expect(options.getByRole("spinbutton", { name: "Default minimum target RPE", exact: true })).toHaveValue("7.5");
+  await expect(options.getByRole("spinbutton", { name: "Default maximum target RPE", exact: true })).toHaveValue("8.5");
+  await closeLoadedBarSheet(page);
   await expect(page.getByText("Plate calculator", { exact: false })).toHaveCount(0);
   await expect(page.locator('[data-action="exercise-execution-quality"]')).toHaveCount(0);
   await expect(page.getByText(/execution quality|technique breakdown/i)).toHaveCount(0);
 
   await expect(page.locator(".workout-rest-starter")).toHaveCount(0);
   await expect(page.locator(".set-rest-button")).toHaveCount(0);
-  await expect(page.locator(".set-block [data-action='start-timer']")).toHaveCount(0);
+  await expect(page.locator(".loaded-bar-row [data-action='start-timer']")).toHaveCount(0);
 
   await card.locator('[data-action="toggle-set"]').first().click();
   await expect(page.locator(".workout-rest-starter")).toHaveCount(1);
-  await expect(page.locator(".workout-timer-slot .workout-rest-starter[data-action='start-timer']")).toHaveCount(1);
+  await expect(page.locator(".loaded-bar-rest-starter .workout-rest-starter[data-action='start-timer']")).toHaveCount(1);
 
   const qualityBoundary = await page.evaluate(({ activeExerciseId, historicalExerciseId }) => ({
     historical: data.exercises.find((item) => item.id === historicalExerciseId)?.executionQualityAssessment,
@@ -306,7 +312,7 @@ test("M6 shows stable full variant targets and preserves historical execution qu
   await captureAuditScreenshot(page, "active-workout-stable-targets");
 });
 
-test("current-focus heading advances after each completed set and remains correct after reload", async ({ page }) => {
+test("focused table advances after each completed set and remains correct after reload", async ({ page }) => {
   const fixture = m6Fixture();
   const exercise = fixture.exercises.find((item) => item.id === IDS.activeBenchExercise);
   const templateExercise = fixture.templates[0].exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
@@ -323,29 +329,51 @@ test("current-focus heading advances after each completed set and remains correc
     ...structuredClone(secondSet),
     id: thirdSetId,
     setNumber: 3,
+    sequenceIndex: 2,
+    sequence: 2,
+    setTypeIndex: 2,
     completed: false,
-    skipped: false,
-    completedAt: null
+    skipped: false
   });
   await installFixture(page, fixture);
 
-  const description = page.locator("[data-current-focus-description]");
-  const remaining = page.locator("[data-current-focus-remaining]");
-  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 1`);
-  await expect(remaining).toHaveText("3 working sets remain");
+  const description = page.locator(".loaded-bar-exercise-heading h2");
+  const current = page.locator('.loaded-bar-row[data-set-state="current"]');
+  const remaining = page.locator('.loaded-bar-row:not(.completed):not(.skipped-set)');
+  await expect(description).toHaveText(LONG_VARIANT_NAME);
+  await expect(current).toHaveAttribute("id", `set-${IDS.activeBenchSet1}`);
+  await expect(current.getByRole("button", { name: "Complete set 1", exact: true })).toBeEnabled();
+  await expect(remaining).toHaveCount(3);
 
   await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`).click();
-  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 2`);
-  await expect(remaining).toHaveText("2 working sets remain");
+  await expect(description).toHaveText(LONG_VARIANT_NAME);
+  await expect(current).toHaveAttribute("id", `set-${IDS.activeBenchSet2}`);
+  await expect(current.getByRole("button", { name: "Complete set 2", exact: true })).toBeEnabled();
+  await expect(remaining).toHaveCount(2);
 
   await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet2}"]`).click();
-  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 3`);
-  await expect(remaining).toHaveText("1 working set remains");
+  await expect(description).toHaveText(LONG_VARIANT_NAME);
+  await expect(current).toHaveAttribute("id", `set-${thirdSetId}`);
+  await expect(remaining).toHaveCount(1);
+
+  await expect.poll(() => page.evaluate(({ firstId, secondId, pendingId }) => {
+    const draft = JSON.parse(localStorage.getItem("comprehensive-fitness-active-draft-v1") || "null");
+    return draft?.sets?.filter((set) => [firstId, secondId, pendingId].includes(set.id))
+      .map((set) => ({ id: set.id, completed: set.completed }));
+  }, { firstId: IDS.activeBenchSet1, secondId: IDS.activeBenchSet2, pendingId: thirdSetId }), {
+    message: "the valid active draft must retain both completions before reload"
+  }).toEqual([
+    { id: IDS.activeBenchSet1, completed: true },
+    { id: IDS.activeBenchSet2, completed: true },
+    { id: thirdSetId, completed: false }
+  ]);
 
   await page.reload();
   await expect(page.locator(".workout-view")).toBeVisible({ timeout: 45_000 });
-  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 3`);
-  await expect(remaining).toHaveText("1 working set remains");
+  await expect(description).toHaveText(LONG_VARIANT_NAME);
+  await expect(current).toHaveAttribute("id", `set-${thirdSetId}`);
+  await expect(current.getByRole("button", { name: "Complete set 3", exact: true })).toBeEnabled();
+  await expect(remaining).toHaveCount(1);
 });
 
 test("M6 Add Exercise rejects invalid visible targets and creates target-complete working rows", async ({ page }) => {
@@ -1029,18 +1057,19 @@ test("M6 preserves submitted equipment evidence while discarding active equipmen
 test("M6 ordinary substitution splits actual identity, audits the override, and changes the routine only after explicit save", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, m6Fixture());
-  const sourceCard = page.locator(`.exercise-card[aria-label="Exercise: ${LONG_VARIANT_NAME}"]`);
+  const sourceCard = await focusExercise(page, IDS.activeBenchExercise);
   const routineBefore = await page.evaluate((templateExerciseId) => {
     const template = data.templates.find((item) => item.id === activeWorkoutSession().templateId);
     return JSON.stringify(template.exercises.find((item) => item.id === templateExerciseId));
   }, IDS.controlBenchTemplateExercise);
 
-  await sourceCard.getByRole("button", { name: "Mark set complete", exact: true }).click();
-  await openDetails(sourceCard.locator(".exercise-details"));
-  const substituteName = sourceCard.locator('[data-action="exercise-substitute-name"]');
+  await sourceCard.getByRole("button", { name: "Complete set 1", exact: true }).click();
+  const sourceOptions = await openExerciseOptions(page, IDS.activeBenchExercise);
+  const substituteName = sourceOptions.locator('[data-action="exercise-substitute-name"]');
   await expect(substituteName).toBeVisible();
   await substituteName.fill(SUBSTITUTE_NAME);
-  await sourceCard.locator('[data-action="apply-exercise-substitution"]').click();
+  await sourceOptions.locator('[data-action="apply-exercise-substitution"]').click();
+  await closeLoadedBarSheet(page);
 
   const afterSubstitution = await activeState(page);
   const source = afterSubstitution.exercises.find((item) => item.id === IDS.activeBenchExercise);
@@ -1078,11 +1107,10 @@ test("M6 ordinary substitution splits actual identity, audits the override, and 
   expect(replacement.manualOverrides.some((item) => item.overrideId === override.overrideId)).toBe(true);
   expect(JSON.stringify(afterSubstitution.template.exercises.find((item) => item.id === IDS.controlBenchTemplateExercise))).toBe(routineBefore);
 
-  const replacementCard = page.locator(`.exercise-card[aria-label="Exercise: ${SUBSTITUTE_NAME}"]`);
+  const replacementCard = await focusExercise(page, replacement.id);
   await expect(replacementCard).toHaveCount(1);
-  await expect(replacementCard.getByText(/No previous workout found|No history/i)).toBeVisible();
-  const replacementDetails = replacementCard.locator(".exercise-details");
-  await openDetails(replacementDetails);
+  await expect(replacementCard.locator('.loaded-bar-previous [title="No previous workout found"]')).toHaveText("—");
+  const replacementDetails = await openExerciseOptions(page, replacement.id);
   const explicitSave = replacementDetails.locator('[data-action="update-template-exercise"]');
   await expect(explicitSave).toHaveAccessibleName("Save today’s targets to routine");
   await explicitSave.click();
@@ -1259,10 +1287,10 @@ test("M6 substitution keeps completed warm-up and skipped work on source and see
     skippedWorkingSetId: IDS.activeBenchSet2
   });
 
-  const sourceCard = page.locator(`.exercise-card[aria-label="Exercise: ${LONG_VARIANT_NAME}"]`);
-  await openDetails(sourceCard.locator(".exercise-details"));
-  await sourceCard.locator('[data-action="exercise-substitute-name"]').fill(SUBSTITUTE_NAME);
-  await sourceCard.locator('[data-action="apply-exercise-substitution"]').click();
+  const sourceOptions = await openExerciseOptions(page, IDS.activeBenchExercise);
+  await sourceOptions.locator('[data-action="exercise-substitute-name"]').fill(SUBSTITUTE_NAME);
+  await sourceOptions.locator('[data-action="apply-exercise-substitution"]').click();
+  await closeLoadedBarSheet(page);
 
   const result = await activeState(page);
   const source = result.exercises.find((exercise) => exercise.id === IDS.activeBenchExercise);
@@ -1305,15 +1333,15 @@ test("M6 substitution keeps completed warm-up and skipped work on source and see
 test("M6 custom substitution creates a stable custom identity without borrowing canonical history or mutating the routine", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, m6Fixture());
-  const sourceCard = page.locator(`.exercise-card[aria-label="Exercise: ${LONG_VARIANT_NAME}"]`);
   const routineBefore = await page.evaluate((templateExerciseId) => {
     const template = data.templates.find((item) => item.id === activeWorkoutSession().templateId);
     return JSON.stringify(template.exercises.find((item) => item.id === templateExerciseId));
   }, IDS.controlBenchTemplateExercise);
 
-  await openDetails(sourceCard.locator(".exercise-details"));
-  await sourceCard.locator('[data-action="exercise-substitute-name"]').fill(CUSTOM_SUBSTITUTE_NAME);
-  await sourceCard.locator('[data-action="apply-exercise-substitution"]').click();
+  const sourceOptions = await openExerciseOptions(page, IDS.activeBenchExercise);
+  await sourceOptions.locator('[data-action="exercise-substitute-name"]').fill(CUSTOM_SUBSTITUTE_NAME);
+  await sourceOptions.locator('[data-action="apply-exercise-substitution"]').click();
+  await closeLoadedBarSheet(page);
 
   const result = await page.evaluate(({ activeExerciseId, customName, templateExerciseId }) => {
     const session = activeWorkoutSession();
@@ -1382,7 +1410,7 @@ test("M6 custom substitution creates a stable custom identity without borrowing 
   expect(result.collidingSlug.performanceExerciseId).not.toBe(result.exercise.performanceExerciseId);
   expect(result.collidingSlugAgain.performanceExerciseId).toBe(result.collidingSlug.performanceExerciseId);
   expect(result.routineExercise).toBe(routineBefore);
-  await expect(page.locator(`.exercise-card[aria-label="Exercise: ${CUSTOM_SUBSTITUTE_NAME}"]`)).toHaveCount(1);
+  await expect(await focusExercise(page, IDS.activeBenchExercise)).toHaveAttribute("aria-label", `Exercise: ${CUSTOM_SUBSTITUTE_NAME}`);
   await captureAuditScreenshot(page, "custom-substitution-identity");
 });
 
@@ -1671,57 +1699,57 @@ test("M6 strictly validates nested template warm-ups and set roles while normali
 test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, values, role, and timer", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, m6Fixture({ autoStartRestTimer: true }));
-  const sourceCard = page.locator(`.exercise-card[aria-label="Exercise: ${LONG_VARIANT_NAME}"]`);
+  const sourceCard = await focusExercise(page, IDS.activeBenchExercise);
   const setBlock = sourceCard.locator(`#set-${IDS.activeBenchSet1}`);
-  const load = setBlock.getByRole("spinbutton", { name: "Set 1 load" });
-  const reps = setBlock.getByRole("spinbutton", { name: "Set 1 reps" });
-  const rpe = setBlock.getByRole("spinbutton", { name: "Set 1 RPE" });
+  const load = setBlock.locator('[data-action="set-weight"]');
+  const reps = setBlock.locator('[data-action="set-reps"]');
 
   await load.fill("177.5");
   await reps.fill("7");
+  // This is a recovered draft observation, not an automatically prefilled RPE.
+  await expect(setBlock.locator('[data-action="set-rpe"]')).toHaveValue("7");
+  await setBlock.locator('[data-action="set-rpe"]').click();
+  const rpe = page.locator(`.loaded-bar-sheet [data-action="set-rpe"][data-set-id="${IDS.activeBenchSet1}"]`);
   await expect(rpe).toHaveValue("7");
   await rpe.click();
   await rpe.pressSequentially("7.5");
   await expect(rpe).toHaveValue("7.5");
   await rpe.press("Tab");
+  await closeLoadedBarSheet(page);
+  await expect(setBlock.locator('[data-action="set-rpe"]')).toHaveValue("7.5");
 
-  const setTools = setBlock.locator(".set-tools-disclosure");
-  await setTools.evaluate((element) => { element.open = true; });
-  await setTools.locator('[data-action="set-type-override"]').selectOption("drop");
+  const setTools = await openSetOptions(page, IDS.activeBenchSet1);
+  await setTools.locator('[data-action="choose-set-type"][data-set-type="drop"]').click();
+  await closeLoadedBarSheet(page);
+  await expect(page.locator(".loaded-bar-sheet")).toHaveCount(0);
 
-  const exerciseDetails = sourceCard.locator(".exercise-details");
-  await exerciseDetails.evaluate((element) => { element.open = true; });
+  const exerciseDetails = await openExerciseOptions(page, IDS.activeBenchExercise);
   const exerciseNotes = exerciseDetails.locator('[data-action="exercise-notes"]');
   await exerciseNotes.fill(EXERCISE_NOTE);
   await exerciseNotes.press("Tab");
+  await closeLoadedBarSheet(page);
 
-  await page.evaluate((note) => {
-    const sessionNotes = document.querySelector('[data-action="session-notes"]');
-    if (!(sessionNotes instanceof HTMLTextAreaElement)) throw new Error("Missing session-notes textarea");
-    sessionNotes.value = note;
-    sessionNotes.dispatchEvent(new InputEvent("input", {
-      bubbles: true,
-      data: note,
-      inputType: "insertText"
-    }));
-  }, SESSION_NOTE);
+  const workoutDetails = page.locator("details.compact-disclosure").filter({ has: page.locator('[data-action="session-notes"]') });
+  await openDetails(workoutDetails);
+  const sessionNotes = workoutDetails.getByRole("textbox", { name: "Session notes", exact: true });
+  await sessionNotes.fill(SESSION_NOTE);
+  await sessionNotes.press("Tab");
   await expect.poll(() => page.evaluate(() => activeWorkoutSession()?.notes)).toBe(SESSION_NOTE);
 
-  const exerciseMenu = sourceCard.locator(".exercise-overflow");
-  await exerciseMenu.evaluate((element) => { element.open = true; });
+  const exerciseMenu = await openExerciseOptions(page, IDS.activeBenchExercise);
   const moveDown = exerciseMenu.locator('[data-action="move-exercise"][data-direction="1"]');
-  await moveDown.dispatchEvent("click");
+  await moveDown.click();
+  await closeLoadedBarSheet(page);
   await expect.poll(() => page.evaluate((exerciseId) => {
     const exercises = data.exercises
       .filter((item) => item.sessionId === activeWorkoutSession().id)
       .sort((left, right) => Number(left.order || 0) - Number(right.order || 0));
     return exercises.at(-1)?.id;
   }, IDS.activeBenchExercise)).toBe(IDS.activeBenchExercise);
-  await page.locator(`.exercise-card[aria-label="Exercise: ${LONG_VARIANT_NAME}"]`)
-    .getByRole("button", { name: "Mark set complete", exact: true })
-    .click();
+  await focusExercise(page, IDS.activeBenchExercise);
+  await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`).click();
 
-  const timerBar = page.locator(".active-session-header .timer-bar");
+  const timerBar = page.locator(".loaded-bar-rest-clamp");
   await expect(timerBar).toHaveCount(1);
   await expect(timerBar).toHaveAttribute("data-phase", /resting|final/);
   const timerBeforeNavigation = await page.evaluate(() => structuredClone(timer));
@@ -1733,7 +1761,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
   await page.evaluate(() => globalThis.__advanceM6Clock(4_000));
   await page.locator('[data-action="resume-active-workout"]').click();
   await expect(page).toHaveURL(/#workout$/);
-  await expect(page.locator(".active-session-header .timer-bar")).toHaveCount(1);
+  await expect(page.locator(".loaded-bar-rest-clamp")).toHaveCount(1);
   expect((await page.evaluate(() => timer.id))).toBe(timerBeforeNavigation.id);
 
   await page.evaluate(() => {
@@ -1743,7 +1771,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  const overtime = page.locator('.active-session-header .timer-bar[data-phase="overtime"]');
+  const overtime = page.locator('.loaded-bar-rest-clamp[data-phase="overtime"]');
   await expect(overtime).toHaveCount(1);
   await expect(overtime.locator("[data-timer-progress-label]")).toHaveText("+00:03");
 
@@ -1807,7 +1835,7 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
     setId: IDS.activeBenchSet1,
     durationSeconds: 15
   });
-  await expect(page.locator('.active-session-header .timer-bar[data-phase="overtime"]')).toHaveCount(1);
+  await expect(page.locator('.loaded-bar-rest-clamp[data-phase="overtime"]')).toHaveCount(1);
   await expect(page.locator("[data-timer-progress-label]")).toHaveText("+00:03");
   await captureAuditScreenshot(page, "overtime-reload-recovery");
 });

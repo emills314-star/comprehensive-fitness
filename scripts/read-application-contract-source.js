@@ -5,6 +5,7 @@ const path = require("node:path");
 
 const APPLICATION_RUNTIME_FILES = Object.freeze([
   "app-foundation.js",
+  "app-coach.js",
   "app-views.js",
   "app-analysis.js",
   "app-workout.js",

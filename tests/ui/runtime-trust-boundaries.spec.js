@@ -1,6 +1,7 @@
 "use strict";
 
 const { test, expect } = require("@playwright/test");
+const { focusExercise, openSetOptions, closeLoadedBarSheet } = require("./fixtures/loaded-bar.helpers");
 const { validFullState } = require("../fixtures/synthetic-app-backups");
 const {
   FIXED_NOW,
@@ -743,8 +744,10 @@ async function prepareSubmissionFixture(page) {
   await expect(page.locator(".workout-view")).toBeVisible();
   const completed = page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`);
   await completed.click();
-  await page.locator(`#set-${IDS.activeRowSet2} .set-tools-disclosure > summary`).click();
-  await page.locator(`[data-action="toggle-skip-set"][data-set-id="${IDS.activeRowSet2}"]`).click();
+  await focusExercise(page, IDS.activeRowExercise);
+  const options = await openSetOptions(page, IDS.activeRowSet2);
+  await options.locator(`[data-action="toggle-skip-set"][data-set-id="${IDS.activeRowSet2}"]`).click();
+  await closeLoadedBarSheet(page);
   await expect.poll(async () => {
     const persisted = await readPersistedData(page);
     return {

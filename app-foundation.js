@@ -24,6 +24,12 @@
       });
       const root = document.getElementById("root");
       const defaultSettings = {
+        coachMode: "shadow",
+        coachBetweenSetRevisions: true,
+        barWeight: { lb: 45, kg: 20 },
+        plateInventory: { lb: [45, 35, 25, 10, 5, 2.5], kg: [25, 20, 15, 10, 5, 2.5, 1.25] },
+        equipmentCorrections: [],
+        routineIncrementUnit: null,
         weightUnit: "lb",
         timerSound: true,
         timerVibration: true,
@@ -42,12 +48,15 @@
         expectedTemplateId: ""
       };
       let data = emptyData();
+      let coachRecoveryPending = false;
+      const coachRecoveryDiagnostics = [];
       const primaryTabIds = ["today", "progress"];
       const currentDestinationIds = ["today", "progress", "workout", "routines", "settings"];
       const focusActionAllowlist = new Set([
-        "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "reconcile-apply", "reconcile-dismiss", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
+        "plan-today-workout", "preview-planned-workout", "close-planned-preview", "today-worse-than-usual", "record-injury-skip", "undo-injury-skip",
+        "exercise-menu", "exercise-equipment", "session-deload", "exercise-deload", "set-type-sheet", "choose-set-type", "rpe-pad", "choose-set-rpe", "close-set-sheet", "toggle-warmups", "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "reconcile-apply", "reconcile-dismiss", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
         "resume-active-workout", "finish-active-workout", "discard-active-workout", "log-template-readiness", "log-workout-readiness", "start-workout-with-readiness", "save-workout-readiness",
-        "set-expected-template", "toggle-workout-pause", "handle-resolved-action",
+        "set-expected-template", "toggle-workout-pause", "handle-resolved-action", "undo-coach-revision",
         "open-routines", "open-settings", "close-secondary-context", "close-workout-context",
         "keep-workout", "keep-history-editing", "cancel-clear-data",
         "open-history", "open-progress", "retry-view-render", "focus-workout-exercise",
@@ -55,11 +64,11 @@
         "cancel-template-start",
         "template-readiness-deviation", "template-readiness-soreness", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
-        "adjust-default-rest",
+        "adjust-default-rest", "coach-mode", "coach-between-set-revisions", "routine-increment-unit", "equipment-bar-weight", "equipment-plate", "equipment-reset-plates", "equipment-correction-change", "equipment-correction-reset",
         "clear-data-ack", "clear-data-phrase", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
-      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "field", "chartKey", "chartDate"];
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "field", "chartKey", "chartDate", "unit", "plate", "exerciseIdentity", "routineId", "skipId", "date"];
       const focusableCandidateSelector = 'button, input, select, textarea, a[href], summary, [tabindex]';
       let activeTab = tabFromLocation();
       const tabScrollPositions = new Map();
@@ -308,7 +317,7 @@
       };
 
       function emptyData() {
-        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
+        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], skippedSessions: [], rawImports: [], migrationAudit: [], dataRevision: 0, settings: JSON.parse(JSON.stringify(defaultSettings)) };
       }
 
       // DOMAIN_INTEGRITY_ENGINE_START
@@ -729,10 +738,10 @@
       }
 
       function normalizeRestSeconds(value, fallback = 90) {
-        const numeric = Number(value);
-        if (Number.isFinite(numeric) && Number.isInteger(numeric) && numeric >= 15 && numeric <= 3600) return numeric;
+        const numeric = value == null || value === "" ? NaN : Number(value);
+        if (Number.isFinite(numeric) && Number.isInteger(numeric) && numeric >= 0 && numeric <= 3600) return numeric;
         const safeFallback = Number(fallback);
-        return Number.isFinite(safeFallback) && safeFallback >= 15 ? Math.min(3600, Math.round(safeFallback)) : 90;
+        return Number.isFinite(safeFallback) && safeFallback >= 0 ? Math.min(3600, Math.round(safeFallback)) : 90;
       }
 
       const weekdayKeys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -976,7 +985,7 @@
       }
 
       function resolveWorkoutMutationTarget(action, identifiers = {}) {
-        const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+        const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "undo-coach-revision", "set-type-sheet", "choose-set-type", "rpe-pad", "choose-set-rpe", "set-type-override", "undo-set-type-override", "set-rest-seconds", "reconcile-apply", "reconcile-dismiss", "start-timer", "session-deload", "exercise-deload", "suspend-session-coaching", "exercise-menu", "exercise-equipment"];
         const normalizedAction = String(action || "");
         if (!executableActions.includes(normalizedAction)) return { authorized: true, authorizationMode: "not_executable", action: normalizedAction, exercise: null, set: null, session: null };
         const failure = (reason, message) => ({ authorized: false, authorizationMode: "blocked", action: normalizedAction, exercise: null, set: null, session: null, reason, message });
@@ -1015,8 +1024,8 @@
           exercise = setExercise;
         }
         if (normalizedAction === "start-timer" && (!set || !exercise)) return failure("incomplete_timer_target", "A rest timer requires one matching exercise and set.");
-        if (["toggle-set", "toggle-skip-set"].includes(normalizedAction) && !set) return failure("missing_set_target", "This action requires a valid set target.");
-        if (["add-set", "add-warmup-set", "duplicate-set"].includes(normalizedAction) && !exercise) return failure("missing_exercise_target", "This action requires a valid exercise target.");
+        if (["toggle-set", "toggle-skip-set", "undo-coach-revision", "set-type-sheet", "choose-set-type", "rpe-pad", "choose-set-rpe", "set-type-override", "undo-set-type-override", "set-rest-seconds"].includes(normalizedAction) && !set) return failure("missing_set_target", "This action requires a valid set target.");
+        if (["add-set", "add-warmup-set", "duplicate-set", "reconcile-apply", "reconcile-dismiss", "exercise-menu", "exercise-equipment"].includes(normalizedAction) && !exercise) return failure("missing_exercise_target", "This action requires a valid exercise target.");
         if (normalizedAction === "add-exercise" && (set || exercise)) return failure("unexpected_exercise_target", "Adding an exercise must target the current workout session directly.");
 
         const derivedSession = exercise?.sessionId ? sessionById(exercise.sessionId) : null;
@@ -1044,7 +1053,7 @@
       }
 
       function workoutMutationSafetyDecision(action, context = {}) {
-        const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+        const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "undo-coach-revision", "set-type-sheet", "choose-set-type", "rpe-pad", "choose-set-rpe", "set-type-override", "undo-set-type-override", "set-rest-seconds", "reconcile-apply", "reconcile-dismiss", "start-timer", "session-deload", "exercise-deload", "suspend-session-coaching", "exercise-menu", "exercise-equipment"];
         if (!executableActions.includes(String(action || ""))) return { allowed: true, scope: "none", reason: "not_executable" };
         const block = (scope, reason, message) => ({ allowed: false, scope, reason, message });
         if (context.authorization?.authorized === false) {
@@ -1085,6 +1094,95 @@
         if (decision?.allowed !== false) return "";
         const label = decision.message || fallbackLabel || "Blocked by the current workout safety restriction";
         return ` disabled aria-disabled="true" data-safety-reason="${escapeHtml(label)}"`;
+      }
+
+      function setExerciseEquipmentCorrection(exerciseId, equipmentClass) {
+        const authorization = guardWorkoutMutation("exercise-equipment", { exerciseId });
+        if (!authorization.allowed || isSessionSubmitted(authorization.target.session)) return false;
+        if (equipmentClass !== "" && !ComprehensiveFitnessLoadedBar.EQUIPMENT_CLASSES.includes(equipmentClass)) return false;
+        const identity = coachVariantIdentity(authorization.target.exercise);
+        if (!identity) return false;
+        const existing = data.settings.equipmentCorrections || [];
+        const corrections = existing.filter((entry) => entry.exerciseIdentity !== identity);
+        if (equipmentClass && corrections.length >= 1000) {
+          showAppToast("The equipment correction limit has been reached.");
+          return false;
+        }
+        if (equipmentClass) corrections.push({ exerciseIdentity: identity, equipmentClass });
+        try { window.FitnessBackupContract.validateCoachData({ settings: { equipmentCorrections: corrections } }); }
+        catch { return false; }
+        commit({ ...data, settings: { ...data.settings, equipmentCorrections: corrections } });
+        return true;
+      }
+
+      function guardCoachSettingsMutation(action, notify = true) {
+        const actions = ["coach-mode", "coach-between-set-revisions", "routine-increment-unit", "equipment-bar-weight", "equipment-plate", "equipment-reset-plates", "equipment-correction-change", "equipment-correction-reset"];
+        const allowed = actions.includes(action) && activeTab === "settings" && !historyEditFlow && !historyEditStartPending && !importInProgress;
+        if (!allowed && notify) showAppToast("Open Settings after finishing history edits or imports to change coach and equipment preferences.");
+        return allowed;
+      }
+
+      function commitCoachSettingsPatch(action, patch) {
+        if (!guardCoachSettingsMutation(action)) return false;
+        const field = ({ "coach-mode": "coachMode", "coach-between-set-revisions": "coachBetweenSetRevisions", "routine-increment-unit": "routineIncrementUnit", "equipment-bar-weight": "barWeight", "equipment-plate": "plateInventory", "equipment-reset-plates": "plateInventory", "equipment-correction-change": "equipmentCorrections", "equipment-correction-reset": "equipmentCorrections" })[action];
+        if (!patch || Object.keys(patch).length !== 1 || !Object.hasOwn(patch, field) || patch.coachMode === "show" && !COACH_ACTIVATION_APPROVED) return false;
+        try { window.FitnessBackupContract.validateCoachData({ settings: patch }); }
+        catch {
+          showAppToast("That setting is invalid. The saved value has been kept.");
+          return false;
+        }
+        const focus = focusDescriptorForElement(document.activeElement);
+        if (focus) queuePostRenderFocus(action === "equipment-correction-reset" ? actionFocusDescriptor("equipment-bar-weight", { unit: "lb" }) : focus);
+        commit({ ...data, settings: { ...data.settings, ...patch } });
+        return true;
+      }
+
+      function setCoachModeSetting(value) {
+        if (!["shadow", "off", "show"].includes(value) || value === "show" && !COACH_ACTIVATION_APPROVED) return false;
+        return commitCoachSettingsPatch("coach-mode", { coachMode: value });
+      }
+
+      function setCoachBetweenSetRevisions(value) {
+        if (typeof value !== "boolean") return false;
+        return commitCoachSettingsPatch("coach-between-set-revisions", { coachBetweenSetRevisions: value });
+      }
+
+      function setRoutineIncrementUnit(value) {
+        if (![null, "lb", "kg"].includes(value)) return false;
+        return commitCoachSettingsPatch("routine-increment-unit", { routineIncrementUnit: value });
+      }
+
+      function setEquipmentBarWeight(unit, value) {
+        if (!["lb", "kg"].includes(unit) || typeof value !== "number" && typeof value !== "string" || String(value).trim() === "") return false;
+        const weight = Number(value);
+        if (!Number.isFinite(weight) || weight < 0) {
+          showAppToast("Bar weight must be a number of zero or more. The saved value has been kept.");
+          return false;
+        }
+        return commitCoachSettingsPatch("equipment-bar-weight", { barWeight: { ...data.settings.barWeight, [unit]: weight } });
+      }
+
+      function toggleEquipmentPlate(unit, value) {
+        if (!["lb", "kg"].includes(unit)) return false;
+        const plate = Number(value);
+        if (!defaultSettings.plateInventory[unit].includes(plate)) return false;
+        const current = data.settings.plateInventory[unit];
+        const plates = current.includes(plate) ? current.filter((item) => item !== plate) : [...current, plate].sort((a, b) => b - a);
+        return commitCoachSettingsPatch("equipment-plate", { plateInventory: { ...data.settings.plateInventory, [unit]: plates } });
+      }
+
+      function resetEquipmentPlates(unit) {
+        if (!["lb", "kg"].includes(unit)) return false;
+        return commitCoachSettingsPatch("equipment-reset-plates", { plateInventory: { ...data.settings.plateInventory, [unit]: [...defaultSettings.plateInventory[unit]] } });
+      }
+
+      function changeSavedEquipmentCorrection(identity, equipmentClass) {
+        if (typeof identity !== "string" || !data.settings.equipmentCorrections.some((entry) => entry.exerciseIdentity === identity)) return false;
+        if (equipmentClass !== "" && !ComprehensiveFitnessLoadedBar.EQUIPMENT_CLASSES.includes(equipmentClass)) return false;
+        const corrections = equipmentClass === ""
+          ? data.settings.equipmentCorrections.filter((entry) => entry.exerciseIdentity !== identity)
+          : data.settings.equipmentCorrections.map((entry) => entry.exerciseIdentity === identity ? { ...entry, equipmentClass } : entry);
+        return commitCoachSettingsPatch(equipmentClass === "" ? "equipment-correction-reset" : "equipment-correction-change", { equipmentCorrections: corrections });
       }
 
       const customExerciseProfileVersion = "custom-exercise-profile/1.0.0";
@@ -1203,7 +1301,9 @@
             repMax: Math.max(Math.max(1, Math.round(Number(normalized.repMin || stableRepMin))), Math.round(Number(normalized.repMax || stableRepMax))),
             rpeMin: Math.max(1, Math.min(10, Number(normalized.rpeMin || Math.max(1, stableTargetRpe - 1)))),
             rpeMax: Math.max(1, Math.min(10, Number(normalized.rpeMax || stableTargetRpe))),
-            restSeconds: stableRestSeconds,
+            // An explicit role rest wins; exercise rest supplies only the fallback.
+            restSeconds: Number.isFinite(Number(normalized.restSeconds)) && Number(normalized.restSeconds) >= 0
+              ? Math.round(Number(normalized.restSeconds)) : stableRestSeconds,
             countsTowardProgression: normalized.countsTowardProgression !== false,
             isWarmup: false
           };
@@ -1256,7 +1356,24 @@
         };
       }
 
+      function recordCoachRecovery(diagnostics, boundary) {
+        if (!diagnostics?.length) return;
+        coachRecoveryPending = true;
+        cancelPendingDataSave();
+        window.clearTimeout(draftSaveTimer);
+        diagnostics.forEach(({ code, count }) => coachRecoveryDiagnostics.push({ boundary, code, count }));
+        if (coachRecoveryDiagnostics.length > 100) coachRecoveryDiagnostics.splice(0, coachRecoveryDiagnostics.length - 100);
+        console.warn("Invalid local coaching metadata was quarantined; workout observations were preserved.");
+      }
+
+      function releaseCoachRecovery() {
+        coachRecoveryPending = false;
+      }
+
       function normalizeLoadedData(model) {
+        const recovered = window.FitnessBackupContract.quarantineCoachData(model);
+        model = recovered.model;
+        recordCoachRecovery(recovered.diagnostics, "normalization");
         const sourceAppDataVersion = Number(model.appDataVersion || 0);
         const sourceTemplates = Array.isArray(model.templates) ? model.templates : [];
         const sourceTemplateExercises = sourceTemplates.flatMap((template) => Array.isArray(template.exercises) ? template.exercises : []);
@@ -1264,6 +1381,12 @@
         const legacyEquipmentPreferencePresent = Object.prototype.hasOwnProperty.call(model.settings || {}, "availableEquipment");
         const storedSettings = model.settings || {};
         const safeSettings = {
+          coachMode: storedSettings.coachMode,
+          coachBetweenSetRevisions: storedSettings.coachBetweenSetRevisions,
+          barWeight: storedSettings.barWeight,
+          plateInventory: storedSettings.plateInventory,
+          equipmentCorrections: storedSettings.equipmentCorrections,
+          routineIncrementUnit: storedSettings.routineIncrementUnit,
           weightUnit: storedSettings.weightUnit,
           timerSound: storedSettings.timerSound,
           timerVibration: storedSettings.timerVibration,
@@ -1281,7 +1404,7 @@
           setupSoundConfirmed: storedSettings.setupSoundConfirmed,
           expectedTemplateId: storedSettings.expectedTemplateId
         };
-        model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)) };
+        model.settings = { ...JSON.parse(JSON.stringify(defaultSettings)), ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)) };
         if (storedSettings.readinessBaseline && typeof storedSettings.readinessBaseline === "object" && !Array.isArray(storedSettings.readinessBaseline)) {
           const compatibilityBaseline = cleanReadinessBaseline(storedSettings.readinessBaseline);
           if (Object.keys(compatibilityBaseline).length) model.settings.readinessBaseline = compatibilityBaseline;
@@ -1366,6 +1489,7 @@
         delete model.manualOverrides;
         delete model.personalEvidencePackage;
         model.rawImports = Array.isArray(model.rawImports) ? model.rawImports : [];
+        model.skippedSessions = Array.isArray(model.skippedSessions) ? model.skippedSessions : [];
         model.migrationAudit = Array.isArray(model.migrationAudit) ? model.migrationAudit : [];
         model.dataRevision = Number(model.dataRevision || 0);
         model = migrateDomainData(model);
@@ -1439,7 +1563,8 @@
         const collectionKeys = ["sessions", "exercises", "sets", "templates", "recommendationHistory", "rawImports", "migrationAudit"];
         if (collectionKeys.some((key) => Object.prototype.hasOwnProperty.call(value, key) && !Array.isArray(value[key]))) return null;
         if (Object.prototype.hasOwnProperty.call(value, "settings") && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return null;
-        return { source, value, revision, canonicalContent: null, updatedAt: metadata.updatedAt || null, timestamp: persistenceTimestamp(metadata.updatedAt) };
+        const recovered = window.FitnessBackupContract.quarantineCoachData(value);
+        return { source, value, runtimeValue: recovered.model, coachDiagnostics: recovered.diagnostics, revision, canonicalContent: null, updatedAt: metadata.updatedAt || null, timestamp: persistenceTimestamp(metadata.updatedAt) };
       }
 
       function resolveStoredAppDataCandidates(indexedCandidate, localCandidate) {
@@ -1499,6 +1624,7 @@
         }
         const indexedCandidate = storedAppDataCandidate(indexedStored, "indexeddb", { updatedAt: indexedRecord?.updatedAt || null });
         const localCandidate = storedAppDataCandidate(localStoredDetails.data, "localstorage", { updatedAt: localStoredDetails.updatedAt });
+        [indexedCandidate, localCandidate].filter(Boolean).forEach((candidate) => recordCoachRecovery(candidate.coachDiagnostics, candidate.source));
         let selectedCandidate = indexedCandidate || localCandidate;
         if (indexedCandidate && localCandidate && localCandidate.revision > indexedCandidate.revision) selectedCandidate = localCandidate;
         const candidateResolution = resolveStoredAppDataCandidates(indexedCandidate, localCandidate);
@@ -1510,7 +1636,7 @@
           reason: localStoredDetails.conflictReason || candidateResolution.reason,
           message: "Conflicting saved app-data copies were preserved because their ordering is unavailable. Export a backup before using Clear All Local App Data; automatic fallback cleanup is paused."
         } : null;
-        if (appDataPersistenceConflict && localCandidate && !localStoredDetails.conflictPreserved) {
+        if (!coachRecoveryPending && appDataPersistenceConflict && localCandidate && !localStoredDetails.conflictPreserved) {
           writeLocalAppDataFallback(localCandidate.value, {
             source: localStoredDetails.source,
             updatedAt: localStoredDetails.updatedAt,
@@ -1519,8 +1645,8 @@
             replaceConflictPreserved: true
           });
         }
-        const stored = selectedCandidate?.value
-          ? window.FitnessBackupContract?.discardObsoletePlanningState?.(selectedCandidate.value) || selectedCandidate.value
+        const stored = selectedCandidate?.runtimeValue
+          ? window.FitnessBackupContract?.discardObsoletePlanningState?.(selectedCandidate.runtimeValue) || selectedCandidate.runtimeValue
           : null;
         const invalidStoredSource = Boolean((indexedStored !== null && !indexedCandidate) || (localStoragePresent && !localCandidate));
         data = stored ? { ...emptyData(), ...stored, settings: { ...defaultSettings, ...stored.settings } } : emptyData();
@@ -1558,7 +1684,7 @@
         if (activeWorkoutId) activeSessionId = activeWorkoutId;
         await restorePushIdentity();
         if (invalidStoredSource && !settingsMessage) settingsMessage = "One saved app-data copy was invalid. The newest valid copy was used; export a backup before clearing local data.";
-        if (!appDataPersistenceConflict && selectedCandidate) {
+        if (!coachRecoveryPending && !appDataPersistenceConflict && selectedCandidate) {
           try {
             await writeIndexedValue("app-data", data);
             persistenceReady = true;
@@ -1769,6 +1895,7 @@
       }
 
       async function persistStableAppDataSnapshot(snapshot) {
+        releaseCoachRecovery();
         if (performanceFixtureEnabled) return true;
         const saveStartedAt = performanceNow();
         try {
@@ -1794,6 +1921,7 @@
       }
 
       function saveData() {
+        releaseCoachRecovery();
         cancelPendingDataSave();
         if (historyEditFlow) return false;
         if (performanceFixtureEnabled) return true;
@@ -1817,7 +1945,9 @@
         return true;
       }
 
-      function scheduleSave() {
+      function scheduleSave(options = {}) {
+        if (options.ordinaryMutation === true) releaseCoachRecovery();
+        if (coachRecoveryPending) return;
         window.clearTimeout(saveTimer);
         scheduleActiveDraftSave();
         if (idleSaveHandle && "cancelIdleCallback" in window) window.cancelIdleCallback(idleSaveHandle);
@@ -1856,6 +1986,7 @@
       }
 
       function persistActiveWorkoutDraft() {
+        if (coachRecoveryPending) return false;
         window.clearTimeout(draftSaveTimer);
         const snapshot = activeWorkoutDraftSnapshot();
         if (!snapshot || performanceFixtureEnabled) return false;
@@ -1869,6 +2000,12 @@
         const isV2 = snapshot?.contractVersion === "comprehensive-fitness-active-draft/2.0.0" && Number(snapshot.version) === 2;
         const isLegacyV1 = options.allowLegacyV1 !== false && snapshot && snapshot.contractVersion == null && Number(snapshot.version) === 1;
         if (!isV2 && !isLegacyV1) return null;
+        if (!options.strictCoachValidation) {
+          const recovered = window.FitnessBackupContract.quarantineCoachDraft(snapshot, baseData);
+          snapshot = recovered.draft;
+          recordCoachRecovery(recovered.diagnostics, "active_draft");
+        }
+        try { window.FitnessBackupContract.validateCoachDraft(snapshot, baseData); } catch { return null; }
         const savedAt = new Date(snapshot.savedAt || "").getTime();
         if (!Number.isFinite(savedAt) || savedAt > Date.now() + 5 * 60 * 1000) return null;
         const existingSession = baseData.sessions.find((item) => item.id === snapshot.workoutId);
@@ -2030,9 +2167,13 @@
             backgroundedAt
           };
         }
+        const draftSession = { ...session, ...snapshot.session, id: session.id, workoutStarted: true, workoutState: "active", submitted: false };
+        for (const field of ["coachingPrescription", "coachingSuspensions", "isDeload"]) {
+          if (!Object.prototype.hasOwnProperty.call(snapshot.session, field)) delete draftSession[field];
+        }
         const normalized = normalizeLoadedData({
           ...emptyData(),
-          sessions: [{ ...session, ...snapshot.session, id: session.id, workoutStarted: true, workoutState: "active", submitted: false }],
+          sessions: [draftSession],
           exercises: preparedExercises,
           sets: preparedSets,
           settings: baseData.settings
@@ -2064,6 +2205,9 @@
           .filter((action) => exceptionResolverApi?.validateResolvedAction(action)?.valid === true);
         const loadedSession = data.sessions.find((item) => item.id === snapshot.workoutId);
         const restoredCandidateSession = { ...(loadedSession || {}), ...candidate.session, resolvedActions: restoredResolvedActions, workoutStarted: true, workoutState: "active", submitted: false };
+        for (const field of ["coachingPrescription", "coachingSuspensions", "isDeload"]) {
+          if (!Object.prototype.hasOwnProperty.call(candidate.session, field)) delete restoredCandidateSession[field];
+        }
         const durationSeededSession = candidate.legacyActiveDurationMs != null
           && restoredCandidateSession.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION
           ? {
@@ -2158,11 +2302,15 @@
 
       function commit(nextData, shouldRender = true, options = {}) {
         const previousData = data;
-        if (arrayIdentityChanged(previousData.sessions, nextData.sessions) || arrayIdentityChanged(previousData.exercises, nextData.exercises) || arrayIdentityChanged(previousData.sets, nextData.sets)) {
+        // Facts, scope suspensions and coach replay share one persistence revision.
+        nextData = postMutationSessionCoaching(previousData, nextData);
+        const structureChanged = arrayIdentityChanged(previousData.sessions, nextData.sessions) || arrayIdentityChanged(previousData.exercises, nextData.exercises) || arrayIdentityChanged(previousData.sets, nextData.sets);
+        if (structureChanged) {
           entityStructureRevision += 1;
           entityIndexCache = null;
         }
         data = { ...nextData, dataRevision: Number(data?.dataRevision || 0) + 1 };
+        releaseCoachRecovery();
         if (options.invalidateAnalysis !== false) invalidateCompletedAnalysis();
         if (isEditingHistorySession()) {
           historyEditFlow.dirty = true;
@@ -2196,7 +2344,11 @@
       function createSet(exerciseId, setNumber, previous) {
         const exercise = data.exercises.find((item) => item.id === exerciseId);
         const resistanceType = previous?.resistanceType || exercise?.resistanceType || inferResistanceType(exercise?.name || "", exercise || {});
-        const weight = previous?.weight ?? 0;
+        const suppliedLoad = resistanceType === "bodyweight_plus_load" ? previous?.addedLoad ?? previous?.weight
+          : resistanceType === "assisted_bodyweight" ? previous?.assistanceLoad ?? previous?.weight : previous?.weight;
+        // A new row contains a plan, never an observation copied from another row.
+        const metricTarget = resistanceType === "duration" ? previous?.durationSeconds
+          : resistanceType === "distance" ? previous?.distance : previous?.reps;
         return {
           id: id(),
           exerciseId,
@@ -2205,39 +2357,39 @@
           sequence: Number(previous?.sequence ?? previous?.sequenceIndex ?? setNumber),
           setTypeIndex: Number(previous?.setTypeIndex ?? 0),
           sourceTemplateSetId: previous?.sourceTemplateSetId || "",
-          reps: previous?.reps ?? "",
-          weight,
+          reps: "",
+          weight: "",
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
           resistanceType,
           isBodyweight: isBodyweightResistance(resistanceType),
-          addedLoad: resistanceType === "bodyweight_plus_load" ? Number(previous?.addedLoad ?? weight) : Number(previous?.addedLoad || 0),
-          assistanceLoad: resistanceType === "assisted_bodyweight" ? Number(previous?.assistanceLoad ?? weight) : Number(previous?.assistanceLoad || 0),
-          durationSeconds: Number(previous?.durationSeconds || 0),
-          distance: Number(previous?.distance || 0),
+          addedLoad: "",
+          assistanceLoad: "",
+          durationSeconds: "",
+          distance: "",
           distanceUnit: previous?.distanceUnit || "m",
-          rpe: previous?.rpe ?? "",
-          completed: previous?.completed ?? false,
+          rpe: "",
+          completed: false,
           isWarmup: previous?.isWarmup ?? false,
           setType: normalizeSetTypeCode(previous?.setType, previous?.isWarmup),
           countsTowardProgression: previous?.countsTowardProgression ?? !(previous?.isWarmup ?? false),
           classificationSource: previous?.classificationSource || "app-explicit",
           classificationConfidence: previous?.classificationConfidence ?? 1,
           classifierVersion: previous?.classifierVersion || SET_CLASSIFIER_VERSION,
-          manualOverride: Boolean(previous?.manualOverride),
+          manualOverride: false,
           reviewRequired: Boolean(previous?.reviewRequired),
-          skipped: previous?.skipped ?? false,
-          edited: previous?.edited ?? false,
-          targetReps: previous?.targetReps ?? previous?.reps,
+          skipped: false,
+          edited: false,
+          targetReps: previous?.targetReps ?? metricTarget ?? previous?.reps,
           targetRepMin: previous?.targetRepMin ?? 0,
           targetRepMax: previous?.targetRepMax ?? previous?.targetReps ?? previous?.reps,
-          targetWeight: previous?.targetWeight ?? previous?.weight,
+          targetWeight: previous?.targetWeight ?? suppliedLoad,
           targetRpe: previous?.targetRpe ?? previous?.rpe,
           targetRpeMin: previous?.targetRpeMin ?? 0,
           targetRpeMax: previous?.targetRpeMax ?? previous?.targetRpe ?? previous?.rpe,
           targetRpeTolerance: previous?.targetRpeTolerance ?? 0.5,
           targetRestSeconds: previous?.targetRestSeconds ?? exercise?.restSeconds ?? 0,
-          originalTargetReps: previous?.originalTargetReps ?? previous?.targetReps ?? previous?.reps,
-          originalTargetWeight: previous?.originalTargetWeight ?? previous?.targetWeight ?? previous?.weight,
+          originalTargetReps: previous?.originalTargetReps ?? previous?.targetReps ?? metricTarget ?? previous?.reps,
+          originalTargetWeight: previous?.originalTargetWeight ?? previous?.targetWeight ?? suppliedLoad,
           originalTargetRpe: previous?.originalTargetRpe ?? previous?.targetRpe ?? previous?.rpe,
           previousComparableSet: previous?.previousComparableSet ? { ...previous.previousComparableSet } : null
         };
@@ -2769,15 +2921,16 @@
       }
 
       function normalizeResistanceSet(set, type) {
-        const load = Number(set.weight || 0);
+        const observation = (value) => value == null || (typeof value === "string" && value.trim() === "") ? "" : Number(value);
+        const load = observation(set.weight);
         return {
           ...set,
           resistanceType: type,
           isBodyweight: isBodyweightResistance(type),
-          addedLoad: type === "bodyweight_plus_load" ? Number(set.addedLoad ?? load) : Number(set.addedLoad || 0),
-          assistanceLoad: type === "assisted_bodyweight" ? Number(set.assistanceLoad ?? load) : Number(set.assistanceLoad || 0),
-          durationSeconds: Number(set.durationSeconds || 0),
-          distance: Number(set.distance || 0),
+          addedLoad: observation(type === "bodyweight_plus_load" ? set.addedLoad ?? load : set.addedLoad),
+          assistanceLoad: observation(type === "assisted_bodyweight" ? set.assistanceLoad ?? load : set.assistanceLoad),
+          durationSeconds: observation(set.durationSeconds),
+          distance: observation(set.distance),
           distanceUnit: set.distanceUnit || "m"
         };
       }
@@ -2842,11 +2995,17 @@
         return template.exercises.reduce((sum, exercise) => sum + Number(exercise.sets || 0), 0);
       }
 
+      // A deload mark belongs to this exercise exposure, never its entire week.
+      function isDeloadExposure(session, exercise, sets = []) {
+        return Boolean(session?.isDeload || session?.sessionType === "deload" || exercise?.isDeload
+          || sets.some((set) => setTypeSemantics(set).type === "deload"));
+      }
+
       function getMostRecentWorkoutPerformance(exerciseName, options = {}) {
         const requestedResistanceType = options.resistanceType || "";
         const requestedCanonicalId = options.canonicalExerciseId || canonicalExerciseId(exerciseName);
         const requestedExactName = normalizePrescriptionIdentity(exerciseName);
-        const cacheKey = ["performance", analysisRevision, requestedCanonicalId, requestedExactName, requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0, options.includeWarmups ? 1 : 0].join("|");
+        const cacheKey = ["performance", analysisRevision, requestedCanonicalId, requestedExactName, requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeWarmups ? 1 : 0].join("|");
         if (previousPerformanceCache.has(cacheKey)) return previousPerformanceCache.get(cacheKey);
         const throughDate = String(options.throughDate || options.asOfDate || todayIso()).slice(0, 10);
         const performanceIndex = submittedPerformanceIndex(throughDate);
@@ -2857,10 +3016,10 @@
         ].map((exercise) => [exercise.id, exercise])).values());
         const exerciseById = new Map(scopedExercises.map((exercise) => [exercise.id, exercise]));
         const scopedSets = scopedExercises.flatMap((exercise) => (dataEntityIndex().setIndicesByExercise.get(exercise.id) || []).map((index) => data.sets[index]));
-        const deloadWeeks = options.includeDeloads ? new Set() : new Set(scopedExercises.filter((exercise) => {
-          const session = sessionById.get(exercise.sessionId);
-          return exercise.isDeload || session?.isDeload || session?.sessionType === "deload";
-        }).map((exercise) => startOfWeekIso(sessionById.get(exercise.sessionId)?.date || todayIso())));
+        const deloadExerciseIds = new Set(scopedExercises.filter((exercise) => isDeloadExposure(
+          sessionById.get(exercise.sessionId), exercise,
+          (dataEntityIndex().setIndicesByExercise.get(exercise.id) || []).map((index) => data.sets[index])
+        )).map((exercise) => exercise.id));
         const completed = scopedSets
           .filter((set) => set.completed && !set.skipped)
           .map((set) => {
@@ -2871,7 +3030,7 @@
           .filter(Boolean)
           .filter((entry) => options.includeWarmups ? setTypeSemantics(entry.set).isWarmup || isWorkingSet(entry.set, "progression") : isWorkingSet(entry.set, "progression"))
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
-          .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
+          .filter((entry) => !deloadExerciseIds.has(entry.exercise.id))
           .filter((entry) => !requestedResistanceType || resistanceTypeFor(entry.exercise, entry.set) === requestedResistanceType)
           .sort((a, b) => b.session.date.localeCompare(a.session.date)
             || String(b.session.completedAt || b.session.submittedAt || b.session.createdAt || "").localeCompare(String(a.session.completedAt || a.session.submittedAt || a.session.createdAt || ""))
@@ -3129,6 +3288,7 @@
       }
 
       function activeDialogKey() {
+        if (loadedBarSheet) return "loadedBar:" + loadedBarSheet.mode + ":" + loadedBarSheet.setId;
         if (templateStartFlow) return `template:${templateStartFlow.templateId}:${templateStartFlow.step}`;
         if (optionalReadinessFlow) return `readiness:${optionalReadinessFlow.templateId || optionalReadinessFlow.sessionId}`;
         if (cancelWorkoutFlow) return `cancel:${cancelWorkoutFlow.sessionId}`;
@@ -3138,6 +3298,7 @@
       }
 
       function activeDialogInitialFocusDescriptor() {
+        if (loadedBarSheet) return actionFocusDescriptor(loadedBarSheet.mode === "rpe" ? "choose-set-rpe" : "choose-set-type", { setId: loadedBarSheet.setId });
         if (templateStartFlow) {
           return actionFocusDescriptor("resume-active-workout");
         }

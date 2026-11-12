@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · Hypothesis — coach concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="palette.css">
+<style>
+/* =====================================================================
+   06 · HYPOTHESIS
+   Every set is a prediction; every miss is a finding.
+   Structure: lettered panels (a, b, c), figure captions, hairline rules,
+   numbered sources. Colour comes only from palette.css.
+   ===================================================================== */
+
+:root {
+  --f-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --f-sig: "Cambria Math", "Times New Roman", Georgia, serif;
+  --r: 4px;
+}
+
+/* ---------- 1 · page ------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: 400 16px/1.45 var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
+h1, h2, h3, h4, p, ol, ul, dl, dd, figure { margin: 0; padding: 0; }
+ol, ul { list-style: none; }
+svg { display: block; }
+.sig { font-family: var(--f-sig); font-style: italic; font-weight: 400; letter-spacing: 0; }
+
+.sheet { max-width: 2600px; margin: 0 auto; padding: 44px 40px 80px; }
+
+/* masthead — the paper's title block */
+.mast {
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) minmax(0, 1.7fr);
+  gap: 30px 72px;
+  padding-bottom: 30px;
+  border-bottom: 2px solid var(--text);
+}
+.kick { display: flex; gap: 22px; font: 500 12px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.mast h1 { margin: 22px 0 14px; font-size: 108px; line-height: .9; font-weight: 700; letter-spacing: -.04em; }
+.mast h1 .no { font: 400 30px/1 var(--f-mono); letter-spacing: 0; color: var(--action); vertical-align: top; margin-right: 12px; position: relative; top: 8px; }
+.thesis { font-size: 29px; line-height: 1.18; max-width: 560px; }
+.thesis em { font-weight: 700; font-style: italic; }
+.premise { margin-top: 14px; max-width: 560px; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.abs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 30px; align-self: end; }
+.abs > div { border-top: 1px solid var(--line-strong); padding-top: 12px; }
+.abs dt { font: 500 12px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--action); margin-bottom: 10px; }
+.abs dd { font-size: 16px; line-height: 1.45; }
+.loopkey { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 30px; padding-top: 22px; border-top: 1px solid var(--line-strong); }
+.loopkey li { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: baseline; }
+.loopkey .rn { font: 500 13px/1 var(--f-mono); color: var(--action); }
+.loopkey b { font-size: 16px; }
+.loopkey p { grid-column: 2; font-size: 14px; line-height: 1.4; color: var(--muted); }
+
+/* the row of frames */
+.stage { display: flex; flex-wrap: wrap; gap: 44px 28px; margin-top: 40px; align-items: flex-start; }
+.fig { width: 390px; flex: none; }
+.fig > figcaption { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: center; margin-bottom: 14px; min-height: 92px; align-content: start; }
+.fc-id { font: 500 12px/1 var(--f-mono); letter-spacing: .1em; color: var(--on-action); background: var(--text); padding: 6px 8px 5px; border-radius: 2px; }
+.fc-t { font-weight: 700; font-size: 17px; line-height: 1.1; }
+.fc-s { grid-column: 1 / -1; font-size: 13.5px; line-height: 1.35; color: var(--muted); }
+
+/* ---------- 2 · phone frame & furniture ----------------------------- */
+.phone {
+  position: relative;
+  flex: none;
+  width: 390px;
+  height: 844px;
+  overflow: hidden;
+  border-radius: 36px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: var(--el-3);
+}
+.phone::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--line-strong); border-radius: inherit; pointer-events: none; z-index: 40; }
+.phone > * { flex: none; }
+.home { position: absolute; left: 50%; bottom: 8px; width: 128px; height: 5px; margin-left: -64px; border-radius: 3px; background: var(--text); z-index: 35; }
+
+.sb { height: 44px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 30px 7px 32px; font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+.sb-r { display: flex; align-items: center; gap: 6px; }
+.sb-r svg { flex: none; }
+
+/* running head */
+.rh { height: 26px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; font: 500 11px/1 var(--f-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.rh b { color: var(--text); font-weight: 500; }
+
+/* the loop: I Predict · II Observe · III Explain · IV Test */
+.loop { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 20px; border-bottom: 1px solid var(--line-strong); }
+.loop span { height: 34px; display: flex; align-items: center; justify-content: center; gap: 4px; margin-bottom: -1px; border-bottom: 3px solid transparent; font: 500 11px/1 var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.loop svg { width: 11px; height: 11px; color: var(--success); }
+.loop .on { color: var(--text); border-bottom-color: var(--action); }
+
+/* panels */
+.pn { padding: 10px 20px 11px; border-top: 1px solid var(--line-strong); }
+.pn.first { border-top: 2px solid var(--text); }
+.pn-h { display: flex; align-items: baseline; gap: 9px; margin-bottom: 7px; }
+.pl { width: 11px; font-weight: 700; font-size: 17px; line-height: 1; }
+.pn-t { font: 500 11.5px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pn-r { margin-left: auto; font: 500 11.5px/1 var(--f-mono); color: var(--muted); }
+sup.rf { font: 500 11px/0 var(--f-mono); color: var(--action); position: relative; top: -.5em; vertical-align: baseline; margin-left: 2px; }
+sup.rf::before { content: "["; }
+sup.rf::after { content: "]"; }
+sup.rf + sup.rf { margin-left: 3px; }
+.cap { font-size: 12.5px; line-height: 1.38; color: var(--muted); }
+.cap b { color: var(--text); font-weight: 700; }
+.mono { font-family: var(--f-mono); }
+.num { flex: none; white-space: nowrap; font: 500 54px/1 var(--f-mono); letter-spacing: -.05em; }
+
+/* tags */
+.tag { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border: 1px solid; border-radius: 3px; font-weight: 700; font-size: 12.5px; line-height: 1; white-space: nowrap; }
+.tag svg { width: 13px; height: 13px; }
+.tag.ok  { color: var(--success); background: var(--success-dark); border-color: color-mix(in srgb, var(--success) 40%, transparent); }
+.tag.sup { color: var(--amber); background: color-mix(in srgb, var(--amber) 11%, transparent); border-color: color-mix(in srgb, var(--amber) 48%, transparent); }
+.tag.unt { color: var(--green-2); background: var(--current-dark); border-color: color-mix(in srgb, var(--action) 42%, transparent); }
+.tag.neu { color: var(--muted); background: var(--surface); border-color: var(--line-strong); }
+
+/* buttons */
+.btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 54px; border-radius: 5px; font-weight: 700; font-size: 16.5px; letter-spacing: .01em; }
+.btn svg { width: 19px; height: 19px; }
+.btn-p { background: var(--action); color: var(--on-action); }
+.btn-g { height: 46px; font-size: 14.5px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--text); }
+.btn-pain { height: 46px; font-size: 14.5px; border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); color: var(--red); background: color-mix(in srgb, var(--red) 6%, transparent); }
+
+/* footnotes — the numbered references */
+.fn { margin-top: auto; padding: 6px 20px 19px; border-top: 1px solid var(--line); font: 400 11.5px/1.5 var(--f-mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 0 14px; }
+.fn b { color: var(--action); font-weight: 500; margin-right: 3px; }
+
+/* ---------- 3 · logger (shared by F1, F4) --------------------------- */
+.ex { padding: 11px 20px 9px; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 0 12px; }
+.ex h2 { font-size: 25px; line-height: 1.1; font-weight: 700; letter-spacing: -.015em; }
+.ex-k { font: 500 12px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--action); }
+.ex-s { flex-basis: 100%; margin-top: 6px; font: 400 12.5px/1.2 var(--f-mono); color: var(--muted); }
+
+.pred { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.pred-t { font-size: 13.5px; line-height: 1.38; color: var(--muted); }
+.pred-t b { display: block; margin-bottom: 2px; color: var(--text); font-size: 15px; }
+.ax { width: 100%; height: auto; }
+.ax-band { fill: color-mix(in srgb, var(--action) 15%, transparent); }
+.ax-edge { stroke: var(--action); stroke-width: 2; fill: none; }
+.ax-base { stroke: var(--text); stroke-width: 1.5; fill: none; }
+.ax-tick { stroke: var(--text); stroke-width: 1; fill: none; }
+.ax-n { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: middle; }
+.ax-n .hi { fill: var(--action); font-weight: 500; }
+.ax-br { stroke: var(--muted); stroke-width: 1.25; fill: none; }
+.ax-l { font: 400 11px var(--f-mono); fill: var(--muted); }
+.ax-l .k { fill: var(--text); font-weight: 500; }
+
+.warm { display: flex; align-items: center; gap: 8px; min-height: 26px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.warm .m { margin-left: auto; font: 400 12px var(--f-mono); }
+
+.srow { display: grid; grid-template-columns: 22px 1fr auto; column-gap: 10px; align-items: center; min-height: 46px; border-bottom: 1px solid var(--line); }
+.sdot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--success); color: var(--on-action); }
+.sdot svg { width: 13px; height: 13px; }
+.sdot.miss { background: var(--amber); }
+.sn { font: 500 13px var(--f-mono); color: var(--muted); text-align: center; }
+.sval { font: 500 17px var(--f-mono); letter-spacing: -.02em; }
+.sline { display: flex; align-items: baseline; gap: 8px; }
+.sline b { font-size: 14px; }
+.sline .r { font: 400 12px var(--f-mono); color: var(--muted); }
+.ssub { font: 400 12px/1.3 var(--f-mono); color: var(--muted); }
+.srow.q .sval { color: var(--muted); }
+.ring { width: 44px; height: 44px; display: grid; place-items: center; margin-right: -10px; }
+.ring i { width: 24px; height: 24px; border: 2px solid var(--line-strong); border-radius: 50%; }
+
+.live { margin: 8px 0 2px; padding: 10px 12px 11px 14px; background: var(--panel-2); border: 1px solid color-mix(in srgb, var(--action) 32%, transparent); border-left: 4px solid var(--action); border-radius: var(--r); }
+.live-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.live-top b { font-size: 16px; }
+.prev { font: 400 12px var(--f-mono); color: var(--muted); }
+.prev b { font: 500 12px var(--f-mono); color: var(--text); }
+.restline { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; font: 500 12px/1 var(--f-mono); color: var(--rest-text); }
+.rbar { position: relative; flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--rest-accent) 24%, transparent); }
+.rbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--rest-accent); }
+.rbar s { position: absolute; right: 0; top: -3px; bottom: -3px; width: 2px; background: var(--rest-text); text-decoration: none; }
+.flds { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lb { display: block; margin-bottom: 5px; font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.st { display: grid; grid-template-columns: 44px 1fr 44px; height: 56px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--bg); overflow: hidden; }
+.st button { display: grid; place-items: center; color: var(--action); }
+.st button svg { width: 18px; height: 18px; }
+.st output { display: grid; place-items: center; font: 500 30px/1 var(--f-mono); letter-spacing: -.04em; }
+.act { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: end; margin-top: 10px; }
+.rir { display: flex; gap: 4px; }
+.rir button { width: 44px; height: 44px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--bg); font: 500 17px var(--f-mono); }
+.rir button.on { background: var(--text); border-color: var(--text); color: var(--on-action); }
+.log { height: 60px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--action); color: var(--on-action); border-radius: var(--r); font-weight: 700; font-size: 16.5px; }
+.log svg { width: 20px; height: 20px; }
+
+/* ---------- 4 · F2 · the finding ------------------------------------ */
+.flagtop { background: var(--panel-3); border-bottom: 2px solid var(--amber); }
+.flagtop .loop { border-bottom-color: color-mix(in srgb, var(--amber) 38%, transparent); }
+.flagtop .loop .on { border-bottom-color: var(--amber); }
+.find { padding: 10px 20px 11px; }
+.eyebrow { font: 500 11.5px/1 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
+.find h2 { margin: 6px 0 4px; font-size: 38px; line-height: 1; font-weight: 700; letter-spacing: -.03em; }
+.lede { margin-bottom: 8px; font-size: 14.5px; line-height: 1.3; }
+.lede b { font: 500 15.5px var(--f-mono); letter-spacing: -.03em; }
+.lede em { font-style: normal; font-weight: 700; color: var(--amber); }
+.plate .cap { margin-top: 3px; }
+.plate { background: var(--bg); border: 1px solid color-mix(in srgb, var(--amber) 50%, transparent); border-radius: 6px; padding: 7px 10px 8px; }
+.hero { width: 100%; height: auto; }
+.h-band { fill: color-mix(in srgb, var(--action) 15%, transparent); }
+.h-edge { stroke: var(--action); stroke-width: 2; fill: none; }
+.h-base { stroke: var(--text); stroke-width: 1.5; fill: none; }
+.h-tick { stroke: var(--text); stroke-width: 1; fill: none; }
+.h-n { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: middle; }
+.h-n .hi { fill: var(--action); font-weight: 500; }
+.h-n .lo { fill: var(--amber); font-weight: 500; }
+.h-br { stroke: var(--muted); stroke-width: 1.25; fill: none; }
+.h-lbl { font: 500 11px var(--f-mono); letter-spacing: .08em; fill: var(--muted); }
+.h-big { font: 500 38px var(--f-mono); letter-spacing: -.05em; fill: var(--text); text-anchor: middle; }
+.h-obs { font: 500 92px var(--f-mono); letter-spacing: -.06em; fill: var(--amber); text-anchor: end; }
+.h-mast { stroke: var(--text); stroke-width: 2.5; stroke-linecap: round; fill: none; }
+.h-flag { fill: var(--amber); }
+.h-dim { stroke: var(--amber); stroke-width: 1.5; fill: none; }
+.h-dimt { font: 500 17px var(--f-mono); fill: var(--amber); text-anchor: middle; }
+.h-rir { font: 500 12px var(--f-mono); fill: var(--amber); text-anchor: end; }
+
+.sg { width: 100%; height: auto; margin-bottom: 2px; }
+.pn-sec { background: var(--surface); padding: 8px 20px 8px; }
+.sg-area { fill: color-mix(in srgb, var(--action) 10%, transparent); }
+.sg-curve { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.sg-base { stroke: var(--text); stroke-width: 1.25; fill: none; }
+.sg-mast { stroke: var(--text); stroke-width: 2; stroke-linecap: round; fill: none; }
+.sg-flag { fill: var(--amber); }
+.sg-big { font: 500 22px var(--f-mono); letter-spacing: -.04em; fill: var(--amber); text-anchor: end; }
+.sg-t { font: 500 11px var(--f-mono); fill: var(--amber); }
+.sg-u { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: middle; }
+.sg-n { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: middle; }
+
+.ev li { display: grid; grid-template-columns: 22px 1fr auto; column-gap: 10px; align-items: start; padding: 3px 0 3px; border-bottom: 1px solid var(--line); }
+.ev li:last-child { border-bottom: 0; padding-bottom: 0; }
+.ev .rk { font: 500 13px/22px var(--f-mono); color: var(--muted); text-align: center; }
+.ev h3 { font-size: 15.5px; line-height: 22px; font-weight: 700; }
+.ev p { grid-column: 2 / 4; margin-top: 0; font-size: 13px; line-height: 1.38; color: var(--muted); }
+.ev p b { font-family: var(--f-mono); font-weight: 500; color: var(--text); }
+.ev .ask { display: inline-block; padding: 14px 6px; margin: -14px -6px; color: var(--red); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.cta { padding: 7px 20px 0; }
+.cta .btn { height: 50px; }
+
+.lpred { margin: 0 0 9px; padding: 7px 10px 8px; background: var(--bg); border: 1px solid var(--line-strong); border-radius: var(--r); }
+.lp-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--action); }
+.lp-row { display: flex; align-items: center; gap: 12px; }
+.lp-num { flex: none; }
+.lp-num .num { display: block; font-size: 36px; }
+.lp-num small { display: block; margin-top: 2px; font: 400 11.5px/1.2 var(--f-mono); color: var(--muted); }
+.lp-ax { flex: 1; min-width: 0; width: 100%; height: auto; }
+.lp-note { margin-top: 3px; font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+.srow.q { grid-template-columns: 22px 1fr auto 44px; min-height: 44px; }
+
+/* ---------- 5 · F3 · today's test ------------------------------------ */
+.head { padding: 11px 20px 11px; }
+.head .eyebrow { color: var(--action); }
+.head h2 { margin: 8px 0 0; font-size: 32px; line-height: 1; font-weight: 700; letter-spacing: -.025em; }
+.head .lead { font-size: 14px; line-height: 1.4; color: var(--muted); }
+.dsa { padding: 9px 14px 9px; border: 2px solid var(--action); border-radius: 6px; background: var(--panel-2); }
+.dsa h3 { font-size: 19px; line-height: 1.2; font-weight: 700; letter-spacing: -.012em; }
+.dsa h3 .mono { font-weight: 500; letter-spacing: -.04em; }
+.proto { margin-top: 6px; }
+.proto > div { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 3px 0; border-top: 1px solid color-mix(in srgb, var(--action) 20%, transparent); font-size: 13.5px; }
+.proto dt { font: 500 11px/20px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.proto dd { line-height: 20px; }
+.proto dd b { font: 500 13px var(--f-mono); letter-spacing: -.02em; }
+.pass { margin-top: 6px; padding: 6px 10px 7px; border-left: 3px solid var(--success); background: var(--success-dark); font-size: 13.5px; line-height: 1.38; }
+.pass b { font-weight: 700; color: var(--text); }
+.down { margin-top: 6px; border-top: 1px solid color-mix(in srgb, var(--action) 20%, transparent); }
+.down li { display: grid; grid-template-columns: 84px 1fr; align-items: center; gap: 8px; min-height: 28px; border-bottom: 1px solid color-mix(in srgb, var(--action) 20%, transparent); }
+.down li:last-child { border-bottom: 0; padding-bottom: 0; min-height: 28px; }
+.down .lb { margin: 0; }
+.dv { display: flex; align-items: center; gap: 8px; font-size: 13.5px; white-space: nowrap; }
+.dv b { font: 500 15px var(--f-mono); letter-spacing: -.04em; }
+.mini { flex: none; width: 52px; height: 10px; }
+.mini-band { fill: color-mix(in srgb, var(--action) 20%, transparent); }
+.mini-edge { stroke: var(--action); stroke-width: 1.5; fill: none; }
+.mini-dot { fill: var(--action); }
+.mini-base { stroke: var(--line-strong); stroke-width: 1; fill: none; }
+
+.alt { display: grid; grid-template-columns: 22px 1fr 66px; column-gap: 10px; align-items: center; padding: 5px 0 6px; border-bottom: 1px solid var(--line); }
+.alt:last-child { border-bottom: 0; padding-bottom: 0; }
+.ak { height: 22px; font: 500 13px/20px var(--f-mono); color: var(--muted); text-align: center; border: 1px solid var(--line-strong); border-radius: 3px; }
+.alt h4 { font-size: 14.5px; line-height: 1.25; font-weight: 700; }
+.alt p { grid-column: 1 / 3; margin-top: 1px; font-size: 13px; line-height: 1.38; color: var(--muted); }
+.alt p b { color: var(--text); }
+.alt .ak { grid-row: 1; align-self: start; }
+.alt .txt { grid-column: 2; }
+.use { grid-row: 1 / 3; grid-column: 3; height: 44px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--bg); font-weight: 700; font-size: 13.5px; }
+.cta3 { padding: 8px 20px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cta3 .btn-p { height: 50px; }
+.cta3 .btn-g, .cta3 .btn-pain { height: 46px; }
+.cta3 .btn-p { grid-column: 1 / -1; }
+
+/* ---------- 6 · F4 · test running ------------------------------------ */
+.applied { display: flex; align-items: center; gap: 8px; }
+.applied svg { width: 14px; height: 14px; color: var(--success); }
+.eyebrow.ok { color: var(--success); }
+.pred.sm .num { font-size: 46px; }
+.pred-t strong { color: var(--success); font-weight: 700; }
+.ex-k.ok { display: inline-flex; align-items: center; gap: 5px; color: var(--success); }
+.ex-k svg { width: 13px; height: 13px; }
+.hold { display: grid; grid-template-columns: auto 1fr; gap: 0 14px; align-items: center; }
+.hold .num { font-size: 44px; color: var(--rest-text); }
+.hold-t { font-size: 13.5px; line-height: 1.38; color: var(--muted); }
+.hold-t b { display: block; color: var(--text); font-size: 15px; }
+.hbar { position: relative; grid-column: 1 / -1; height: 12px; margin-top: 8px; border-radius: 6px; background: color-mix(in srgb, var(--rest-accent) 24%, transparent); }
+.hbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--rest-accent); }
+.hbar .mk { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.hbar .end { position: absolute; right: 0; top: -4px; bottom: -4px; width: 3px; border-radius: 1px; background: var(--rest-text); }
+.hscale { position: relative; grid-column: 1 / -1; height: 14px; margin-top: 6px; font: 400 11.5px/1 var(--f-mono); color: var(--muted); }
+.hscale span { position: absolute; top: 0; white-space: nowrap; }
+.hscale .l { left: 0; }
+.hscale .r { right: 0; color: var(--rest-text); font-weight: 500; }
+.hscale .m { text-align: right; transform: translateX(-100%); padding-right: 6px; color: var(--text); }
+.early { grid-column: 1 / -1; }
+.log.held { background: var(--bg); color: var(--rest-text); border: 1.5px solid var(--rest-accent); }
+.plates { margin-top: 8px; font: 400 12px/1 var(--f-mono); color: var(--muted); }
+.plates b { font-weight: 500; color: var(--text); }
+.strip { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 2px 0 7px; }
+.strip > div { display: flex; align-items: center; gap: 8px; }
+.strip .t { font: 500 14px var(--f-mono); letter-spacing: -.02em; }
+.strip .t span { font: 700 13px var(--f-sans); letter-spacing: 0; margin-right: 7px; }
+.sdot svg.f { width: 12px; height: 12px; }
+.amend li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-height: 31px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.amend li:last-child { border-bottom: 0; }
+.amend b { font-size: 14px; }
+.amend span { font: 400 12px/1.3 var(--f-mono); color: var(--muted); }
+.amend .chg { margin: 0 -8px; padding: 5px 8px 5px 11px; background: var(--panel-3); box-shadow: inset 3px 0 0 var(--amber); border-bottom: 0; }
+.amend .chg span { color: var(--text); }
+.amend .chg em { font-style: normal; color: var(--amber); font-weight: 500; }
+.ms { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; color: var(--text); }
+.ms svg { width: 14px; height: 14px; }
+.ms.ok svg { color: var(--success); }
+.ms.miss svg { color: var(--amber); }
+.pn-r .ms:last-of-type { margin-right: 4px; }
+
+/* ---------- 7 · F5 · Thursday's experiment --------------------------- */
+.head5 h2 { font-size: 38px; margin-top: 7px; letter-spacing: -.03em; }
+.hyp { font-size: 18px; line-height: 1.3; font-style: italic; letter-spacing: -.005em; }
+.hyp b { font-weight: 700; font-style: italic; }
+.keys { display: grid; grid-template-columns: 1fr 1.25fr 1fr; border: 1px solid var(--line-strong); border-radius: var(--r); }
+.keys > div { padding: 7px 10px 8px; }
+.keys > div + div { border-left: 1px solid var(--line-strong); }
+.keys .v { font: 500 25px/1.1 var(--f-mono); letter-spacing: -.05em; }
+.keys .v small { font: 400 13px var(--f-mono); letter-spacing: 0; color: var(--muted); }
+.keys .n { margin-top: 2px; font: 400 11.5px/1.3 var(--f-mono); color: var(--muted); }
+.protocol-n { margin-top: 7px; font-size: 13.5px; color: var(--muted); }
+.rule { padding: 6px 0 8px; border-bottom: 1px solid var(--line); }
+.rule:last-child { border-bottom: 0; padding-bottom: 0; }
+.rule-if { display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 1.3; }
+.rule-if .tag { flex: none; width: 66px; justify-content: center; }
+.rule .hrv { margin-top: 8px; }
+.rule-then { display: flex; align-items: center; gap: 10px; margin-top: 5px; padding-left: 0; }
+.rule-then svg { flex: none; width: 66px; height: 16px; padding: 0 25px; color: var(--muted); }
+.rule-then span { font-size: 13.5px; line-height: 1.3; }
+.rule-if + .rule-then { margin-top: 4px; }
+.rule-then b { font: 500 18px var(--f-mono); letter-spacing: -.04em; }
+.amd { font-size: 14px; line-height: 1.38; }
+.amd b { font: 500 13.5px var(--f-mono); letter-spacing: -.02em; }
+.hrv { width: 100%; height: auto; margin-top: 6px; }
+.hrv-lo { fill: color-mix(in srgb, var(--amber) 20%, transparent); }
+.hrv-hi { fill: color-mix(in srgb, var(--action) 14%, transparent); }
+.hrv-base { stroke: var(--text); stroke-width: 1.5; fill: none; }
+.hrv-stem { stroke: var(--text); stroke-width: 1.25; fill: none; }
+.hrv-stem.a { stroke: var(--amber); stroke-width: 2; }
+.hrv-reg { font: 500 11.5px var(--f-mono); fill: var(--text); text-anchor: middle; }
+.hrv-n { font: 500 15px var(--f-mono); fill: var(--text); text-anchor: middle; letter-spacing: -.03em; }
+.hrv-n.a { fill: var(--amber); }
+.hrv-c { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: middle; }
+.hrv-f { fill: var(--amber); }
+.lockline { margin-top: 6px; font-size: 12.5px; line-height: 1.38; color: var(--muted); text-align: center; }
+
+/* ---------- 8 · F6 · the coach's record ------------------------------ */
+.cal { width: 100%; height: auto; }
+.cal-grid { stroke: var(--line); stroke-width: 1; fill: none; }
+.cal-axis { stroke: var(--text); stroke-width: 1.5; fill: none; }
+.cal-tgt { stroke: var(--action); stroke-width: 1.5; fill: none; }
+.cal-stem { stroke: var(--text); stroke-width: 2; fill: none; }
+.cal-dot { fill: var(--text); }
+.cal-dot.a { fill: var(--amber); }
+.cal-dot.s { fill: var(--success); }
+.cal-y { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: end; }
+.cal-x { font: 500 11.5px var(--f-mono); fill: var(--text); text-anchor: middle; }
+.cal-v { font: 500 13px var(--f-mono); text-anchor: middle; letter-spacing: -.02em; }
+.cal-v .on { fill: var(--on-action); }
+.cal-y2 { font: 400 11px var(--f-mono); fill: var(--muted); text-anchor: middle; }
+.cal-t { font: 500 11px var(--f-mono); fill: var(--action); }
+.tally { display: grid; grid-template-columns: 38fr 8fr 2fr; height: 14px; gap: 2px; margin: 4px 0 8px; }
+.tally i { display: block; }
+.tally .t1 { background: var(--success); border-radius: 2px 0 0 2px; }
+.tally .t2 { background: color-mix(in srgb, var(--action) 45%, transparent); }
+.tally .t3 { background: var(--amber); border-radius: 0 2px 2px 0; }
+.tl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.tl:last-child { border-bottom: 0; }
+.tl .v { font: 500 17px var(--f-mono); letter-spacing: -.04em; min-width: 44px; }
+.tl .k { color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.sw { width: 12px; height: 12px; border-radius: 2px; }
+.sw.t1 { background: var(--success); }
+.sw.t2 { background: color-mix(in srgb, var(--action) 45%, transparent); }
+.sw.t3 { background: var(--amber); }
+.today-c { display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border-left: 3px solid var(--amber); background: var(--panel-3); font-size: 14.5px; line-height: 1.4; }
+.today-c svg { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--amber); }
+.today-c b { font: 500 14px var(--f-mono); letter-spacing: -.03em; }
+.note-c { font-size: 14.5px; line-height: 1.42; }
+.note-c b { font-weight: 700; }
+
+/* ---------- 9 · session & exercise controls, set table ---------------- */
+.rh { gap: 12px; }
+.tg { position: relative; display: inline-flex; align-items: center; gap: 6px; font: 500 11px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.tg::before { content: ""; position: absolute; inset: -14px -6px; }
+.tg i { position: relative; flex: none; width: 24px; height: 14px; border: 1.5px solid var(--line-strong); border-radius: 8px; background: var(--bg); }
+.tg i::after { content: ""; position: absolute; top: 1.5px; left: 1.5px; width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); }
+.tg[aria-checked="true"] i { background: var(--action); border-color: var(--action); }
+.tg[aria-checked="true"] i::after { left: 11px; background: var(--on-action); }
+.tg-s::before { inset: -12px -10px; }
+.dg { position: relative; top: -.5em; margin-left: 1px; font: 500 11px/0 var(--f-mono); color: var(--action); }
+.ex-s.row { display: flex; align-items: center; justify-content: space-between; margin-top: 7px; }
+.pn-h .tg { margin-left: auto; }
+.fn-d { flex-basis: 100%; }
+
+/* the set table (logging contract) */
+.th, .tr { display: grid; grid-template-columns: 34px 76px 1fr 1fr 1fr 46px; column-gap: 6px; align-items: center; }
+.th .ctr { text-align: center; }
+.th { height: 22px; border-bottom: 1px solid var(--line-strong); font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tr { min-height: 44px; border-bottom: 1px solid var(--line); }
+.tr.w { grid-template-columns: 34px 1fr; min-height: 30px; font: 400 12px var(--f-mono); color: var(--muted); }
+.tr.done { grid-template-rows: 42px auto; padding-bottom: 0; min-height: 0; }
+.tr.done:not(:has(.trn)) { grid-template-rows: 44px; }
+.trn { grid-column: 2 / -1; align-self: start; margin-top: -6px; padding-bottom: 6px; font: 400 11.5px/1.2 var(--f-mono); color: var(--muted); }
+.trn b { font-weight: 500; color: var(--success); }
+.sf { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; font: 500 14px/1 var(--f-mono); }
+.sf.chg { box-shadow: inset 0 -3px 0 var(--amber); }
+.sf.w { border: 1.5px solid var(--line-strong); color: var(--muted); font-size: 12px; }
+.c-prev { font: 400 12px var(--f-mono); color: var(--muted); white-space: nowrap; }
+.c-v { text-align: center; font: 500 17px/1 var(--f-mono); letter-spacing: -.03em; }
+.c-v.amb { color: var(--amber); }
+.fb { height: 40px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg); font: 500 18px/1 var(--f-mono); letter-spacing: -.03em; color: var(--muted); }
+.fb.empty { color: var(--muted-2); }
+.fb.lt { border-color: var(--line); color: var(--muted-2); }
+.fb.chg { border-color: var(--amber); background: var(--panel-3); color: var(--text); }
+.fb.lt.chg { color: var(--muted); }
+.ck { display: grid; place-items: center; margin: 0 auto; }
+.ck svg { width: 18px; height: 18px; }
+.ck.done { width: 26px; height: 26px; border-radius: 50%; background: var(--success); color: var(--on-action); }
+.ck.done svg { width: 14px; height: 14px; }
+.ck.miss { width: 26px; height: 26px; border-radius: 50%; background: var(--amber); color: var(--on-action); }
+.ck.miss svg { width: 13px; height: 13px; }
+.ck.go { width: 44px; height: 44px; border-radius: 6px; background: var(--action); color: var(--on-action); }
+.ck.go svg { width: 24px; height: 24px; }
+.ck.held { width: 44px; height: 44px; border-radius: 6px; border: 1.5px solid var(--rest-accent); background: var(--bg); color: var(--rest-text); }
+.ck.ring { width: 44px; height: 44px; }
+.ck.ring i { width: 24px; height: 24px; border: 2px solid var(--line-strong); border-radius: 50%; }
+.act-block { margin: 0 -20px; padding: 0 20px 6px; background: var(--panel-2); box-shadow: inset 4px 0 0 var(--action); border-bottom: 1px solid color-mix(in srgb, var(--action) 25%, transparent); }
+.act-block .tr { border-bottom: 0; }
+.drawer { display: grid; gap: 4px; }
+.lpred.tst .lp-row { gap: 10px; }
+.lpred.tst .num { font-size: 34px; }
+.lp-t { font-size: 13px; line-height: 1.35; color: var(--muted); }
+.lp-t b { display: block; color: var(--text); font-size: 13.5px; }
+.rpe { display: flex; align-items: center; gap: 10px; }
+.rpe-l { width: 56px; font: 400 11px/1.3 var(--f-mono); color: var(--muted); }
+.rpe-l small { display: block; font: 400 11px/1.3 var(--f-mono); }
+.lp-h sup { top: 0; }
+.rpe-l b { display: block; font-weight: 500; letter-spacing: .08em; color: var(--text); }
+.chips { display: flex; gap: 4px; }
+.chips button { width: 44px; height: 44px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg); font: 500 17px var(--f-mono); }
+.rest { display: grid; grid-template-columns: 50px 1fr 50px 54px; gap: 6px; align-items: center; }
+.rest button { height: 44px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--bg); font: 500 12px var(--f-mono); color: var(--text); }
+.rest .mid { min-width: 0; text-align: center; }
+.rest .rt { display: block; margin-bottom: 7px; font: 500 12px/1 var(--f-mono); color: var(--rest-text); white-space: nowrap; }
+.rest .rt b { font-size: 14px; }
+.rest .rbar { display: block; flex: none; width: 100%; }
+.rbar s.mk { right: auto; width: 2px; background: var(--text); }
+.reason { display: flex; align-items: center; gap: 10px; margin: 0 20px 8px; padding: 6px 4px 6px 11px; border-left: 3px solid var(--amber); background: var(--panel-3); font-size: 13px; line-height: 1.35; }
+.reason span { flex: 1; }
+.reason b { font-weight: 700; }
+.undo { position: relative; flex: none; display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 10px; font: 500 12px var(--f-mono); color: var(--green-2); }
+.undo svg { width: 15px; height: 15px; }
+.up { display: grid; grid-template-columns: 1fr 1fr; }
+.up-c { padding: 5px 10px 6px 0; border-bottom: 1px solid var(--line); min-height: 44px; }
+.up-c:nth-child(even) { padding: 5px 0 6px 12px; border-left: 1px solid var(--line); }
+.up-c:nth-last-child(-n+2) { border-bottom: 0; }
+.up-t { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.up-t b { font-size: 13.5px; }
+.up-c > span { display: block; font: 400 12px/1.3 var(--f-mono); color: var(--muted); }
+.up-c.chg { background: var(--panel-3); box-shadow: inset 3px 0 0 var(--amber); padding-left: 11px; margin-left: -8px; padding-right: 18px; }
+.up-c.chg > span { color: var(--text); }
+.up-c.chg em { font-style: normal; color: var(--amber); font-weight: 500; }
+.cta5 { display: grid; grid-template-columns: 1.35fr 1fr; gap: 8px; }
+.cta5 .btn { height: 50px; }
+.cta5 .lockline { grid-column: 1 / -1; margin-top: 2px; }
+.cta3 .btn-g { grid-column: 1 / -1; }
+
+
+/* ---------- 10 · final polish ---------------------------------------- */
+.lpred { margin: 0; padding: 4px 0 0; background: none; border: 0; border-radius: 0; }
+.lpred.tst { padding-top: 0; }
+.rest-n { margin: -1px 0 0; font: 400 11.5px/1.35 var(--f-mono); color: var(--muted); }
+.cline { display: flex; align-items: center; gap: 8px; padding: 4px 0 4px; border-bottom: 1px solid var(--line); font-size: 12.5px; line-height: 1.35; }
+.cl-x { flex: 1; min-width: 0; }
+.cl-x b { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--amber); }
+.cl-x b svg { flex: none; width: 13px; height: 13px; }
+.cl-x p { margin-top: 1px; color: var(--muted); }
+.up-c { padding: 5px 10px 6px 0; }
+.up-c:nth-child(even) { padding: 5px 10px 6px 0; border-left: 0; }
+.up-c.r { padding: 5px 0 6px 12px; border-left: 1px solid var(--line); }
+.up-c.wide { grid-column: 1 / -1; padding: 5px 18px 7px 11px; margin-left: -8px; }
+.up-c.last { border-bottom: 0; }
+.up-c:nth-last-child(-n+2) { border-bottom: 1px solid var(--line); }
+.up-c.last { border-bottom: 0; }
+.up-r { margin-top: 1px; font-size: 12.5px; line-height: 1.35; color: var(--text); }
+.rest-n { font-size: 11px; margin: 0; }
+[data-frame="F1"] .pn, [data-frame="F4"] .pn { padding-top: 9px; padding-bottom: 10px; }
+[data-frame="F1"] .pn-h, [data-frame="F4"] .pn-h { margin-bottom: 5px; }
+[data-frame="F1"] .ex-s.row, [data-frame="F4"] .ex-s.row { margin-top: 5px; }
+.cline { padding: 3px 0; }
+.up-c { min-height: 40px; }
+.up-c.wide { padding-top: 4px; padding-bottom: 5px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-sig" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx=".8" fill="currentColor"/><rect x="5" y="5.4" width="3" height="6.6" rx=".8" fill="currentColor"/><rect x="10" y="2.8" width="3" height="9.2" rx=".8" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx=".8" fill="currentColor"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 16 12"><path d="M8 11.4a1.4 1.4 0 100-2.8 1.4 1.4 0 000 2.8zM3.7 7.2a6.2 6.2 0 018.6 0l-1.3 1.3a4.4 4.4 0 00-6 0zM1 4.5a10 10 0 0114 0l-1.3 1.3a8.2 8.2 0 00-11.4 0z" fill="currentColor"/></symbol>
+    <symbol id="i-bat" viewBox="0 0 27 12"><rect x=".5" y=".5" width="22" height="11" rx="3.2" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="19" height="8" rx="1.8" fill="currentColor"/><path d="M24 4v4c.8-.3 1.5-1.1 1.5-2S24.8 4.3 24 4z" fill="currentColor" opacity=".5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4.5v15M4.5 12h15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M4.5 12h15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-q" viewBox="0 0 24 24"><path d="M8.6 9.2a3.4 3.4 0 116 2.2c-1.2.9-2.6 1.5-2.6 3.2" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cx="12" cy="19" r="1.7" fill="currentColor"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h14.5M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/><path d="M8 10.5V8a4 4 0 118 0v2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5.5 21V3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M5.5 4h13.5l-3.6 4.6 3.6 4.6H5.5z" fill="currentColor"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 8H15a4.5 4.5 0 010 9H8M9 8l3-3.2M9 8l3 3.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cross" viewBox="0 0 24 24"><path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div class="sheet">
+
+<!-- ================= concept header ================= -->
+<header class="mast">
+  <div>
+    <p class="kick"><span>Concept 06 of 10</span><span>Coach concepts · synthetic data · lb</span></p>
+    <h1><span class="no">06</span>Hypothesis</h1>
+    <p class="thesis"><em>Every set is a prediction;</em><br>every miss is a finding.</p>
+    <p class="premise">The coach is a scientist. It designs each session as an experiment on you, says what it expects before you lift, and treats a miss as evidence to explain, then designs the next test.</p>
+  </div>
+  <dl class="abs">
+    <div>
+      <dt>How it feels</dt>
+      <dd>Like reading a beautifully set research figure about yourself: lettered panels, hairline rules, captions, numbered sources. Rigorous, and plainly on your side.</dd>
+    </div>
+    <div>
+      <dt>How the coach speaks</dt>
+      <dd>First person, in your numbers: “I predicted 8–9. You got 6.” It owns its misses and marks every explanation Supported, Not supported or Untested. Never an invented percentage.</dd>
+    </div>
+    <div>
+      <dt>The trade-off</dt>
+      <dd>More to read at the exact moment a set goes wrong, and “Untested” is honest but clinical on a bad day. A prediction is only as good as your last 12 sessions.</dd>
+    </div>
+  </dl>
+  <ol class="loopkey" aria-label="The loop every screen follows">
+    <li><span class="rn">I</span><b>Predict</b><p>Before a set, the coach states a range and what it is based on.</p></li>
+    <li><span class="rn">II</span><b>Observe</b><p>You log it, Strong-fast. The result is held against the range.</p></li>
+    <li><span class="rn">III</span><b>Explain</b><p>A miss opens a finding, with each cause marked against your data.</p></li>
+    <li><span class="rn">IV</span><b>Test</b><p>The next best action is a test, with what a result would mean written down first.</p></li>
+  </ol>
+</header>
+
+<main class="stage">
+
+<!-- ============ F1 · Lifting ============ -->
+<figure class="fig">
+  <figcaption>
+    <span class="fc-id">F1</span><span class="fc-t">Lifting</span>
+    <span class="fc-s">Before the flag. A Strong-style set table; the prediction sits right under the active set. RPE starts empty. Deload switches are quiet and off.</span>
+  </figcaption>
+  <div class="phone" data-frame="F1" role="group" aria-label="F1 Lifting">
+    <div class="sb"><span>10:24</span><span class="sb-r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="16" height="12"><use href="#i-wifi"/></svg><svg width="27" height="12"><use href="#i-bat"/></svg></span></div>
+    <div class="rh"><span class="rh-t">Upper A · Wk 4/6 · <b>22:41</b></span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="This session was a deload. When on, it is excluded from your baseline."><i></i>Deload</button></div>
+    <nav class="loop" aria-label="The coach loop">
+      <span><svg><use href="#i-check"/></svg>I Predict</span>
+      <span class="on">II Observe</span>
+      <span>III Explain</span>
+      <span>IV Test</span>
+    </nav>
+
+    <div class="ex">
+      <h2>Barbell Bench Press</h2>
+      <span class="ex-k">4 × 8–10</span>
+      <div class="ex-s row"><span>185 lb · RPE 8 · 2:30</span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="Bench press was a deload. When on, its sets are excluded from your baseline."><i></i>This was a deload<sup class="dg">†</sup></button></div>
+    </div>
+
+    <section class="pn first">
+      <div class="pn-h"><b class="pl">a</b><span class="pn-t">Sets · predict, then log</span><span class="pn-r"><sup class="rf">1</sup><sup class="rf">2</sup><sup class="rf">4</sup></span></div>
+      <div class="tbl">
+        <div class="th"><span>Set</span><span>Previous</span><span>Load</span><span>Reps</span><span>RPE</span><span class="ctr">Log</span></div>
+        <div class="tr w"><span class="sf w">W</span><span>4 warm-ups · 45×10 · 95×8 · 135×5 · 165×3</span></div>
+        <div class="tr done"><span class="sf n">1</span><span class="c-prev">185 × 10</span><span class="c-v">185</span><span class="c-v">9</span><span class="c-v">8</span><span class="ck done"><svg><use href="#i-check"/></svg></span><span class="trn"><b>Confirmed</b> · predicted 9–10, observed 9</span></div>
+        <div class="act-block">
+          <div class="tr act"><span class="sf n">2</span><span class="c-prev">185 × 10</span><span class="fb">185</span><span class="fb">9</span><span class="fb empty">–</span><button type="button" class="ck go" aria-label="Accept 185 by 9"><svg><use href="#i-check"/></svg></button></div>
+          <div class="drawer">
+            <div class="lpred">
+              <div class="lp-h"><span>Prediction</span><span><sup class="rf">1</sup><sup class="rf">2</sup></span></div>
+              <div class="lp-row">
+                <div class="lp-num"><span class="num">8–9</span><small>reps · RPE 8</small></div>
+                <svg class="lp-ax" viewBox="0 0 200 48" role="img" aria-label="Reps axis from 4 to 11. Predicted band 8 to 9. Normal today 7 to 9.">
+                  <rect class="ax-band" x="113.1" y="2" width="26.3" height="16"/>
+                  <path class="ax-edge" d="M113.1 2v16M139.4 2v16"/>
+                  <path class="ax-base" d="M8 18H192"/>
+                  <path class="ax-tick" d="M8 18v4M34.3 18v4M60.6 18v4M86.9 18v4M113.1 18v4M139.4 18v4M165.7 18v4M192 18v4"/>
+                  <g class="ax-n"><text x="8" y="34">4</text><text x="34.3" y="34">5</text><text x="60.6" y="34">6</text><text x="86.9" y="34">7</text><text class="hi" x="113.1" y="34">8</text><text class="hi" x="139.4" y="34">9</text><text x="165.7" y="34">10</text><text x="192" y="34">11</text></g>
+                  <path class="ax-br" d="M86.9 39v4H139.4v-4"/>
+                  <text class="ax-l" x="80" y="46" text-anchor="end">normal <tspan class="k">7–9</tspan></text>
+                </svg>
+              </div>
+              <p class="lp-note">From your last 12 sessions and today’s recovery. Assumes the full 2:30 rest.</p>
+            </div>
+            <div class="rpe">
+              <div class="rpe-l"><b>RPE</b><small>target 8</small></div>
+              <div class="chips" role="group" aria-label="RPE, empty until you set it"><button type="button">7</button><button type="button">8</button><button type="button">9</button><button type="button">10</button></div>
+            </div>
+            <div class="rest">
+              <button type="button">−15s</button>
+              <div class="mid"><span class="rt">REST <b>1:32</b> / 2:30</span><span class="rbar"><i style="width:61%"></i><s></s></span></div>
+              <button type="button" aria-label="Add 15 seconds">+15s</button>
+              <button type="button" aria-label="Skip the rest and override the recommended 2:30">Skip</button>
+            </div>
+            <p class="rest-n">Auto-started on check · full 2:30 recommended</p>
+          </div>
+        </div>
+        <div class="tr q"><span class="sf n">3</span><span class="c-prev">185 × 9</span><span class="fb lt">185</span><span class="fb lt">9</span><span class="fb lt empty">–</span><span class="ck ring"><i></i></span></div>
+        <div class="tr q"><span class="sf n">4</span><span class="c-prev">185 × 9</span><span class="fb lt">185</span><span class="fb lt">9</span><span class="fb lt empty">–</span><span class="ck ring"><i></i></span></div>
+      </div>
+    </section>
+
+    <div class="fn">
+      <span><b>1</b>Last 12 sessions</span><span><b>4</b>Today’s log</span>
+      <span class="fn-d"><b>2</b>Last night: sleep 5 h 48 m (avg 7 h 21 m) · HRV 38 ms (baseline 52) · resting HR 61 (baseline 55).</span>
+      <span class="fn-d"><b>†</b>A deload is excluded from your baseline. Tap a set number for W · D · F.</span>
+    </div>
+    <div class="home"></div>
+  </div>
+</figure>
+
+<!-- ============ F2 · The flag ============ -->
+<figure class="fig">
+  <figcaption>
+    <span class="fc-id">F2</span><span class="fc-t">The flag</span>
+    <span class="fc-s">Set 2 comes back 6. One finding first, then the explanations the data supports; the distribution figure stays in support.</span>
+  </figcaption>
+  <div class="phone" data-frame="F2" role="group" aria-label="F2 The flag">
+    <div class="flagtop">
+      <div class="sb"><span>10:24</span><span class="sb-r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="16" height="12"><use href="#i-wifi"/></svg><svg width="27" height="12"><use href="#i-bat"/></svg></span></div>
+      <nav class="loop" aria-label="The coach loop">
+        <span><svg><use href="#i-check"/></svg>I Predict</span>
+        <span><svg><use href="#i-check"/></svg>II Observe</span>
+        <span class="on">III Explain</span>
+        <span>IV Test</span>
+      </nav>
+      <div class="find">
+        <p class="eyebrow">Finding 1 · Bench · set 2 · 24:10</p>
+        <h2>Prediction missed.</h2>
+        <p class="lede"><b>6</b> observed · <b>8–9</b> expected · <em>an unusually large drop</em></p>
+        <div class="plate">
+          <svg class="hero" viewBox="0 0 328 150" role="img" aria-label="Reps axis from 3 to 11. Predicted 8 to 9 reps. Observed 6 reps, flagged, below today's normal range of 7 to 9.">
+            <text class="h-lbl" x="116" y="10" text-anchor="end">OBSERVED</text>
+            <text class="h-lbl" x="220.25" y="10" text-anchor="middle">PREDICTED</text>
+            <text class="h-big" x="220.25" y="42">8–9</text>
+            <rect class="h-band" x="201.5" y="50" width="37.5" height="50"/>
+            <path class="h-edge" d="M201.5 50v50M239 50v50"/>
+            <path class="h-base" d="M14 100H314"/>
+            <path class="h-tick" d="M14 100v5M51.5 100v5M89 100v5M126.5 100v5M164 100v5M201.5 100v5M239 100v5M276.5 100v5M314 100v5"/>
+            <g class="h-n"><text x="14" y="119">3</text><text x="51.5" y="119">4</text><text x="89" y="119">5</text><text class="lo" x="126.5" y="119">6</text><text x="164" y="119">7</text><text class="hi" x="201.5" y="119">8</text><text class="hi" x="239" y="119">9</text><text x="276.5" y="119">10</text><text x="314" y="119">11</text></g>
+            <path class="h-br" d="M164 130v5H239v-5"/>
+            <text class="h-lbl" x="201.5" y="148" text-anchor="middle" style="letter-spacing:.02em">today’s normal 7–9</text>
+            <path class="h-mast" d="M126.5 100V16"/>
+            <path class="h-flag" d="M126.5 16H178L167 29l11 13H126.5z"/>
+            <circle class="h-flag" cx="126.5" cy="100" r="5.5"/>
+            <text class="h-obs" x="116" y="80">6</text>
+            <text class="h-rir" x="116" y="96">RPE 10</text>
+          </svg>
+          <p class="cap"><b>Fig. 1 |</b> A result, not a failure. I said 8–9; you got 6.</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">a</b><span class="pn-t">Explanations, ranked by your data</span></div>
+      <ol class="ev">
+        <li><span class="rk">1</span><h3>Short rest</h3><span class="tag sup"><svg><use href="#i-check"/></svg>Supported</span>
+          <p>Rested <b>1:32</b> of 2:30 (61%), a protocol deviation.<sup class="rf">4</sup></p></li>
+        <li><span class="rk">2</span><h3>Low recovery</h3><span class="tag sup"><svg><use href="#i-check"/></svg>Supported</span>
+          <p>HRV <b>38</b> vs 52 ms (−27%); slept 5 h 48 m.<sup class="rf">2</sup></p></li>
+        <li><span class="rk">3</span><h3>Strength loss</h3><span class="tag ok"><svg><use href="#i-x"/></svg>Not supported</span>
+          <p>No sign of it: set-1 e1RM <b>253</b> lb is on your 249–254 trend; set 2 implies <b>222</b> (−12%).<sup class="rf">3</sup></p></li>
+        
+      </ol>
+    </section>
+
+    <section class="pn pn-sec">
+      <div class="pn-h"><b class="pl">b</b><span class="pn-t">How unusual</span><span class="pn-r"><sup class="rf">1</sup></span></div>
+      <svg class="sg" viewBox="0 0 350 62" role="img" aria-label="Your usual drop from set 1 to set 2 is 0.6 plus or minus 0.7 reps. Today's drop of 3 reps is 3.4 standard deviations out.">
+        <path class="sg-area" d="M42.6 44L42.6 27.0L46.2 25.8L49.8 24.6L53.4 23.4L56.9 22.3L60.5 21.2L64.1 20.2L67.7 19.3L71.2 18.5L74.8 17.7L78.4 17.1L82.0 16.6L85.6 16.3L89.1 16.1L92.7 16.0L96.3 16.1L99.9 16.3L103.4 16.6L107.0 17.1L110.6 17.7L114.2 18.5L117.8 19.3L121.3 20.2L124.9 21.2L128.5 22.3L132.1 23.4L135.6 24.6L139.2 25.8L142.8 27.0L142.8 44Z"/>
+        <path class="sg-curve" d="M14.0 35.9L21.2 33.9L28.3 31.7L35.5 29.4L42.6 27.0L49.8 24.6L56.9 22.3L64.1 20.2L71.2 18.5L78.4 17.1L85.6 16.3L92.7 16.0L99.9 16.3L107.0 17.1L114.2 18.5L121.3 20.2L128.5 22.3L135.6 24.6L142.8 27.0L150.0 29.4L157.1 31.7L164.3 33.9L171.4 35.9L178.6 37.6L185.7 39.0L192.9 40.2L200.0 41.2L207.2 41.9L214.4 42.5L221.5 43.0L228.7 43.3L235.8 43.5L243.0 43.7L250.1 43.8L257.3 43.9L264.4 43.9L271.6 44.0L278.8 44.0L285.9 44.0L293.1 44.0L300.2 44.0L307.4 44.0L314.5 44.0L321.7 44.0L328.8 44.0L336.0 44.0"/>
+        <path class="sg-base" d="M14 44H336"/>
+        <path class="sg-base" d="M49.8 44v4M121.3 44v4M192.9 44v4M264.4 44v4M336.0 44v4"/>
+        <g class="sg-n"><text x="49.8" y="59">0</text><text x="121.3" y="59">1</text><text x="192.9" y="59">2</text><text x="264.4" y="59">3</text><text x="336.0" y="59">4</text></g>
+        <text class="sg-u" x="92.7" y="11">your usual 0.6 ± 0.7</text>
+        <path class="sg-mast" d="M264.4 44V20"/>
+        <path class="sg-flag" d="M264.4 20H283l-4 6 4 6H264.4z"/>
+        <text class="sg-t" x="288" y="30">Today 3</text>
+        <text class="sg-big" x="256" y="38">3.4<tspan class="sig" dx="1">σ</tspan></text>
+      </svg>
+      <p class="cap"><b>Fig. 2 |</b> Today’s drop is 3.4<i class="sig">σ</i> beyond your usual drop.</p>
+    </section>
+
+    <div class="cta"><button type="button" class="btn btn-p">Design today’s test<svg><use href="#i-arrow"/></svg></button></div>
+    <div class="home"></div>
+  </div>
+</figure>
+
+<!-- ============ F3 · Next best action · today ============ -->
+<figure class="fig">
+  <figcaption>
+    <span class="fc-id">F3</span><span class="fc-t">Next best action · today</span>
+    <span class="fc-s">Today’s test is a probe; Thursday’s full-rest 185 is the real test. B and C are described by what they cost.</span>
+  </figcaption>
+  <div class="phone" data-frame="F3" role="group" aria-label="F3 Next best action, today">
+    <div class="sb"><span>10:24</span><span class="sb-r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="16" height="12"><use href="#i-wifi"/></svg><svg width="27" height="12"><use href="#i-bat"/></svg></span></div>
+    <div class="rh"><span class="rh-t">Upper A · Wk 4/6 · <b>24:31</b></span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="This session was a deload. When on, it is excluded from your baseline."><i></i>Deload</button></div>
+    <nav class="loop" aria-label="The coach loop">
+      <span><svg><use href="#i-check"/></svg>I Predict</span>
+      <span><svg><use href="#i-check"/></svg>II Observe</span>
+      <span><svg><use href="#i-check"/></svg>III Explain</span>
+      <span class="on">IV Test</span>
+    </nav>
+
+    <div class="head">
+      <p class="eyebrow">Next best action · this session</p>
+      <h2>Today’s test</h2>
+    </div>
+
+    <section class="pn first">
+      <div class="pn-h"><b class="pl">a</b><span class="pn-t">Recommended</span></div>
+      <div class="dsa">
+        <h3><span class="mono">165 × 8</span> at RPE 8, full <span class="mono">2:30</span> rest</h3>
+        <dl class="proto">
+          <div><dt>Sets</dt><dd>Bench 3–4 · <b>165</b> lb × 8 · RPE 8 (−11%)</dd></div>
+          <div><dt>Rest</dt><dd>2:30 recommended; Skip to override.</dd></div>
+          <div><dt>Plates</dt><dd>Per side: <b>45 + 10 + 5</b> (swap each 25)</dd></div>
+        </dl>
+        <p class="pass"><b>If you hit 8 at RPE 8,</b> that’s consistent with fatigue rather than lost strength. Thursday’s 185 with full rest is the real test.</p>
+        <ul class="down" aria-label="Downstream effect">
+          <li><span class="lb">Incline DB</span><span class="dv"><b>3 → 2</b> sets · 55 lb × 10–12</span></li>
+          <li><span class="lb">Chest, week</span><span class="dv"><b>15 of 16</b>
+            <svg class="mini" viewBox="0 0 52 10" role="img" aria-label="15 of 16 planned sets, inside the 12 to 18 target"><path class="mini-base" d="M0 5h52"/><rect class="mini-band" x="17.3" y="2.5" width="26" height="5"/><path class="mini-edge" d="M17.3 1v8M43.3 1v8"/><circle class="mini-dot" cx="30.3" cy="5" r="3"/></svg>inside 12–18</span></li>
+          <li><span class="lb">Session</span><span class="dv"><b>−1 min</b> · about; pulling unchanged</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">b</b><span class="pn-t">Or choose another</span></div>
+      <div class="alt">
+        <span class="ak">B</span>
+        <div class="txt"><h4>185 lb, rest 3:00, cap at RPE 9</h4></div>
+        <button type="button" class="use">Use B</button>
+        <p>Expect 6–7 reps. More fatigue carried into Thursday.</p>
+      </div>
+      <div class="alt">
+        <span class="ak">C</span>
+        <div class="txt"><h4>Stop bench here</h4></div>
+        <button type="button" class="use">Use C</button>
+        <p>Chest ends the week at 14 of 16. No further bench data today.</p>
+      </div>
+    </section>
+
+    <div class="cta3">
+      <button type="button" class="btn btn-p">Accept · run today’s test<svg><use href="#i-arrow"/></svg></button>
+      <button type="button" class="btn btn-g">Dismiss</button>
+      
+    </div>
+    <div class="home"></div>
+  </div>
+</figure>
+
+<!-- ============ F4 · Plan applied ============ -->
+<figure class="fig">
+  <figcaption>
+    <span class="fc-id">F4</span><span class="fc-t">Plan applied</span>
+    <span class="fc-s">Sets 3–4 changed by the coach, with undo. Rest auto-started on the check; the coach recommends the full 2:30. Incline is down to 2 sets.</span>
+  </figcaption>
+  <div class="phone" data-frame="F4" role="group" aria-label="F4 Plan applied">
+    <div class="sb"><span>10:24</span><span class="sb-r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="16" height="12"><use href="#i-wifi"/></svg><svg width="27" height="12"><use href="#i-bat"/></svg></span></div>
+    <div class="rh"><span class="rh-t">Upper A · Wk 4/6 · <b>25:51</b></span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="This session was a deload. When on, it is excluded from your baseline."><i></i>Deload</button></div>
+    <nav class="loop" aria-label="The coach loop">
+      <span><svg><use href="#i-check"/></svg>I Predict</span>
+      <span><svg><use href="#i-check"/></svg>II Observe</span>
+      <span><svg><use href="#i-check"/></svg>III Explain</span>
+      <span class="on">IV Test</span>
+    </nav>
+
+    <div class="ex">
+      <h2>Barbell Bench Press</h2>
+      <div class="ex-s row"><span class="ex-k ok"><svg><use href="#i-check"/></svg>Plan applied</span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="Bench press was a deload. When on, its sets are excluded from your baseline."><i></i>This was a deload</button></div>
+    </div>
+
+    
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">a</b><span class="pn-t">Sets · today’s test</span><span class="pn-r"><sup class="rf">3</sup><sup class="rf">4</sup></span></div>
+      <div class="tbl">
+        <div class="th"><span>Set</span><span>Previous</span><span>Load</span><span>Reps</span><span>RPE</span><span class="ctr">Log</span></div>
+        <div class="tr done"><span class="sf n">1</span><span class="c-prev">185 × 10</span><span class="c-v">185</span><span class="c-v">9</span><span class="c-v">8</span><span class="ck done"><svg><use href="#i-check"/></svg></span></div>
+        <div class="tr done"><span class="sf n">2</span><span class="c-prev">185 × 10</span><span class="c-v">185</span><span class="c-v amb">6</span><span class="c-v amb">10</span><span class="ck miss"><svg><use href="#i-flag"/></svg></span></div>
+        <div class="cline"><div class="cl-x"><b><svg><use href="#i-flag"/></svg>Coach · sets 3–4: 185 → 165 lb</b><p>Backed off after a short-rest grinder; keeps two productive sets.</p></div><button type="button" class="undo"><svg><use href="#i-undo"/></svg>Undo</button></div>
+        <div class="act-block">
+          <div class="tr act"><span class="sf n chg">3</span><span class="c-prev">185 × 9</span><span class="fb chg">165</span><span class="fb chg">8</span><span class="fb empty">–</span><button type="button" class="ck go" aria-label="Accept 165 by 8"><svg><use href="#i-check"/></svg></button></div>
+          <div class="drawer">
+            <div class="lpred tst">
+              <div class="lp-row">
+                <div class="lp-num"><span class="num">8</span></div>
+                <p class="lp-t"><b>Prediction · reps at 165 lb · RPE 8<sup class="rf">3</sup></b>If you hit it: consistent with fatigue.</p>
+              </div>
+            </div>
+            <div class="rpe">
+              <div class="rpe-l"><b>RPE</b><small>target 8</small></div>
+              <div class="chips" role="group" aria-label="RPE, empty until you set it"><button type="button">7</button><button type="button">8</button><button type="button">9</button><button type="button">10</button></div>
+            </div>
+            <div class="rest">
+              <button type="button">−15s</button>
+              <div class="mid"><span class="rt">REST <b>1:41</b> / 2:30</span><span class="rbar"><i style="width:67.3%"></i><s></s></span></div>
+              <button type="button">+15s</button>
+              <button type="button">Skip</button>
+            </div>
+            <p class="rest-n">Auto-started on check · full 2:30 recommended</p>
+          </div>
+        </div>
+        <div class="tr q"><span class="sf n chg">4</span><span class="c-prev">185 × 9</span><span class="fb lt chg">165</span><span class="fb lt chg">8</span><span class="fb lt empty">–</span><span class="ck ring"><i></i></span></div>
+      </div>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">b</b><span class="pn-t">Still to come · amended</span><span class="pn-r">switch = deload</span></div>
+      <div class="up">
+        <div class="up-c chg wide"><div class="up-t"><b>Incline DB Press</b><button type="button" class="tg tg-s" role="switch" aria-checked="false" aria-label="Incline DB Press was a deload"><i></i></button></div><span><em>2 sets</em>, was 3 · 55 lb × 10–12</span><p class="up-r">Coach · keeps weekly chest at 15 of 16, inside 12–18.</p></div>
+        <div class="up-c"><div class="up-t"><b>T-Bar Row</b><button type="button" class="tg tg-s" role="switch" aria-checked="false" aria-label="T-Bar Row was a deload"><i></i></button></div><span>4 × 10–12 · 90 lb</span></div>
+        <div class="up-c r"><div class="up-t"><b>Lat Pulldown</b><button type="button" class="tg tg-s" role="switch" aria-checked="false" aria-label="Lat Pulldown was a deload"><i></i></button></div><span>3 × 10–12 · 140 lb</span></div>
+        <div class="up-c last"><div class="up-t"><b>Cable Lateral Raise</b><button type="button" class="tg tg-s" role="switch" aria-checked="false" aria-label="Cable Lateral Raise was a deload"><i></i></button></div><span>3 × 12–15 · 15 lb</span></div>
+      </div>
+    </section>
+    <div class="home"></div>
+  </div>
+</figure>
+
+<!-- ============ F5 · Next session ============ -->
+<figure class="fig">
+  <figcaption>
+    <span class="fc-id">F5</span><span class="fc-t">Next session</span>
+    <span class="fc-s">Thursday leads with the prescription: hold 185. The hypothesis sits beneath it; 190, the pressing-deload watch and HRV &lt; 45 → 175 follow as rules. Injured, skip lives here.</span>
+  </figcaption>
+  <div class="phone" data-frame="F5" role="group" aria-label="F5 Next session">
+    <div class="sb"><span>10:24</span><span class="sb-r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="16" height="12"><use href="#i-wifi"/></svg><svg width="27" height="12"><use href="#i-bat"/></svg></span></div>
+    <div class="rh"><span class="rh-t">Next · Upper A · Thu 5 Nov</span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="This session was a deload. When on, it is excluded from your baseline."><i></i>Deload</button></div>
+    <nav class="loop" aria-label="The coach loop, starting again">
+      <span class="on">I Predict</span>
+      <span>II Observe</span>
+      <span>III Explain</span>
+      <span>IV Test</span>
+    </nav>
+
+    <div class="head head5">
+      <p class="eyebrow">Pre-registered · next session</p>
+      <h2>Thursday: hold 185.</h2>
+    </div>
+
+    <section class="pn first">
+      <div class="pn-h"><b class="pl">a</b><span class="pn-t">Prescription</span><button type="button" class="tg" role="switch" aria-checked="false" aria-label="Thursday's bench is a planned deload. When on, it is excluded from your baseline."><i></i>This is a deload</button></div>
+      <div class="keys">
+        <div><div class="v">185<small> lb</small></div><div class="n">held</div></div>
+        <div><div class="v">4 × 8–10</div><div class="n">sets × reps</div></div>
+        <div><div class="v">2:30</div><div class="n">recommended</div></div>
+      </div>
+      <p class="protocol-n">No load increase and no decrease.</p>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">b</b><span class="pn-t">Hypothesis</span></div>
+      <p class="hyp">With the full 2:30 rest and normal recovery, you’ll hit <b>185 × 9+</b> on sets 1–2.</p>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">c</b><span class="pn-t">Rules that follow</span><span class="pn-r"><sup class="rf">2</sup></span></div>
+      <div class="rule">
+        <div class="rule-if"><span class="tag ok"><svg><use href="#i-check"/></svg>Raise</span><span>Sets 1–2 both ≥ 9 reps at RPE ≤ 9, at 185</span></div>
+        <div class="rule-then"><svg><use href="#i-arrow"/></svg><span>Bench moves up to <b>190 lb</b></span></div>
+      </div>
+      <div class="rule">
+        <div class="rule-if"><span class="tag sup"><svg><use href="#i-flag"/></svg>Watch</span><span>Bench flags again, with normal recovery</span></div>
+        <div class="rule-then"><svg><use href="#i-arrow"/></svg><span>One-week pressing deload: −10% load, −1 set</span></div>
+      </div>
+      <div class="rule">
+        <div class="rule-if"><span class="tag unt">HRV</span><span>Thursday-morning HRV is under <b class="mono">45</b> ms</span></div>
+        <div class="rule-then"><svg><use href="#i-arrow"/></svg><span>Start bench at <b>175 lb</b></span></div>
+        <svg class="hrv" viewBox="0 0 350 70" role="img" aria-label="HRV axis from 30 to 60 milliseconds. Below 45, start bench at 175 pounds; at 45 or above, 185. Today's 38 is below the threshold; baseline is 52.">
+          <text class="hrv-reg" x="97.5" y="11">start at 175 lb</text>
+          <text class="hrv-reg" x="252.5" y="11">start at 185 lb</text>
+          <rect class="hrv-lo" x="20" y="16" width="155" height="12"/>
+          <rect class="hrv-hi" x="175" y="16" width="155" height="12"/>
+          <path class="hrv-base" d="M20 28H330"/>
+          <path class="hrv-stem a" d="M102.7 28v10"/>
+          <path class="hrv-stem" d="M175 14v24"/>
+          <path class="hrv-stem" d="M247.3 28v10"/>
+          <text class="hrv-n a" x="102.7" y="53">38</text>
+          <text class="hrv-n" x="175" y="53">45</text>
+          <text class="hrv-n" x="247.3" y="53">52</text>
+          <text class="hrv-c" x="102.7" y="67">today</text>
+          <text class="hrv-c" x="175" y="67">cut-off</text>
+          <text class="hrv-c" x="247.3" y="67">baseline</text>
+        </svg>
+      </div>
+    </section>
+
+    <div class="cta cta5">
+      <button type="button" class="btn btn-p"><svg><use href="#i-lock"/></svg>Lock in plan</button>
+      <button type="button" class="btn btn-pain"><svg width="18" height="18"><use href="#i-cross"/></svg>Injured, skip</button>
+      <p class="lockline">Hurt on Thursday? Skip it. A session skipped for injury isn’t a failure or a missed progression.</p>
+    </div>
+    <div class="home"></div>
+  </div>
+</figure>
+
+<!-- ============ F6 · The coach's record ============ -->
+<figure class="fig">
+  <figcaption>
+    <span class="fc-id">F6</span><span class="fc-t">The coach’s record</span>
+    <span class="fc-s">Extra frame. The scientist keeps score on itself: how often its ranges held for you, and where it is weakest.</span>
+  </figcaption>
+  <div class="phone" data-frame="F6" role="group" aria-label="F6 The coach's record">
+    <div class="sb"><span>10:24</span><span class="sb-r"><svg width="18" height="12"><use href="#i-sig"/></svg><svg width="16" height="12"><use href="#i-wifi"/></svg><svg width="27" height="12"><use href="#i-bat"/></svg></span></div>
+    <div class="rh"><span>Progress · Bench press</span><span><b>Synthetic example</b></span></div>
+    <nav class="loop" aria-label="The coach loop, completed">
+      <span><svg><use href="#i-check"/></svg>I Predict</span>
+      <span><svg><use href="#i-check"/></svg>II Observe</span>
+      <span><svg><use href="#i-check"/></svg>III Explain</span>
+      <span><svg><use href="#i-check"/></svg>IV Test</span>
+    </nav>
+
+    <div class="head">
+      <p class="eyebrow" style="color:var(--action)">The coach’s record</p>
+      <h2>My record on you</h2>
+      <p class="lead">Bench press · last 12 Upper A sessions · 48 ranges.</p>
+    </div>
+
+    <section class="pn first">
+      <div class="pn-h"><b class="pl">a</b><span class="pn-t">Did the range hold?</span><span class="pn-r"><sup class="rf">1</sup></span></div>
+      <svg class="cal" viewBox="0 0 350 180" role="img" aria-label="Share of predicted ranges that held, by set: set 1 92 percent, sets 2 to 4 75 percent each, against an 80 percent target.">
+        <path class="cal-grid" d="M44 20H336M44 77.5H336"/>
+        <path class="cal-axis" d="M44 135.0H336"/>
+        <path class="cal-tgt" d="M44 66.0H336"/>
+        <text class="cal-t" x="336" y="58.0" text-anchor="end">80% target</text>
+        <text class="cal-y" x="38" y="24">100%</text>
+        <text class="cal-y" x="38" y="81.5">75%</text>
+        <text class="cal-y" x="38" y="139.0">50%</text>
+        <path class="cal-stem" d="M96 135.0V39.1M168 135.0V77.5M240 135.0V77.5M312 135.0V77.5"/>
+        <circle class="cal-dot s" cx="96" cy="39.1" r="17"/>
+        <circle class="cal-dot" cx="168" cy="77.5" r="17"/>
+        <circle class="cal-dot" cx="240" cy="77.5" r="17"/>
+        <circle class="cal-dot" cx="312" cy="77.5" r="17"/>
+        <g class="cal-v"><text class="on" x="96" y="44.1">92</text><text class="on" x="168" y="82.5">75</text><text class="on" x="240" y="82.5">75</text><text class="on" x="312" y="82.5">75</text></g>
+        <g class="cal-x"><text x="96" y="155.0">Set 1</text><text x="168" y="155.0">Set 2</text><text x="240" y="155.0">Set 3</text><text x="312" y="155.0">Set 4</text></g>
+        <g class="cal-y2"><text x="96" y="171.0">11 of 12</text><text x="168" y="171.0">9 of 12</text><text x="240" y="171.0">9 of 12</text><text x="312" y="171.0">9 of 12</text></g>
+      </svg>
+      <p class="cap"><b>Fig. 6 |</b> Share of my predicted ranges that held, by set.</p>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">b</b><span class="pn-t">All 48 predictions</span></div>
+      <div class="tally" role="img" aria-label="38 in range, 8 within one rep, 2 missed"><i class="t1"></i><i class="t2"></i><i class="t3"></i></div>
+      <ul>
+        <li class="tl"><span class="v">38</span><span class="k"><i class="sw t1"></i>landed inside the range</span></li>
+        <li class="tl"><span class="v">8</span><span class="k"><i class="sw t2"></i>missed by one rep</span></li>
+        <li class="tl"><span class="v">2</span><span class="k"><i class="sw t3"></i>missed by more</span></li>
+      </ul>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">c</b><span class="pn-t">What I changed because of it</span></div>
+      <p class="note-c">I’m weakest on <b>sets 2–4</b>, the sets short rest hits hardest. So every prediction now says which rest it assumes, and I log it when you take less.</p>
+    </section>
+
+    <section class="pn">
+      <div class="pn-h"><b class="pl">d</b><span class="pn-t">Where today sits</span></div>
+      <p class="today-c"><svg><use href="#i-flag"/></svg><span>Today’s set 2 is the third miss: <b>3.4<i class="sig">σ</i></b>, with a protocol deviation to explain it.</span></p>
+    </section>
+    <div class="home"></div>
+  </div>
+</figure>
+
+</main>
+</div>
+</body>
+</html>

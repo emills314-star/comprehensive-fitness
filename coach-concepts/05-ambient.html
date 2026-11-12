@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · Ambient — Coach concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="palette.css">
+<style>
+/* ==========================================================================
+   05 · AMBIENT
+   The coach lives on OS surfaces. The wallpaper is the coach's mood:
+   quiet blue while you are inside your normal, amber the moment you leave it.
+   Colour comes only from palette.css tokens.
+   ========================================================================== */
+
+/* ---------- 0. Tokens (derived only from palette tokens) ---------- */
+:root {
+  --font: Inter, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --ink: var(--bg);
+  --ink-2: color-mix(in srgb, var(--bg) 78%, transparent);
+  --ink-3: color-mix(in srgb, var(--bg) 58%, transparent);
+  --ink-4: color-mix(in srgb, var(--bg) 34%, transparent);
+  --hair: color-mix(in srgb, var(--bg) 14%, transparent);
+  --hair-2: color-mix(in srgb, var(--bg) 26%, transparent);
+  --lift: color-mix(in srgb, var(--bg) 9%, transparent);
+  --mat: color-mix(in srgb, var(--bg) 13%, var(--text));
+  --glass: color-mix(in srgb, var(--mat) 66%, transparent);
+  --glass-solid: color-mix(in srgb, var(--mat) 90%, transparent);
+  --flag-glow: color-mix(in srgb, var(--amber) 70%, transparent);
+  --blue-glow: color-mix(in srgb, var(--green) 60%, transparent);
+  --drop: 0 18px 40px color-mix(in srgb, var(--text) 50%, transparent);
+}
+
+/* ---------- 1. Page ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--text); }
+body {
+  min-height: 100vh;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(1300px 560px at 10% -8%, color-mix(in srgb, var(--green) 40%, transparent), transparent 70%),
+    radial-gradient(1000px 520px at 96% 4%, color-mix(in srgb, var(--green-2) 50%, transparent), transparent 72%),
+    repeating-radial-gradient(circle at 50% -260px, transparent 0 78px, color-mix(in srgb, var(--bg) 3.5%, transparent) 78px 79px),
+    var(--text);
+}
+.page { max-width: 2560px; margin: 0 auto; padding: 64px 40px 96px; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--current-dark); outline-offset: 2px; }
+ol, ul { list-style: none; }
+
+/* ---------- 2. Concept header ---------- */
+.concept { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(0, 1.55fr); gap: 40px 80px; align-items: end; margin: 0 auto 72px; max-width: 2480px; }
+.c-kicker { display: flex; align-items: center; gap: 14px; font-weight: 700; font-size: 13px; line-height: 1; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); }
+.c-num { display: inline-grid; place-items: center; min-width: 46px; height: 46px; border-radius: 15px; background: var(--action); color: var(--on-action); font-size: 19px; letter-spacing: 0; box-shadow: 0 0 0 5px color-mix(in srgb, var(--action) 24%, transparent), 0 0 36px var(--blue-glow); }
+.concept h1 {
+  font-weight: 900; font-size: clamp(76px, 9vw, 150px); line-height: .84; letter-spacing: -.055em; margin: 26px 0 22px; padding-bottom: .06em;
+  background: linear-gradient(180deg, var(--bg) 30%, color-mix(in srgb, var(--current-dark) 52%, var(--green)));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.c-thesis { font-weight: 700; font-size: clamp(24px, 2.3vw, 34px); line-height: 1.12; letter-spacing: -.025em; max-width: 21ch; }
+.c-thesis i { font-style: normal; color: var(--panel-3); }
+.c-sub { margin-top: 16px; max-width: 54ch; font-size: 16px; line-height: 1.5; color: var(--ink-3); }
+.c-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 32px; border-top: 1px solid var(--hair-2); padding-top: 22px; }
+.c-notes dt { font-weight: 800; font-size: 12px; line-height: 1; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 12px; }
+.c-notes .tradeoff dt { color: var(--panel-3); }
+.c-notes dd { font-size: 15px; line-height: 1.55; color: var(--ink-2); }
+
+/* ---------- 3. Frame row + captions ---------- */
+.stage { display: flex; flex-wrap: wrap; gap: 52px 28px; justify-content: center; }
+.slot { flex: none; width: 390px; }
+.cap { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; align-items: center; margin: 0 6px 16px; }
+.cap b { font-weight: 800; font-size: 13px; line-height: 1; letter-spacing: .14em; padding: 6px 9px; border-radius: 8px; color: var(--current-dark); background: color-mix(in srgb, var(--action) 58%, transparent); }
+.cap span { font-weight: 700; font-size: 17px; line-height: 1.1; letter-spacing: -.01em; }
+.cap em { grid-column: 2; font-style: normal; font-weight: 600; font-size: 12px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.cap.is-flag b { color: var(--panel-3); background: color-mix(in srgb, var(--amber) 80%, transparent); }
+
+/* ---------- 4. Phone + OS chrome ---------- */
+.phone {
+  position: relative; width: 390px; height: 844px; border-radius: 52px; overflow: hidden; isolation: isolate;
+  background: var(--text);
+  box-shadow: 0 0 0 1px var(--hair-2), 0 44px 90px color-mix(in srgb, var(--text) 80%, transparent), 0 0 110px color-mix(in srgb, var(--edge, var(--green)) 22%, transparent);
+  --edge: var(--green);
+}
+/* Edge light: the screen rim carries the coach's state. */
+.phone::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 90;
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--edge) 55%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--edge) 50%, transparent),
+    inset 0 0 84px color-mix(in srgb, var(--edge) 20%, transparent);
+}
+.phone.edge-flag { --edge: var(--amber); }
+.phone.edge-quiet::after { box-shadow: inset 0 0 0 1px var(--hair-2); }
+
+/* Wallpaper: navy with soft blue tints and the ambient ripple texture. */
+.wall {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(135% 64% at 8% 0%, color-mix(in srgb, var(--green) 64%, transparent), transparent 62%),
+    radial-gradient(115% 58% at 104% 50%, color-mix(in srgb, var(--green-2) 82%, transparent), transparent 66%),
+    radial-gradient(130% 52% at -4% 104%, color-mix(in srgb, var(--green) 44%, transparent), transparent 68%),
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 66%, var(--green-2)) 0%, var(--text) 88%);
+}
+.wall::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-radial-gradient(circle at 50% 108%, transparent 0 52px, color-mix(in srgb, var(--bg) 6%, transparent) 52px 53px);
+}
+.wall.dawn::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(100% 44% at 50% 106%, color-mix(in srgb, var(--current-dark) 48%, transparent), transparent 72%);
+}
+.wall.heat { background:
+    radial-gradient(96% 40% at 50% -2%, color-mix(in srgb, var(--panel-3) 40%, var(--amber)), transparent 80%),
+    radial-gradient(120% 52% at 50% 2%, var(--flag-glow), transparent 78%),
+    radial-gradient(70% 34% at 50% 74%, color-mix(in srgb, var(--amber) 46%, transparent), transparent 80%),
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 80%, var(--amber)) 0%, var(--text) 62%, color-mix(in srgb, var(--text) 86%, var(--green-2)) 100%);
+}
+.wall.heat::after { background: repeating-radial-gradient(circle at 50% 4%, transparent 0 60px, color-mix(in srgb, var(--panel-3) 9%, transparent) 60px 61px); }
+.scrim { position: absolute; inset: 0; z-index: 7; background: color-mix(in srgb, var(--text) 40%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.2); backdrop-filter: blur(22px) saturate(1.2); }
+
+/* Status bar, island, home indicator */
+.statusbar { position: absolute; inset: 0 0 auto 0; height: 54px; z-index: 40; display: flex; align-items: center; justify-content: space-between; padding: 8px 32px 0 46px; }
+.sb-time { font-weight: 600; font-size: 17px; line-height: 1; letter-spacing: -.01em; }
+.sb-r { display: flex; align-items: center; gap: 6px; }
+.sb-r svg { display: block; fill: currentColor; }
+.island { position: absolute; z-index: 41; top: 11px; left: 50%; width: 126px; height: 37px; margin-left: -63px; border-radius: 20px; background: var(--text); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg) 9%, transparent); }
+.island::after { content: ""; position: absolute; right: 13px; top: 11px; width: 15px; height: 15px; border-radius: 50%; background: radial-gradient(circle at 38% 36%, color-mix(in srgb, var(--green-2) 70%, var(--text)), var(--text) 72%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg) 7%, var(--text)); }
+.home { position: absolute; z-index: 95; bottom: 9px; left: 50%; width: 138px; height: 5px; margin-left: -69px; border-radius: 3px; background: var(--bg); opacity: .86; }
+
+/* Icons */
+.ic { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.appico { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; color: var(--on-action); background: linear-gradient(160deg, var(--green), var(--green-2)); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg) 40%, transparent); }
+.appico .ic { width: 20px; height: 20px; }
+.appico.sm { width: 26px; height: 26px; border-radius: 7px; }
+.appico.sm .ic { width: 17px; height: 17px; }
+.appico.flag { background: linear-gradient(160deg, var(--panel-3), var(--amber)); color: var(--text); }
+
+/* Glass materials */
+.glass {
+  background: linear-gradient(180deg, var(--lift), transparent 55%), var(--glass);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5);
+  border: 1px solid var(--hair);
+  box-shadow: inset 0 1px 0 var(--hair-2), var(--drop);
+}
+.cap-label { font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- 5. Lock screen pieces ---------- */
+.lockclock { position: absolute; z-index: 6; left: 0; right: 0; top: 56px; text-align: center; }
+.lc-date { font-weight: 600; font-size: 20px; line-height: 1; letter-spacing: -.01em; color: var(--ink-2); }
+.lc-time {
+  margin-top: 6px; font-weight: 700; font-size: 96px; line-height: .98; letter-spacing: -.05em;
+  background: linear-gradient(180deg, var(--bg) 24%, color-mix(in srgb, var(--current-dark) 66%, var(--green)));
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.cw-row { position: absolute; z-index: 6; left: 0; right: 0; top: 196px; display: flex; justify-content: center; gap: 28px; }
+.cw { width: 70px; text-align: center; }
+.cw-c { position: relative; width: 70px; height: 70px; border-radius: 50%; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
+.cw-c svg { position: absolute; inset: 3px; width: 62px; height: 62px; fill: none; stroke-width: 6; stroke-linecap: round; }
+.cw-c .tr { stroke: var(--hair); }
+.cw-c .pv { stroke: var(--ink); }
+.cw-c .pv.gold { stroke: var(--rest-accent); }
+.cw-c .pv.blue { stroke: var(--current-dark); }
+.cw-c .pv.hot { stroke: var(--panel-3); }
+.cw-c b { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 21px; letter-spacing: -.02em; }
+.cw-c b small { font-size: 13px; font-weight: 600; }
+.cw > span { display: block; margin-top: 7px; font-weight: 700; font-size: 11px; line-height: 1; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+.lock-btns { position: absolute; z-index: 6; left: 0; right: 0; bottom: 52px; display: flex; justify-content: space-between; padding: 0 46px; }
+.lock-btn { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: var(--ink); }
+.lock-btn .ic { width: 22px; height: 22px; }
+
+/* ---------- 6. Live Activity ---------- */
+.la { position: absolute; z-index: 10; left: 14px; right: 14px; border-radius: 30px; padding: 14px 16px 10px; }
+.la-h { display: flex; align-items: center; gap: 11px; }
+.la-t { min-width: 0; }
+.la-t b { display: block; font-weight: 800; font-size: 17px; line-height: 1.15; letter-spacing: -.015em; }
+.la-t span { display: block; margin-top: 2px; font-weight: 500; font-size: 13px; line-height: 1.2; color: var(--ink-3); }
+.pips { margin-left: auto; display: flex; gap: 6px; }
+.pips li { width: 30px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-weight: 700; font-size: 14px; line-height: 1; color: var(--ink-4); background: var(--lift); border: 1px solid var(--hair); }
+.pips li.done { color: var(--ink); background: color-mix(in srgb, var(--success) 46%, transparent); border-color: color-mix(in srgb, var(--success) 80%, transparent); }
+.pips li.off { color: var(--panel-3); background: color-mix(in srgb, var(--amber) 55%, transparent); border-color: color-mix(in srgb, var(--panel-3) 60%, transparent); }
+.pips li.now { color: var(--on-action); background: var(--action); border-color: color-mix(in srgb, var(--current-dark) 80%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 34%, transparent), 0 0 16px var(--blue-glow); }
+
+
+/* Rest ring (rest gold) */
+.ring { position: relative; width: 100px; height: 100px; margin-left: auto; }
+.ring > svg { position: absolute; inset: 0; overflow: visible; width: 100%; height: 100%; fill: none; stroke-width: 10; stroke-linecap: round; }
+.ring .tr { stroke: color-mix(in srgb, var(--bg) 14%, transparent); }
+.ring .pv { stroke: var(--rest-accent); filter: drop-shadow(0 0 7px color-mix(in srgb, var(--rest-accent) 55%, transparent)); }
+.ring .pv.held { stroke: color-mix(in srgb, var(--rest-accent) 72%, transparent); stroke-dasharray: 3 6; filter: none; }
+.ring-c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.ring-c b { font-weight: 800; font-size: 25px; line-height: 1; letter-spacing: -.03em; color: var(--rest-accent); }
+.ring-c span { margin-top: 5px; font-weight: 700; font-size: 11px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.ring-c .ic { width: 22px; height: 22px; color: var(--rest-accent); margin-bottom: 3px; }
+
+/* Strong-fast rep chips */
+.la-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+/* Quiet deload switches: OS-style, off by default, never louder than the logging controls */
+.sw { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; font-size: 13px; line-height: 1; color: var(--ink-3); white-space: nowrap; }
+.sw i { position: relative; flex: none; width: 36px; height: 22px; border-radius: 11px; background: var(--hair-2); box-shadow: inset 0 0 0 1px var(--hair); }
+.sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-2); box-shadow: 0 1px 3px color-mix(in srgb, var(--text) 50%, transparent); }
+/* Set table: the Strong behaviours, drawn as a Live Activity */
+.lt { margin-top: 10px; }
+.lt-h, .lt-r { display: grid; grid-template-columns: 34px minmax(0, 1fr) 50px 42px 46px 48px; column-gap: 6px; align-items: center; }
+.lt-h { padding-bottom: 6px; font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.lt-h span:nth-child(n+3):nth-child(-n+5) { text-align: center; }
+.lt-r { min-height: 44px; border-top: 1px solid var(--hair); }
+.lt-r.tall { min-height: 56px; }
+.lt-r .set { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; font-weight: 800; font-size: 15px; background: var(--lift); border: 1px solid var(--hair); color: var(--ink-2); }
+.lt-r .set.w { color: var(--ink-3); }
+.lt-r .set.now { background: var(--action); border-color: color-mix(in srgb, var(--current-dark) 80%, transparent); color: var(--on-action); box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 30%, transparent); }
+.lt-r .set.flag { background: color-mix(in srgb, var(--amber) 60%, transparent); border-color: color-mix(in srgb, var(--panel-3) 60%, transparent); color: var(--panel-3); }
+.lt-r .wtxt { grid-column: 2 / 6; font-weight: 600; font-size: 13px; color: var(--ink-3); }
+.lt-r .prev { font-weight: 600; font-size: 14px; color: var(--ink-3); white-space: nowrap; }
+.lt-r .v { text-align: center; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: -.03em; color: var(--ink); }
+.lt-r .v.ph { color: var(--ink-2); box-shadow: 0 1.5px 0 -0px var(--ink-4); }
+.lt-r .v.hot { color: var(--panel-3); }
+.lt-r .v.coach { border-radius: 10px; padding: 4px 0 3px; background: color-mix(in srgb, var(--action) 30%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current-dark) 40%, transparent); }
+.lt-r .v u { display: block; margin-bottom: 1px; text-decoration: line-through; font-weight: 600; font-size: 11px; letter-spacing: 0; color: var(--ink-3); }
+.lt-r .rpe-in { display: grid; place-items: center; height: 34px; border-radius: 10px; border: 1.5px dashed var(--ink-4); font-weight: 700; font-size: 18px; color: var(--ink-3); }
+.lt-r .rpe-in.dim { border-color: var(--hair-2); }
+.chk { display: grid; place-items: center; width: 44px; height: 44px; justify-self: end; border-radius: 50%; color: var(--ink); }
+.chk .ic { width: 20px; height: 20px; stroke-width: 3; }
+.chk.done { background: color-mix(in srgb, var(--success) 44%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 80%, transparent); }
+.chk.flagged { background: color-mix(in srgb, var(--amber) 55%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel-3) 60%, transparent); color: var(--panel-3); }
+.chk.go { background: var(--action); color: var(--on-action); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg) 38%, transparent), 0 0 0 4px color-mix(in srgb, var(--action) 30%, transparent), 0 6px 18px color-mix(in srgb, var(--action) 45%, transparent); }
+.chk.lock { background: var(--lift); box-shadow: inset 0 0 0 1px var(--hair-2); color: var(--rest-accent); }
+.chk.idle { box-shadow: inset 0 0 0 1.5px var(--hair-2); }
+.lt-r.w .chk { width: 26px; height: 26px; }
+.lt-r.w .chk .ic { width: 14px; height: 14px; }
+.lt-cap { margin-top: 8px; font-weight: 600; font-size: 13px; line-height: 1.35; color: var(--ink-2); }
+.lt-cap span { font-weight: 500; color: var(--ink-3); }
+.lastnight { position: absolute; z-index: 6; left: 0; right: 0; top: 182px; text-align: center; font-weight: 500; font-size: 13px; line-height: 1.45; color: var(--ink-3); }
+.lastnight b { font-weight: 700; color: var(--ink-2); }
+.rest-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--hair); }
+.ring.sm { width: 48px; height: 48px; margin: 0; }
+.ring.sm .ring-c b { font-size: 13px; letter-spacing: -.02em; }
+.rt b { display: block; font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--rest-accent); }
+.rt span { display: block; margin-top: 2px; font-weight: 500; font-size: 13px; line-height: 1.25; color: var(--ink-3); }
+.rbtns { display: flex; gap: 4px; }
+.rbtns button { width: 44px; height: 44px; border-radius: 14px; font-weight: 700; font-size: 13px; color: var(--ink-2); background: var(--lift); box-shadow: inset 0 0 0 1px var(--hair-2); }
+.coachline { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 8px; }
+.coachline p { font-weight: 500; font-size: 13px; line-height: 1.38; color: var(--ink-2); }
+.coachline p b { font-weight: 800; color: var(--ink); }
+.undo-link { min-width: 56px; height: 44px; padding: 0 8px; font-weight: 800; font-size: 14px; color: var(--current-dark); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--current-dark) 50%, transparent); }
+.foot-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.foot-row .note { font-weight: 500; font-size: 13px; line-height: 1.3; color: var(--ink-3); }
+.la-sess { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: -6px 0 8px; border-bottom: 1px solid var(--hair); }
+.la-sess .lab { font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.upnext .sw { min-height: 44px; }
+.upnext .why { grid-column: 1 / -1; margin-top: -2px; font-weight: 500; font-size: 13px; line-height: 1.3; color: var(--ink-2); }
+.cw-c b.t { font-size: 15px; letter-spacing: -.02em; }
+
+/* ---------- 7. Expanded Dynamic Island (F2): only what an island can carry ---------- */
+.ripples { position: absolute; inset: 0; z-index: 1; background: radial-gradient(circle at 195px 30px, transparent 0,
+    transparent 370.7px,
+    color-mix(in srgb, var(--panel-3) 62%, transparent) 372px,
+    transparent 373.3px,
+    transparent 428.7px,
+    color-mix(in srgb, var(--panel-3) 50%, transparent) 430px,
+    transparent 431.3px,
+    transparent 488.7px,
+    color-mix(in srgb, var(--panel-3) 40%, transparent) 490px,
+    transparent 491.3px,
+    transparent 550.7px,
+    color-mix(in srgb, var(--panel-3) 31%, transparent) 552px,
+    transparent 553.3px,
+    transparent 614.7px,
+    color-mix(in srgb, var(--panel-3) 23%, transparent) 616px,
+    transparent 617.3px,
+    transparent 680.7px,
+    color-mix(in srgb, var(--panel-3) 16%, transparent) 682px,
+    transparent 683.3px,
+    transparent 748.7px,
+    color-mix(in srgb, var(--panel-3) 10%, transparent) 750px,
+    transparent 751.3px,
+    transparent 818.7px,
+    color-mix(in srgb, var(--panel-3) 6%, transparent) 820px,
+    transparent 821.3px); }
+.isl {
+  position: absolute; z-index: 60; top: 11px; left: 12px; right: 12px; border-radius: 46px; padding: 0 22px 16px; background: var(--text);
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--panel-3) 70%, var(--amber)),
+    0 0 0 7px color-mix(in srgb, var(--amber) 22%, transparent),
+    0 26px 80px color-mix(in srgb, var(--amber) 62%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--panel-3) 30%, transparent);
+}
+.isl::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: radial-gradient(90% 46% at 50% 0%, color-mix(in srgb, var(--amber) 38%, transparent), transparent 80%); }
+.isl > * { position: relative; }
+.isl-top { height: 37px; display: flex; align-items: center; justify-content: space-between; }
+.isl-lead { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; line-height: 1; color: var(--panel-3); letter-spacing: .01em; }
+.isl-lead .appico { width: 24px; height: 24px; border-radius: 7px; }
+.isl-lead .appico .ic { width: 16px; height: 16px; }
+.isl-trail { font-weight: 700; font-size: 13px; line-height: 1; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+.isl-trail i { width: 7px; height: 7px; border-radius: 50%; background: var(--panel-3); box-shadow: 0 0 10px var(--panel-3); animation: breathe 1.8s ease-in-out infinite; }
+.isl-kick { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-weight: 800; font-size: 12px; line-height: 1; letter-spacing: .13em; text-transform: uppercase; color: var(--panel-3); }
+.isl-kick .ic { width: 17px; height: 17px; stroke-width: 2.4; }
+.isl-hero { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: end; margin-top: 12px; }
+.vs { display: flex; align-items: baseline; gap: 10px; }
+.vs-meta { display: block; margin-top: 7px; font-weight: 700; font-size: 13px; line-height: 1; color: var(--ink-2); }
+.vs b { font-weight: 900; font-size: 56px; line-height: .86; letter-spacing: -.05em; color: var(--ink); }
+.vs b.got { font-size: 84px; color: var(--panel-3); }
+.vs i { font-style: normal; font-weight: 700; font-size: 17px; line-height: 1; color: var(--ink-3); }
+.sig b { display: block; font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -.04em; }
+.sig b small { font-size: 22px; font-weight: 800; margin-left: 1px; }
+.sig span { display: block; margin-top: 5px; font-weight: 600; font-size: 13px; line-height: 1.22; color: var(--ink-3); }
+.isl-find { margin-top: 14px; font-weight: 500; font-size: 14px; line-height: 1.4; color: var(--ink-2); }
+.isl-find b { color: var(--panel-3); font-weight: 800; }
+.isl-act { display: grid; grid-template-columns: 1.6fr 1fr; gap: 8px; margin-top: 14px; }
+.isl-act span { height: 50px; border-radius: 25px; display: grid; place-items: center; font-weight: 800; font-size: 16px; letter-spacing: -.01em; }
+.isl-act .go { color: var(--on-action); background: var(--action); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg) 38%, transparent), 0 8px 22px color-mix(in srgb, var(--action) 45%, transparent); }
+.isl-act .ghost { color: var(--ink); background: var(--lift); box-shadow: inset 0 0 0 1px var(--hair-2); }
+
+/* Wrist inset: a small, believable companion, drawn as a lens over the lock screen */
+.lens { position: absolute; z-index: 62; left: 50%; width: 270px; height: 270px; margin-left: -135px; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--amber) 46%, var(--text)), var(--text) 78%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--panel-3) 72%, var(--amber)), 0 0 0 10px color-mix(in srgb, var(--amber) 24%, transparent), 0 0 0 22px color-mix(in srgb, var(--amber) 11%, transparent), 0 0 70px color-mix(in srgb, var(--amber) 55%, transparent); }
+.lens .watch { top: 40px; }
+.haptic { position: absolute; z-index: 63; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; padding: 12px 20px 12px 16px; border-radius: 26px; white-space: nowrap; background: color-mix(in srgb, var(--text) 78%, transparent); border: 1px solid color-mix(in srgb, var(--panel-3) 40%, transparent); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.hp { display: flex; align-items: center; gap: 7px; }
+.hp i { display: block; width: 14px; height: 14px; border-radius: 7px; background: var(--panel-3); box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 36%, transparent), 0 0 14px var(--flag-glow); }
+.hp i.hold { width: 46px; }
+.haptic div:last-child { font-weight: 700; font-size: 14px; line-height: 1.2; color: var(--ink); }
+.haptic div:last-child span { display: block; font-weight: 600; font-size: 13px; color: var(--ink-3); }
+
+/* ---------- 8. Watch ---------- */
+.watch { position: absolute; z-index: 62; left: 50%; width: 156px; height: 190px; margin-left: -78px; }
+.w-strap { position: absolute; left: 50%; width: 112px; margin-left: -56px; background: repeating-linear-gradient(180deg, transparent 0 17px, color-mix(in srgb, var(--text) 38%, transparent) 17px 19px), linear-gradient(90deg, color-mix(in srgb, var(--green-2) 46%, var(--text)), color-mix(in srgb, var(--green-2) 78%, var(--text)) 50%, color-mix(in srgb, var(--green-2) 46%, var(--text))); }
+.w-strap.top { bottom: 76%; height: 90px; -webkit-mask-image: linear-gradient(0deg, var(--text), transparent); mask-image: linear-gradient(0deg, var(--text), transparent); }
+.w-strap.bot { top: 76%; height: 90px; -webkit-mask-image: linear-gradient(180deg, var(--text) 50%, transparent); mask-image: linear-gradient(180deg, var(--text) 50%, transparent); }
+.w-body { position: absolute; inset: 0; border-radius: 46px; background: linear-gradient(145deg, color-mix(in srgb, var(--bg) 34%, var(--text)), color-mix(in srgb, var(--bg) 10%, var(--text)) 46%, color-mix(in srgb, var(--bg) 24%, var(--text))); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bg) 30%, transparent), 0 18px 36px color-mix(in srgb, var(--text) 60%, transparent); }
+.w-crown { position: absolute; right: -8px; top: 46px; width: 10px; height: 36px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 20%, var(--text)), color-mix(in srgb, var(--bg) 36%, var(--text))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bg) 22%, transparent); }
+.w-btn { position: absolute; right: -5px; top: 96px; width: 7px; height: 26px; border-radius: 4px; background: color-mix(in srgb, var(--bg) 24%, var(--text)); }
+.w-screen { position: absolute; inset: 9px; border-radius: 38px; overflow: hidden; background: var(--text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bg) 8%, transparent); padding: 13px 13px 12px; }
+.w-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(128deg, color-mix(in srgb, var(--bg) 11%, transparent) 0, transparent 36%); }
+.watch.alert .w-screen { background: linear-gradient(180deg, color-mix(in srgb, var(--amber) 42%, var(--text)), var(--text) 62%); }
+.wn-top { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 13px; line-height: 1; }
+.wn-top > span { display: flex; align-items: center; gap: 6px; color: var(--panel-3); }
+.wn-top time { color: var(--ink-2); font-weight: 600; }
+.wn-k { margin-top: 10px; font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; color: var(--panel-3); }
+.wn-big { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.wn-big > b { font-weight: 900; font-size: 62px; line-height: .9; letter-spacing: -.06em; color: var(--panel-3); }
+.wn-big div { min-width: 0; font-weight: 600; font-size: 13px; line-height: 1.25; color: var(--ink-2); }
+.wn-big div strong { display: block; font-weight: 800; font-size: 22px; line-height: 1; letter-spacing: -.03em; color: var(--ink); margin: 2px 0 3px; }
+.wn-why { margin-top: 7px; font-weight: 700; font-size: 13px; line-height: 1.2; color: var(--ink); white-space: nowrap; }
+
+/* ---------- 9. Notification (F3, F6) ---------- */
+.nc { position: absolute; z-index: 12; left: 14px; right: 14px; border-radius: 30px; padding: 15px 18px 18px; background: var(--glass-solid); border: 1px solid var(--hair-2); -webkit-backdrop-filter: blur(30px) saturate(1.5); backdrop-filter: blur(30px) saturate(1.5); box-shadow: inset 0 1px 0 var(--hair-2), 0 26px 60px color-mix(in srgb, var(--text) 60%, transparent); }
+.nc-h { display: flex; align-items: center; gap: 10px; }
+.nc-h span { font-weight: 800; font-size: 12px; line-height: 1; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.nc-h time { margin-left: auto; font-weight: 500; font-size: 13px; color: var(--ink-3); }
+.nc-h .x { margin-left: 6px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--lift); color: var(--ink-2); }
+.nc-h .x .ic { width: 14px; height: 14px; stroke-width: 2.6; }
+.nc h3 { margin-top: 11px; font-weight: 800; font-size: 25px; line-height: 1.05; letter-spacing: -.035em; }
+.nc h3 i { font-style: normal; color: var(--panel-3); }
+.nc p { margin-top: 8px; font-weight: 500; font-size: 15px; line-height: 1.38; color: var(--ink-2); }
+.nc p b { color: var(--ink); font-weight: 700; }
+.nc p.sub { margin-top: 9px; font-size: 13px; line-height: 1.4; color: var(--ink-3); }
+.nc p.sub b { color: var(--ink-2); }
+.scrim.soft { background: color-mix(in srgb, var(--text) 38%, transparent); -webkit-backdrop-filter: blur(9px) saturate(1.1); backdrop-filter: blur(9px) saturate(1.1); }
+
+/* long-press action list */
+.acts { position: absolute; z-index: 12; left: 14px; right: 14px; display: grid; gap: 8px; }
+.act { display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 12px; min-height: 58px; padding: 10px 16px; border-radius: 22px; text-align: left; background: var(--glass-solid); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); color: var(--ink); }
+.act .ic { width: 24px; height: 24px; }
+.act b { display: block; font-weight: 700; font-size: 16px; line-height: 1.2; letter-spacing: -.01em; }
+.act small { display: block; margin-top: 2px; font-weight: 500; font-size: 13px; line-height: 1.25; color: var(--ink-3); }
+.act.go { min-height: 66px; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 22%, var(--action)), var(--action) 55%); border-color: color-mix(in srgb, var(--current-dark) 60%, transparent); color: var(--on-action); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--bg) 40%, transparent), 0 10px 30px color-mix(in srgb, var(--action) 50%, transparent); }
+.act.go small { color: color-mix(in srgb, var(--on-action) 84%, transparent); }
+.acts-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+.acts-2 .act { grid-template-columns: 24px 1fr; min-height: 56px; }
+.act.hurt { justify-self: center; min-height: 48px; grid-template-columns: auto auto; gap: 10px; padding: 6px 22px 6px 18px; margin-top: 6px; border-radius: 24px; background: color-mix(in srgb, var(--red) 24%, var(--glass-solid)); border-color: color-mix(in srgb, var(--red) 62%, transparent); color: var(--bg); }
+.act.hurt .ic { color: var(--bg); }
+.act.hurt b { font-size: 15px; }
+
+/* ---------- 10. F4 specifics ---------- */
+.plan-tag { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 12px 0 9px; border-radius: 14px; font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--on-action); background: var(--action); box-shadow: 0 0 20px var(--blue-glow); }
+.plan-tag .ic { width: 15px; height: 15px; stroke-width: 3; }
+.plan-pill { position: absolute; z-index: 10; left: 14px; right: 14px; top: 172px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; }
+.upnext { position: absolute; z-index: 10; left: 14px; right: 14px; display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; min-height: 66px; padding: 10px 16px; border-radius: 24px; }
+.upnext b { display: block; font-weight: 700; font-size: 15px; line-height: 1.2; }
+.upnext small { display: block; margin-top: 2px; font-weight: 500; font-size: 13px; line-height: 1.2; color: var(--ink-3); }
+.upnext .ico { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--lift); border: 1px solid var(--hair); color: var(--ink-2); }
+.upnext .ico .ic { width: 18px; height: 18px; }
+
+/* ---------- 11. Home screen (F5): one dominant Thursday widget ---------- */
+.bw { position: absolute; z-index: 8; left: 24px; width: 342px; border-radius: 34px; padding: 16px 18px 17px; }
+.bw .k { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.bw .k .appico { width: 22px; height: 22px; border-radius: 6px; }
+.bw .k .appico .ic { width: 14px; height: 14px; }
+.bw h4 { margin-top: 8px; font-weight: 900; font-size: 32px; line-height: 1; letter-spacing: -.05em; }
+.bw h4 i { font-style: normal; color: var(--current-dark); }
+.bw .sub { margin-top: 5px; font-weight: 600; font-size: 14px; line-height: 1.25; color: var(--ink-2); }
+.bw-sec { margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--hair); }
+.bw-l { font-weight: 800; font-size: 11px; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.gate { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+.gate .lv { display: grid; place-items: center; height: 40px; padding: 0 14px; border-radius: 19px; font-weight: 800; font-size: 19px; letter-spacing: -.03em; }
+.gate .lv.now { background: var(--action); color: var(--on-action); box-shadow: 0 0 18px var(--blue-glow); }
+.gate .lv.next { border: 1.5px dashed var(--ink-3); color: var(--ink-2); }
+.gate .rule { position: relative; text-align: center; font-weight: 600; font-size: 13px; line-height: 1.22; color: var(--ink-2); padding: 0 2px; }
+.cond { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cond > div { border-radius: 18px; padding: 8px 13px 9px; border: 1px solid var(--hair); background: var(--lift); }
+.cond .lo { background: color-mix(in srgb, var(--amber) 38%, transparent); border-color: color-mix(in srgb, var(--panel-3) 46%, transparent); }
+.cond .hi { background: color-mix(in srgb, var(--action) 30%, transparent); border-color: color-mix(in srgb, var(--current-dark) 40%, transparent); }
+.cond span { display: block; font-weight: 700; font-size: 13px; line-height: 1.2; color: var(--ink-2); }
+.cond .lo span { color: var(--panel-3); }
+.cond b { display: block; margin-top: 3px; font-weight: 900; font-size: 30px; line-height: 1; letter-spacing: -.045em; }
+.cond b small { font-size: 14px; font-weight: 700; color: var(--ink-3); letter-spacing: 0; margin-left: 3px; }
+.bw-skip { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+.skip { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 14px 0 11px; border-radius: 22px; font-weight: 700; font-size: 14px; color: var(--ink); background: color-mix(in srgb, var(--red) 22%, transparent); border: 1px solid color-mix(in srgb, var(--red) 55%, transparent); white-space: nowrap; }
+.skip .ic { width: 20px; height: 20px; }
+.bw-skip p { font-weight: 500; font-size: 13px; line-height: 1.35; color: var(--ink-3); }
+.bw-skip p b { color: var(--ink-2); font-weight: 700; }
+.bw-watch { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.bw-watch .ic { width: 22px; height: 22px; color: var(--panel-3); margin-top: 1px; }
+.bw-watch p { font-weight: 500; font-size: 13px; line-height: 1.38; color: var(--ink-2); }
+.bw-watch p b { color: var(--panel-3); font-weight: 800; }
+.apps { position: absolute; z-index: 8; left: 24px; right: 24px; display: flex; justify-content: space-between; }
+.app { width: 66px; text-align: center; }
+.app > i { display: grid; place-items: center; width: 62px; height: 62px; margin: 0 auto; border-radius: 17px; font-style: normal; color: var(--ink); background: var(--glass); border: 1px solid var(--hair); }
+.app > i.coach { color: var(--on-action); background: linear-gradient(160deg, var(--green), var(--green-2)); border-color: color-mix(in srgb, var(--current-dark) 40%, transparent); }
+.app .ic { width: 30px; height: 30px; }
+.app span { display: block; margin-top: 6px; font-weight: 500; font-size: 13px; line-height: 1; color: var(--ink-2); }
+.dots { position: absolute; z-index: 8; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); }
+.dots i.on { background: var(--ink); }
+.dock { position: absolute; z-index: 8; left: 18px; right: 18px; height: 90px; border-radius: 36px; display: flex; justify-content: space-between; align-items: center; padding: 0 17px; background: var(--glass); border: 1px solid var(--hair); -webkit-backdrop-filter: blur(26px) saturate(1.4); backdrop-filter: blur(26px) saturate(1.4); }
+.dock .app > i { background: var(--lift); }
+
+/* ---------- 12. F6 morning ---------- */
+.nc h3.one { font-size: 22px; white-space: nowrap; letter-spacing: -.03em; }
+.nc p.night { margin-top: 10px; font-weight: 500; font-size: 13px; line-height: 1.4; color: var(--ink-3); }
+.nc p.night b { color: var(--ink-2); font-weight: 700; }
+.nc p.line { margin-top: 8px; font-weight: 500; font-size: 13px; line-height: 1.3; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; }
+.nc-open { display: flex; align-items: center; justify-content: flex-end; gap: 2px; margin-top: 10px; font-weight: 700; font-size: 13px; line-height: 1; color: var(--current-dark); }
+.nc-open .ic { width: 15px; height: 15px; stroke-width: 2.6; }
+.pile { position: absolute; z-index: 9; left: 26px; right: 26px; height: 40px; border-radius: 26px; background: color-mix(in srgb, var(--mat) 60%, transparent); border: 1px solid var(--hair); }
+.nc.mini { padding: 12px 18px; display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; border-radius: 24px; background: var(--glass); }
+.nc.mini b { display: block; font-weight: 700; font-size: 15px; line-height: 1.2; }
+.nc.mini small { display: block; margin-top: 2px; font-weight: 500; font-size: 13px; line-height: 1.2; color: var(--ink-3); }
+.nc.mini time { font-weight: 500; font-size: 13px; color: var(--ink-3); align-self: start; }
+
+/* ---------- 13. Grammar legend ---------- */
+.grammar { max-width: 2480px; margin: 80px auto 0; padding-top: 32px; border-top: 1px solid var(--hair-2); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 56px; }
+.grammar h2 { grid-column: 1 / -1; font-weight: 800; font-size: 13px; line-height: 1.3; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+.grammar h3 { font-weight: 800; font-size: 20px; line-height: 1.15; letter-spacing: -.02em; margin-bottom: 10px; }
+.grammar p { font-size: 15px; line-height: 1.55; color: var(--ink-2); max-width: 46ch; }
+.g-row { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.g-sw { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 13px; border-radius: 16px; font-weight: 700; font-size: 13px; color: var(--ink); border: 1px solid var(--hair-2); }
+.g-sw i { width: 12px; height: 12px; border-radius: 50%; }
+.g-sw.blue i { background: var(--action); box-shadow: 0 0 12px var(--blue-glow); }
+.g-sw.amber i { background: var(--amber); box-shadow: 0 0 12px var(--flag-glow); }
+.g-sw.green i { background: var(--success); }
+.g-hp { display: flex; align-items: center; gap: 6px; }
+.g-hp i { display: block; width: 12px; height: 12px; border-radius: 6px; background: var(--ink); }
+.g-hp i.hold { width: 34px; }
+.g-hp.flag i { background: var(--panel-3); box-shadow: 0 0 10px var(--flag-glow); }
+.g-hp + span { font-weight: 600; font-size: 14px; color: var(--ink-2); }
+.g-sw.quiet i { background: transparent; border: 1.5px solid var(--ink-3); }
+.g-list { display: grid; gap: 10px; margin-top: 16px; }
+.g-list > div { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 14px; }
+
+/* ---------- 14. Motion (subtle, safe at any phase) ---------- */
+@keyframes breathe { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
+.edge-flag::after { animation: breathe 2.6s ease-in-out infinite; }
+.hp i { animation: breathe 1.8s ease-in-out infinite; }
+.hp i:nth-child(2) { animation-delay: .25s; }
+.hp i:nth-child(3) { animation-delay: .5s; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+
+@media (max-width: 1500px) {
+  .concept { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .grammar { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .page { padding: 40px 16px 64px; }
+  .c-notes { grid-template-columns: 1fr; gap: 22px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-bar" viewBox="0 0 24 24"><path d="M6 12h12" stroke-width="2.6"/><rect x="3.6" y="6" width="3.2" height="12" rx="1.3" fill="currentColor" stroke="none"/><rect x="17.2" y="6" width="3.2" height="12" rx="1.3" fill="currentColor" stroke="none"/><rect x="1" y="9" width="2" height="6" rx=".9" fill="currentColor" stroke="none"/><rect x="21" y="9" width="2" height="6" rx=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.6l4.6 4.6L19 7.6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.6" fill="currentColor" stroke="none"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.6 21.4 20H2.6z"/><path d="M12 10v4.4M12 17.2v.1"/></symbol>
+    <symbol id="i-q" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.6a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.1-2.6 3.8M12 17.2v.1"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" rx="3.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.2 2"/></symbol>
+    <symbol id="i-flash" viewBox="0 0 24 24"><path d="M8.6 3.4h6.8v4.1l-1.5 2.3v9.9a1.2 1.2 0 0 1-1.2 1.2h-1.4a1.2 1.2 0 0 1-1.2-1.2V9.8L8.6 7.5z"/><path d="M8.6 7.5h6.8"/></symbol>
+    <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3.4 8.6a2.1 2.1 0 0 1 2.1-2.1H8l1.4-2h5.2l1.4 2h2.5a2.1 2.1 0 0 1 2.1 2.1v8.9a2.1 2.1 0 0 1-2.1 2.1h-13a2.1 2.1 0 0 1-2.1-2.1z"/><circle cx="12" cy="13" r="3.6"/></symbol>
+    <symbol id="i-bandage" viewBox="0 0 24 24"><rect x="2.6" y="8.2" width="18.8" height="7.6" rx="3.8" transform="rotate(-42 12 12)"/><path d="M10.4 10.4h.01M13.6 13.6h.01M13.6 10.4h.01M10.4 13.6h.01" stroke-width="2.2"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7.6-4.6-7.6-10.3A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.6 2.5C19.6 15.4 12 20 12 20z"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2.4 12.5h4l2.2-6 3.6 12 2.4-8 1.6 2h5.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.6 14.6A8 8 0 0 1 9.4 4.4a8 8 0 1 0 10.2 10.2z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4.5 12h15M14 6.4l5.6 5.6-5.6 5.6"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 5.5 15.5 12 9 18.5"/></symbol>
+    <symbol id="i-watch" viewBox="0 0 24 24"><rect x="6.5" y="6" width="11" height="12" rx="3.4"/><path d="M9 6V3.6h6V6M9 18v2.4h6V18"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.4" r="7.2"/><path d="M12 13.4V9.6M9.6 3.6h4.8"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><rect x="5" y="3.6" width="14" height="16.8" rx="3"/><path d="M8.6 9h6.8M8.6 12.6h6.8M8.6 16.2h4"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h13M13.5 4.5 17 8l-3.5 3.5M20 16H7M10.5 12.5 7 16l3.5 3.5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.7 3.6 9.5 3.2l1.7 4-1.9 1.5a10.4 10.4 0 0 0 5.5 5.5l1.5-1.9 4 1.7-.4 2.8a2 2 0 0 1-2 1.7A15.6 15.6 0 0 1 4.9 5.6a2 2 0 0 1 1.8-2z"/></symbol>
+    <symbol id="i-msg" viewBox="0 0 24 24"><path d="M4 6.6A2.6 2.6 0 0 1 6.6 4h10.8A2.6 2.6 0 0 1 20 6.6v6.8a2.6 2.6 0 0 1-2.6 2.6H10l-4 3.6V16h-.4A1.6 1.6 0 0 1 4 14.4z"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M15.6 8.4l-2 5.2-5.2 2 2-5.2z"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 17.4V6.6l10-2v10.8"/><circle cx="6.8" cy="17.4" r="2.4"/><circle cx="16.8" cy="15.4" r="2.4"/></symbol>
+    <symbol id="i-sb" viewBox="0 0 66 12"><rect x="0" y="7.6" width="3.2" height="4.4" rx="1"/><rect x="5" y="5.2" width="3.2" height="6.8" rx="1"/><rect x="10" y="2.6" width="3.2" height="9.4" rx="1"/><rect x="15" y="0" width="3.2" height="12" rx="1"/><path d="M23.6 4.4a9.4 9.4 0 0 1 13.2 0l-1.5 1.6a7.2 7.2 0 0 0-10.2 0zM26.6 7.6a5.2 5.2 0 0 1 7.2 0l-1.5 1.6a3 3 0 0 0-4.2 0zM30.2 10.6l1.4 1.5 1.4-1.5a2 2 0 0 0-2.8 0z"/><rect x="41" y=".6" width="22" height="11" rx="3.4" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/><rect x="42.6" y="2.2" width="19" height="7.8" rx="2" /><rect x="64" y="4" width="1.6" height="4" rx=".8" opacity=".5"/></symbol>
+  </defs>
+</svg>
+
+<main class="page">
+
+<header class="concept">
+  <div>
+    <div class="c-kicker"><span class="c-num">05</span> Coach concept</div>
+    <h1>Ambient</h1>
+    <p class="c-thesis">The best coach app is one <i>you never open.</i></p>
+    <p class="c-sub">The coach lives on the surfaces you already glance at: the lock screen, the Dynamic Island, your wrist, your home screen. Six frames, six operating-system surfaces, no app screens. The app is one tap away, and only when you ask why.</p>
+  </div>
+  <dl class="c-notes">
+    <div>
+      <dt>How it feels</dt>
+      <dd>Like the phone itself knows how your session is going. The wallpaper carries the coach's mood: quiet blue while you are inside your normal, amber the instant you leave it. You log with one thumb from the lock screen and never unlock.</dd>
+    </div>
+    <div>
+      <dt>How the coach speaks</dt>
+      <dd>In glances. A number, a colour, a tap on the wrist: tap, tap, hold means "outside your normal". Long-press and you get a short recommendation, clearly labelled actions, and an honest "Open the coach app" if you want the full why. It cites your numbers, qualifies its causes, and never lectures.</dd>
+    </div>
+    <div class="tradeoff">
+      <dt>The trade-off</dt>
+      <dd>Glanceable is also the ceiling. Live Activities carry a few hundred characters and the OS throttles how often they update. Anything that needs real thought, like editing the block or reading history, still needs the app, which this concept deliberately demotes to a fallback.</dd>
+    </div>
+  </dl>
+</header>
+
+<section class="stage" aria-label="Six ambient surfaces">
+<div class="slot">
+  <div class="cap"><b>F1</b><span>Lifting</span><em>Lock screen · Live Activity</em></div>
+  <div class="phone" data-frame="F1">
+    <div class="wall"></div>
+    <div class="statusbar"><span class="sb-time">10:24</span><span class="sb-r"><svg width="66" height="12" viewBox="0 0 66 12"><use href="#i-sb"/></svg></span></div>
+    <div class="island"></div>
+
+    <div class="lockclock"><div class="lc-date">Saturday 31 October</div><div class="lc-time">10:24</div></div>
+    <p class="lastnight"><b>Last night</b> · sleep 5 h 48 m (avg 7 h 21 m)<br>HRV 38 ms (baseline 52) · resting HR 61 (baseline 55)</p>
+
+    <article class="la glass" style="top:238px" aria-label="Live Activity: Bench Press, set 2 of 4">
+      <div class="la-sess"><span class="lab">Upper A · 23:02</span><button class="sw" aria-label="This session was a deload (off)"><i></i>Session deload</button></div>
+      <header class="la-h">
+        <span class="appico"><svg class="ic"><use href="#i-bar"/></svg></span>
+        <div class="la-t"><b>Bench Press</b><span>Set 2 of 4 · Upper A</span></div>
+        <ol class="pips" aria-label="Set progress"><li class="done"><svg class="ic" style="width:16px;height:16px;stroke-width:3"><use href="#i-check"/></svg></li><li class="now">2</li><li>3</li><li>4</li></ol>
+      </header>
+      <div class="lt" role="table" aria-label="Bench Press sets">
+        <div class="lt-h"><span>Set</span><span>Previous</span><span>lb</span><span>Reps</span><span>RPE</span><span></span></div>
+        <div class="lt-r w"><span class="set w">W</span><span class="wtxt">Warm-ups 45 · 95 · 135 · 165</span><span class="chk done"><svg class="ic"><use href="#i-check"/></svg></span></div>
+        <div class="lt-r"><span class="set">1</span><span class="prev">185 × 10</span><span class="v">185</span><span class="v">9</span><span class="v">8</span><span class="chk done"><svg class="ic"><use href="#i-check"/></svg></span></div>
+        <div class="lt-r now"><span class="set now">2</span><span class="prev">185 × 10</span><span class="v ph">185</span><span class="v ph">9</span><span class="rpe-in" aria-label="RPE, empty until you set it">—</span><button class="chk go" aria-label="Log set 2 as shown: 185 pounds, 9 reps"><svg class="ic"><use href="#i-check"/></svg></button></div>
+      </div>
+      <p class="lt-cap">Tap the check to log 185 × 9 as shown, or tap a value to change it. <span>RPE is yours to enter (target 8). Tap the set number for W · D · F.</span></p>
+      <div class="rest-row">
+        <div class="ring sm" role="img" aria-label="Rest 0:58 left of 2:30, started by the last check">
+          <svg viewBox="0 0 112 112"><circle class="tr" cx="56" cy="56" r="49"/><circle class="pv" cx="56" cy="56" r="49" pathLength="100" stroke-dasharray="61 100" transform="rotate(-90 56 56)"/></svg>
+          <div class="ring-c"><b>0:58</b></div>
+        </div>
+        <div class="rt"><b>Auto-started by the check</b><span>1:32 of the 2:30 recommended</span></div>
+        <div class="rbtns"><button aria-label="Minus 15 seconds">−15s</button><button aria-label="Plus 15 seconds">+15s</button><button aria-label="Skip rest">Skip</button></div>
+      </div>
+      <div class="la-row"><button class="sw" aria-label="This was a deload: Bench Press (off)"><i></i>This was a deload</button></div>
+    </article>
+
+    <div class="lock-btns"><span class="lock-btn"><svg class="ic"><use href="#i-flash"/></svg></span><span class="lock-btn"><svg class="ic"><use href="#i-cam"/></svg></span></div>
+    <div class="home"></div>
+  </div>
+</div>
+
+<div class="slot">
+  <div class="cap is-flag"><b>F2</b><span>The flag</span><em>Dynamic Island · wrist inset</em></div>
+  <div class="phone edge-flag" data-frame="F2">
+    <div class="wall heat"></div>
+    <div class="ripples" aria-hidden="true"></div>
+    <div class="statusbar"><span class="sb-time">10:24</span><span class="sb-r"><svg width="66" height="12" viewBox="0 0 66 12"><use href="#i-sb"/></svg></span></div>
+    <div class="island"></div>
+
+    <section class="isl" aria-label="Dynamic Island expanded: Bench set 2 is outside your normal">
+      <div class="isl-top">
+        <div class="isl-lead"><span class="appico flag"><svg class="ic"><use href="#i-bar"/></svg></span>Bench · Set 2</div>
+        <div class="isl-trail"><i></i>24:10</div>
+      </div>
+      <div class="isl-kick"><svg class="ic"><use href="#i-alert"/></svg>Outside your normal</div>
+      <div class="isl-hero">
+        <div class="vs-col"><div class="vs" role="img" aria-label="You got 6 reps. The coach expected 8 to 9."><b class="got">6</b><i>vs</i><b>8–9</b></div><span class="vs-meta">185 lb · RPE 10</span></div>
+        <div class="sig"><b>3.4<small>σ</small></b><span>beyond your usual drop</span></div>
+      </div>
+      <p class="isl-find"><b>Likeliest cause: short rest</b>, 1:32 of 2:30. Then HRV −27%. No sign of strength loss.</p>
+      <div class="isl-act"><span class="go">Drop to 165 × 8</span><span class="ghost">Options</span></div>
+    </section>
+
+    <div class="lens" style="top:370px" aria-label="Apple Watch inset: the same flag on your wrist">
+      <div class="watch alert sm">
+        <div class="w-strap top"></div><div class="w-strap bot"></div>
+        <div class="w-body"><i class="w-crown"></i><i class="w-btn"></i>
+          <div class="w-screen">
+            <div class="wn-top"><span><span class="appico flag sm"><svg class="ic"><use href="#i-bar"/></svg></span>Coach</span></div>
+            <div class="wn-k">Bench · Set 2</div>
+            <div class="wn-big"><b>6</b><div>expected<strong>8–9</strong>3.4σ beyond</div></div>
+            <div class="wn-why">Short rest 1:32</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="haptic" style="top:688px">
+      <div class="hp"><i></i><i></i><i class="hold"></i></div>
+      <div>On your wrist<span>Tap · tap · hold = outside your normal</span></div>
+    </div>
+    <div class="home"></div>
+  </div>
+</div>
+
+<div class="slot">
+  <div class="cap is-flag"><b>F3</b><span>Next best action · today</span><em>Expanded notification · long-press</em></div>
+  <div class="phone edge-flag" data-frame="F3">
+    <div class="wall heat"></div>
+    <div class="lockclock"><div class="lc-date">Saturday 31 October</div><div class="lc-time">10:24</div></div>
+    <div class="scrim soft"></div>
+    <div class="statusbar"><span class="sb-time">10:24</span><span class="sb-r"><svg width="66" height="12" viewBox="0 0 66 12"><use href="#i-sb"/></svg></span></div>
+    <div class="island"></div>
+
+    <article class="nc" style="top:218px" aria-label="Coach notification, expanded">
+      <div class="nc-h"><span class="appico sm flag"><svg class="ic"><use href="#i-bar"/></svg></span><span>Coach</span><time>now</time><span class="x"><svg class="ic"><use href="#i-x"/></svg></span></div>
+      <h3>Back bench off to <i>165 × 8</i></h3>
+      <p>Short rest is the likeliest cause (1:32 of 2:30). No sign of strength loss: your set-1 e1RM of 253 is on trend.</p>
+      <p class="sub">Sets 3–4 at 165 × 8 (target RPE 8) with a full 2:30 rest. Incline 3 → 2 sets, pulling unchanged. Chest 15 of 16 this week, inside your 12–18.</p>
+    </article>
+
+    <div class="acts" style="top:464px">
+      <button class="act go"><svg class="ic"><use href="#i-check"/></svg><div><b>Drop to 165 × 8 · 2 sets</b><small>Recommended</small></div></button>
+      <button class="act"><svg class="ic"><use href="#i-clock"/></svg><div><b>Keep 185 · rest 3:00</b><small>Cap at RPE 9, expect 6–7 reps. More fatigue into Thursday.</small></div></button>
+      <button class="act"><svg class="ic"><use href="#i-stop"/></svg><div><b>Stop bench</b><small>Chest ends the week at 14 of 16.</small></div></button>
+      <div class="acts-2">
+        <button class="act"><svg class="ic"><use href="#i-q"/></svg><div><b>Why?</b><small>Opens the coach app</small></div></button>
+        <button class="act"><svg class="ic"><use href="#i-x"/></svg><div><b>Dismiss</b></div></button>
+      </div>
+    </div>
+    <div class="home"></div>
+  </div>
+</div>
+
+<div class="slot">
+  <div class="cap"><b>F4</b><span>Plan applied</span><em>Lock screen · Live Activity updated</em></div>
+  <div class="phone" data-frame="F4">
+    <div class="wall"></div>
+    <div class="statusbar"><span class="sb-time">10:24</span><span class="sb-r"><svg width="66" height="12" viewBox="0 0 66 12"><use href="#i-sb"/></svg></span></div>
+    <div class="island"></div>
+
+    <div class="lockclock"><div class="lc-date">Saturday 31 October</div><div class="lc-time">10:24</div></div>
+
+    <div class="plan-pill"><span class="plan-tag"><svg class="ic"><use href="#i-check"/></svg>Plan applied</span><button class="sw" aria-label="This session was a deload (off)"><i></i>Session deload</button></div>
+
+    <article class="la glass" style="top:218px" aria-label="Live Activity: Bench Press, set 3 of 4, 165 pounds">
+      <header class="la-h">
+        <span class="appico"><svg class="ic"><use href="#i-bar"/></svg></span>
+        <div class="la-t"><b>Bench Press</b><span>Set 3 of 4 · Upper A</span></div>
+        <ol class="pips" aria-label="Set progress"><li class="done"><svg class="ic" style="width:16px;height:16px;stroke-width:3"><use href="#i-check"/></svg></li><li class="off">!</li><li class="now">3</li><li>4</li></ol>
+      </header>
+      <div class="lt" role="table" aria-label="Bench Press sets">
+        <div class="lt-h"><span>Set</span><span>Previous</span><span>lb</span><span>Reps</span><span>RPE</span><span></span></div>
+        <div class="lt-r"><span class="set flag">2</span><span class="prev">185 × 10</span><span class="v">185</span><span class="v hot">6</span><span class="v">10</span><span class="chk flagged"><svg class="ic"><use href="#i-check"/></svg></span></div>
+        <div class="lt-r now tall"><span class="set now">3</span><span class="prev">185 × 9</span><span class="v coach"><u>was 185</u>165</span><span class="v coach ph">8</span><span class="rpe-in" aria-label="RPE, empty until you set it">—</span><span class="chk lock" aria-label="Set 3 unlocks when the rest ends"><svg class="ic"><use href="#i-lock"/></svg></span></div>
+        <div class="lt-r next"><span class="set">4</span><span class="prev">185 × 9</span><span class="v coach ph">165</span><span class="v coach ph">8</span><span class="rpe-in dim">—</span><span class="chk idle"></span></div>
+      </div>
+      <div class="coachline">
+        <p><b>Sets 3–4: 185 → 165.</b> Backed off after a short-rest grinder; keeps two productive sets.</p>
+        <button class="undo-link">Undo</button>
+      </div>
+      <div class="rest-row">
+        <div class="ring sm" role="img" aria-label="Rest 2:19 left; the coach recommends the full 2:30">
+          <svg viewBox="0 0 112 112"><circle class="tr" cx="56" cy="56" r="49"/><circle class="pv" cx="56" cy="56" r="49" pathLength="100" stroke-dasharray="8 100" transform="rotate(-90 56 56)"/></svg>
+          <div class="ring-c"><b>2:19</b></div>
+        </div>
+        <div class="rt"><b>Full 2:30 recommended</b><span>Skip to override</span></div>
+        <div class="rbtns"><button aria-label="Minus 15 seconds">−15s</button><button aria-label="Plus 15 seconds">+15s</button><button aria-label="Skip rest">Skip</button></div>
+      </div>
+      <div class="foot-row"><span class="note">Swap each 25 → 10 + 5</span><button class="sw" aria-label="This was a deload: Bench Press (off)"><i></i>This was a deload</button></div>
+    </article>
+
+    <article class="upnext glass" style="top:640px">
+      <span class="ico"><svg class="ic"><use href="#i-bar"/></svg></span>
+      <div><b>Incline Dumbbell Press</b><small>3 → 2 sets</small></div>
+      <button class="sw" aria-label="This was a deload: Incline Dumbbell Press (off)"><i></i>Deload</button>
+      <p class="why">Trimmed one set to limit pressing fatigue</p>
+    </article>
+
+    <div class="lock-btns"><span class="lock-btn"><svg class="ic"><use href="#i-flash"/></svg></span><span class="lock-btn"><svg class="ic"><use href="#i-cam"/></svg></span></div>
+    <div class="home"></div>
+  </div>
+</div>
+
+<div class="slot">
+  <div class="cap"><b>F5</b><span>Next session</span><em>Home screen · one Thursday widget</em></div>
+  <div class="phone edge-quiet" data-frame="F5">
+    <div class="wall"></div>
+    <div class="statusbar"><span class="sb-time">10:24</span><span class="sb-r"><svg width="66" height="12" viewBox="0 0 66 12"><use href="#i-sb"/></svg></span></div>
+    <div class="island"></div>
+
+    <article class="bw glass" style="top:62px" aria-label="Large widget: Thursday 5 November, Upper A. Bench holds at 185.">
+      <div class="k"><span class="appico"><svg class="ic"><use href="#i-bar"/></svg></span>Thu 5 Nov · Upper A</div>
+      <h4>Bench holds at <i>185</i></h4>
+      <div class="sub">4 × 8–10 · rest 2:30 enforced</div>
+      <div class="bw-sec">
+        <div class="gate"><span class="lv now">185</span><span class="rule">At 185, sets 1–2 both ≥&nbsp;9 reps at RPE&nbsp;≤&nbsp;9</span><span class="lv next">190</span></div>
+      </div>
+      <div class="bw-sec">
+        <div class="cond">
+          <div class="lo"><span>If HRV &lt; 45</span><b>175<small>lb</small></b></div>
+          <div class="hi"><span>If HRV ≥ 45</span><b>185<small>lb</small></b></div>
+        </div>
+      </div>
+      <div class="bw-sec bw-watch"><svg class="ic"><use href="#i-alert"/></svg><p><b>Watch rule.</b> If bench flags again with normal recovery: a one-week pressing deload, −10% load and −1 set.</p></div>
+      <div class="bw-sec bw-skip"><button class="skip" aria-label="Injured, skip Thursday's session"><svg class="ic"><use href="#i-bandage"/></svg>Skip · injury</button><p>A session skipped for injury isn't a failure or a missed progression.</p></div>
+    </article>
+
+    <div class="apps" style="top:496px">
+      <div class="app"><i class="coach"><svg class="ic"><use href="#i-bar"/></svg></i><span>Coach</span></div>
+      <div class="app"><i><svg class="ic"><use href="#i-timer"/></svg></i><span>Timer</span></div>
+      <div class="app"><i><svg class="ic"><use href="#i-note"/></svg></i><span>Notes</span></div>
+      <div class="app"><i><svg class="ic"><use href="#i-heart"/></svg></i><span>Health</span></div>
+    </div>
+    <div class="dots" style="top:684px"><i class="on"></i><i></i><i></i></div>
+    <div class="dock" style="top:722px">
+      <div class="app"><i><svg class="ic"><use href="#i-phone"/></svg></i></div>
+      <div class="app"><i><svg class="ic"><use href="#i-msg"/></svg></i></div>
+      <div class="app"><i><svg class="ic"><use href="#i-compass"/></svg></i></div>
+      <div class="app"><i><svg class="ic"><use href="#i-music"/></svg></i></div>
+    </div>
+    <div class="home"></div>
+  </div>
+</div>
+
+<div class="slot">
+  <div class="cap"><b>F6</b><span>The morning</span><em>Lock screen · 7:02 notification</em></div>
+  <div class="phone" data-frame="F6">
+    <div class="wall dawn"></div>
+    <div class="statusbar"><span class="sb-time">7:02</span><span class="sb-r"><svg width="66" height="12" viewBox="0 0 66 12"><use href="#i-sb"/></svg></span></div>
+    <div class="island"></div>
+
+    <div class="lockclock"><div class="lc-date">Saturday 31 October</div><div class="lc-time">7:02</div></div>
+
+    <article class="nc" style="top:226px" aria-label="Coach notification, 7:02 AM">
+      <div class="nc-h"><span class="appico sm"><svg class="ic"><use href="#i-bar"/></svg></span><span>Coach</span><time>7:02 AM</time></div>
+      <h3>Rough night.<br><i>Still a lifting day.</i></h3>
+      <p class="night"><b>Last night:</b> sleep 5 h 48 m (avg 7 h 21 m) · HRV&nbsp;38&nbsp;ms (baseline&nbsp;52) · resting HR&nbsp;61 (baseline&nbsp;55)</p>
+      <p>I've widened today's rep bands and I'll hold you to the full <b>2:30</b> rest.</p>
+      <div class="nc-open">Open coach for the full read<svg class="ic"><use href="#i-chev"/></svg></div>
+    </article>
+
+    <article class="nc mini" style="top:508px" aria-label="Fitbit sync notification">
+      <span class="appico sm" style="background: var(--glass-solid); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--hair-2)"><svg class="ic"><use href="#i-pulse"/></svg></span>
+      <div><b>Recovery synced</b><small>Sleep, HRV and resting HR are in.</small></div>
+      <time>7:01 AM</time>
+    </article>
+
+    <div class="lock-btns"><span class="lock-btn"><svg class="ic"><use href="#i-flash"/></svg></span><span class="lock-btn"><svg class="ic"><use href="#i-cam"/></svg></span></div>
+    <div class="home"></div>
+  </div>
+</div>
+</section>
+
+<section class="grammar" aria-label="The ambient grammar">
+  <h2>The ambient grammar</h2>
+  <div>
+    <h3>Edge light</h3>
+    <p>The rim of the screen is the coach's mood, so a glance across the room is enough. Blue means live and inside your normal. Amber means a set left your normal and a decision is waiting. Plain means the coach has nothing to say.</p>
+    <div class="g-row">
+      <span class="g-sw blue"><i></i>Inside your normal</span>
+      <span class="g-sw amber"><i></i>Outside, decide</span>
+      <span class="g-sw quiet"><i></i>Quiet</span>
+    </div>
+  </div>
+  <div>
+    <h3>Haptic alphabet</h3>
+    <p>Three patterns, learned in a day. You never look at your wrist to know which one it was.</p>
+    <div class="g-list">
+      <div><span class="g-hp"><i></i></span><span>Set logged</span></div>
+      <div><span class="g-hp"><i></i><i></i></span><span>Rest is over</span></div>
+      <div><span class="g-hp flag"><i></i><i></i><i class="hold"></i></span><span>Outside your normal</span></div>
+    </div>
+  </div>
+  <div>
+    <h3>One surface per job</h3>
+    <p>Live Activity to log. Dynamic Island to flag. Long-press notification to decide. A home-screen widget to carry the plan to Thursday. The app opens only when you ask why, edit the block, or read history.</p>
+    <div class="g-row">
+      <span class="g-sw"><i style="background: var(--action)"></i>Log</span>
+      <span class="g-sw"><i style="background: var(--amber)"></i>Flag</span>
+      <span class="g-sw"><i style="background: var(--current-dark)"></i>Decide</span>
+      <span class="g-sw"><i style="background: var(--panel-3)"></i>Plan</span>
+    </div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

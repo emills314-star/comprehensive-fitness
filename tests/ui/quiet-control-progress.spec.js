@@ -128,14 +128,14 @@ test("Quiet Control active session preserves hierarchy, timer, replacement confi
   await page.getByRole("button", { name: "Resume", exact: true }).click();
   const header = page.locator(".active-session-header");
   await expect(header.locator("h1")).toHaveText(ACTIVE_WORKOUT_TITLE);
-  await expect(header.locator(".active-session-ready")).toHaveText(/Ready/);
+  await expect(header.locator("[data-session-dock-elapsed]")).toBeVisible();
+  await expect(page.locator(".loaded-bar-rest-clamp")).toHaveCount(0);
   await expect(page.getByText("In progress", { exact: true })).toHaveCount(0);
   await expect(page.locator(".active-rest-dock")).toHaveCount(0);
-  await expect(page.locator(".current-workout-heading")).toBeVisible();
+  await expect(page.locator(".loaded-bar-exercise-heading")).toBeVisible();
   await expect(page.getByText("Choose another workout", { exact: true })).toBeVisible();
-  const dock = page.locator(".session-dock");
-  const finish = dock.locator(".session-dock-finish");
-  const dockBox = await dock.boundingBox();
+  const finish = header.locator('[data-action="request-submit-workout"]');
+  const dockBox = await header.boundingBox();
   const finishBox = await finish.boundingBox();
   expect(finishBox.x + finishBox.width).toBeLessThanOrEqual(dockBox.x + dockBox.width + 0.5);
   await captureState(page, testInfo, "active-ready");
@@ -143,33 +143,33 @@ test("Quiet Control active session preserves hierarchy, timer, replacement confi
   const current = page.locator('.set-block[data-set-state="current"]').first();
   const future = page.locator('.set-block[data-set-state="future"]').first();
   await expect(current.locator('[data-action="toggle-set"]')).toBeEnabled();
-  await expect(current.locator(".set-previous strong")).toContainText(/lb/);
-  await expect(current.locator(".set-previous strong")).toContainText(/@/);
-  await expect(future.locator(".inactive-check")).toBeDisabled();
-  await expect(future.locator(".pending-previous")).toContainText("Previous");
-  await expect(future.locator(".pending-previous")).toContainText(/lb/);
-  await dock.evaluate((element) => { element.style.visibility = "hidden"; });
-  await captureElement(future, testInfo, "upcoming-set-inactive");
-  await dock.evaluate((element) => { element.style.visibility = ""; });
+  await expect(page.getByRole("columnheader", { name: "LB", exact: true })).toBeVisible();
+  await expect(current.locator(".loaded-bar-previous")).toContainText(/×.*@/);
+  // Loaded Bar allows manual completion order; future checks remain untouched
+  // until selected (coach contract §9 and the S3 table implementation).
+  await expect(future.locator('[data-action="toggle-set"]')).toBeEnabled();
+  await expect(future.locator('[data-action="toggle-set"]')).toHaveAttribute("aria-pressed", "false");
+  await expect(future.locator(".loaded-bar-previous")).toContainText(/×.*@/);
+  await captureElement(future, testInfo, "upcoming-set-available");
 
   const currentId = await current.getAttribute("id");
   await current.locator('[data-action="toggle-set"]').click();
   const completedRow = page.locator(`#${currentId}`);
-  await expect(completedRow.locator('[data-set-mode="logged"]')).toBeVisible();
+  await expect(completedRow).toHaveAttribute("data-set-mode", "logged");
   await expect(completedRow).toHaveClass(/completed/);
   await expect(completedRow.locator(".check-button.checked")).toBeVisible();
-  const currentExercise = completedRow.locator("xpath=ancestor::article[contains(@class,'exercise-card')]");
-  await expect(currentExercise).not.toHaveClass(/exercise-complete/);
+  const currentExercise = completedRow.locator("xpath=ancestor::article[contains(@class,'loaded-bar-focus')]");
+  await expect(currentExercise.locator('.loaded-bar-row:not(.completed):not(.skipped-set)')).not.toHaveCount(0);
   await captureState(page, testInfo, "set-logged");
 
   const restStarter = page.locator('[data-action="start-timer"]').first();
   if (await restStarter.isVisible()) await restStarter.click();
-  await expect(header.locator(".active-session-timer-status")).toBeVisible();
-  await expect(header.locator("[data-timer-progress-label]")).toHaveText(/^\d+:\d{2}$/);
+  await expect(page.locator(".loaded-bar-rest-clamp")).toBeVisible();
+  await expect(page.locator(".loaded-bar-rest-clamp [data-timer-progress-label]")).toHaveText(/^\d+:\d{2}$/);
   await expect(page.locator(".workout-timer-slot .timer-bar")).toHaveCount(0);
   await captureState(page, testInfo, "active-rest-countdown");
 
-  const exerciseLink = page.locator(".exercise-history-link").first();
+  const exerciseLink = page.locator('.loaded-bar-exercise-heading [data-action="open-exercise-history"]');
   const exerciseName = (await exerciseLink.textContent()).trim();
   await exerciseLink.click();
   await expect(page.locator(".exercise-detail-view h1")).toHaveText(exerciseName);
@@ -179,7 +179,7 @@ test("Quiet Control active session preserves hierarchy, timer, replacement confi
   await captureState(page, testInfo, "exercise-detail");
   await page.getByRole("button", { name: /Back to workout/ }).click();
   await expect(page.locator(".active-session-header h1")).toHaveText(ACTIVE_WORKOUT_TITLE);
-  await expect(page.locator(".active-session-timer-status")).toBeVisible();
+  await expect(page.locator(".loaded-bar-rest-clamp")).toBeVisible();
 
   await page.locator(".active-session-menu > summary").click();
   await page.getByRole("button", { name: "Back to Today", exact: true }).click();

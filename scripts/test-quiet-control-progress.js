@@ -12,6 +12,7 @@ const analysis = read("app-analysis.js");
 const workout = read("app-workout.js");
 const app = read("app.js");
 const css = read("index.html");
+const { runtime, scenarioModel, start, activeRows } = require("./test-loaded-bar-table");
 
 function functionSource(source, name) {
   const start = source.indexOf(`function ${name}(`);
@@ -108,6 +109,8 @@ const recordRuntime = new Function("data", `
   const canonicalSetSequence = (set) => Number(set.sequenceIndex || 0);
   ${functionSource(foundation, "estimatedOneRepMax")}
   ${functionSource(foundation, "roundToIncrement")}
+  const setTypeSemantics = (set) => ({ type: set.isWarmup ? "warmup" : (set.setType || "working") });
+  ${functionSource(foundation, "isDeloadExposure")}
   ${functionSource(analysis, "exerciseE1rmRecord")}
   return exerciseE1rmRecord;
 `);
@@ -133,24 +136,44 @@ assert.deepEqual(record.record.nextTarget, { weight: 300, reps: 11 }, "The next 
 assert.equal(recordRuntime(recordData)({ canonicalId: "pull-up", resistanceType: "bodyweight" }).applicable, false, "Non-applicable resistance types must not receive a nonsensical e1RM target");
 
 const home = functionSource(views, "renderLiftHome");
-assert.match(home, /Choose your workout/, "The empty Today state must use the approved primary prompt");
-assert.match(home, /renderRollingHypertrophyCard\(rolling\)/, "Today must render the shared rolling score summary");
+const todayChooser = functionSource(views, "renderTodayWorkoutChooser");
+assert.match(home, /renderTodayWorkoutChooser\(\)/, "Today must delegate its empty state to the workout chooser");
+assert.match(todayChooser, /Choose your workout/, "The empty Today state must use the approved primary prompt");
+assert.match(home, /renderRollingHypertrophyCard\(rollingHypertrophySummary\(\)\)/, "Today must render the shared rolling score summary");
 assert.doesNotMatch(home, /Choose another workout/, "The empty-state renderer must not contain replacement copy");
-assert.match(functionSource(views, "renderQuickStartTemplates"), /Choose another workout/, "Replacement copy must remain scoped to an existing session");
+assert.doesNotMatch(todayChooser, /Choose another workout/, "The full chooser must not use replacement copy");
+assert.match(functionSource(views, "renderQuickStartTemplates"), /Choose another workout/, "Replacement copy must remain scoped to secondary choices beside a planned or existing workout");
 
 const activeHeader = functionSource(views, "renderActiveSessionHeader");
-assert.match(activeHeader, /active-session-ready[\s\S]*Ready/, "The inactive timer state must say Ready");
-assert.match(activeHeader, /data-timer-progress-label/, "The active timer must expose a readable countdown in the header");
+const restClamp = functionSource(views, "renderLoadedBarRestClamp");
+assert.match(activeHeader, /loaded-bar-session-title[\s\S]*data-session-dock-elapsed/, "The session header retains routine and elapsed time");
+assert.doesNotMatch(activeHeader, /data-timer-progress-label|active-session-timer-status/, "The session header does not duplicate the rest clamp");
+assert.match(restClamp, /data-timer-progress-label/, "The rest clamp exposes a readable countdown");
+assert.match(restClamp, /if \(!activeTimer\) \{\s*const starter = renderSharedRestStarter\(session\);\s*return starter \?[^;]+: '';/, "Without an active timer only the completed-set-authorized rest starter remains, inside a table row");
 assert.doesNotMatch(activeHeader, /In progress|Lifting/, "The active header must not use inaccurate state copy");
 assert.doesNotMatch(views, /active-rest-dock/, "The duplicate rest bar must be removed from the rendered UI");
 
 const setRow = functionSource(views, "renderSet");
-assert.match(setRow, /inactive-check[\s\S]*disabled/, "Upcoming sets must use a disabled, visually distinct completion affordance");
-assert.match(setRow, /pending-previous[\s\S]*previousSummaryText/, "Every upcoming row must show position-matched prior load, reps, and RPE");
-assert.match(setRow, /previous\?\.priorSessionId[\s\S]*previous[\s\S]*previousSummaryText/, "Prior set facts must remain visible even when legacy snapshots lack history-link metadata");
-assert.match(setRow, /set-logged diff/, "A logged set must render its concise completed-row content");
-assert.match(setRow, /visualState === "completed" \? "completed" : ""/, "The persisted set state must attach the completed-row visual treatment");
-assert.match(workout, /includeWarmups:\s*true[\s\S]*previousWarmups[\s\S]*setTypeIndex[\s\S]*previousWarmups\[warmupIndex\]/, "Warm-up rows must retain the same position-matched prior-session context");
+const setLogger = runtime();
+start(setLogger, scenarioModel(setLogger, "shadow"));
+const loggingRows = activeRows(setLogger);
+setLogger.context.testExerciseId = loggingRows[0].exerciseId;
+const renderTable = () => setLogger.run("renderLoadedBarTable(exerciseById(testExerciseId),renderSetContext(exerciseById(testExerciseId)))");
+let tableMarkup = renderTable();
+assert.match(tableMarkup, /data-set-state="future"/, "Upcoming rows retain their distinct factual state");
+assert.match(tableMarkup, /185 × 10 @ 7.5[\s\S]*185 × 10 @ 8[\s\S]*185 × 9 @ 8.5[\s\S]*185 × 8 @ 9/, "Every row shows position-matched Previous load, reps, and RPE");
+assert.match(tableMarkup, /data-action="open-session"[^>]*data-session-id="prior-/, "Previous retains the exact source-session link");
+setLogger.context.testSetId = loggingRows[3].id;
+assert.equal(setLogger.run("guardWorkoutMutation('toggle-set',{setId:testSetId},false).allowed"), true, "An upcoming row may be logged deliberately through exact-ownership authorization");
+setLogger.run("toggleSetCompletion(testSetId)");
+tableMarkup = renderTable();
+assert.match(tableMarkup, /data-set-state="completed"[^>]*class="[^"]*completed/, "The persisted completion attaches its green row treatment");
+assert.match(tableMarkup, /value="185"[^>]*data-action="set-weight"/, "Completed actuals remain editable corrections");
+setLogger.run("patchSet(testSetId,{previousComparableSet:{weight:180,weightUnit:'lb',reps:8,rpe:9}},false)");
+assert.match(renderTable(), /180 × 8 @ 9/, "Factual Previous remains visible when a legacy snapshot has no link metadata");
+assert.match(setRow, /previous\?\.priorSessionId/, "Only proven source-session metadata becomes a history link");
+assert.match(functionSource(workout, "buildWorkoutStartPlan"), /includeWarmups:\s*true[\s\S]*workoutStartRowPreviews\(templateExercise, target, previousRoleSets, data\.settings\)/, "Shared workout construction must include warm-up history in the pure row projection");
+assert.match(functionSource(workout, "workoutStartRowPreviews"), /previousWarmups[\s\S]*setTypeIndex[\s\S]*previousWarmups\[warmupIndex\]/, "Warm-up rows must retain the same position-matched prior-session context");
 
 assert.match(analysis, /renderProgressModeSwitch\('sessions'\)/, "Progress must expose Sessions mode");
 assert.match(analysis, /renderProgressModeSwitch\('exercises'\)/, "Progress must expose Exercises mode");
@@ -158,7 +181,8 @@ assert.match(analysis, /function renderExerciseProgressDetail/, "Progress must e
 assert.doesNotMatch(functionSource(analysis, "renderExerciseProgressDetail"), /Completed workouts|Completed sessions/, "The scoped exercise-detail screen must not contain completed-session history");
 assert.match(app, /open-progress-exercise[\s\S]*progressExerciseDetailId = exercise\.id/, "Exercise navigation must route with the stable catalog identifier");
 assert.match(app, /open-exercise-history[\s\S]*item\.canonicalId === target\.dataset\.performanceExerciseId[\s\S]*progressExerciseDetailId = catalogExercise\.id/, "Active-workout navigation must resolve the stable exercise identity rather than display text");
-assert.match(css, /grid-template-columns:\s*minmax\(82px, 1fr\) minmax\(0, 2fr\) minmax\(82px, 1fr\)/, "The active-session name must remain centered between independently sized controls");
+assert.match(css, /\.active-session-header\.loaded-bar-session \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto auto 44px/, "The session header gives the routine flexible space alongside independently sized controls");
+assert.match(css, /html\.large-text-reflow \.active-session-header\.loaded-bar-session \{[^}]*flex-wrap: wrap/, "Large text reflows the session header without overlapping controls");
 assert.match(css, /history-grade\.grade-d[\s\S]*border-style:\s*dashed[\s\S]*history-grade\.grade-f[\s\S]*border-style:\s*dotted/, "Lower grade treatments must remain distinguishable without color alone");
 
 console.log("Quiet Control rolling score, set hierarchy, prior-session matching, e1RM, routing, and Progress contracts passed.");

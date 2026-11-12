@@ -3,7 +3,20 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildGradeHarness, historySource, root } = require("./workout-grade-test-harness");
+const { buildGradeHarness: originalBuildGradeHarness, historySource, root } = require("./workout-grade-test-harness");
+
+// The focused grade harness loads history separately; load the real shared
+// foundation predicate as the browser does before invoking grade functions.
+function buildGradeHarness(seed) {
+  const harness = originalBuildGradeHarness(seed);
+  const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "app-foundation.js"), "utf8");
+  const start = source.indexOf("function isDeloadExposure(");
+  const end = source.indexOf("\n      function getMostRecentWorkoutPerformance(", start);
+  require("node:assert/strict").ok(start >= 0 && end > start);
+  require("node:vm").runInContext(source.slice(start, end), harness.context);
+  return harness;
+}
+
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const schema = JSON.parse(fs.readFileSync(path.join(root, "schemas", "redesign-workout-grade.v2.schema.json"), "utf8"));
@@ -117,7 +130,7 @@ assert.match(completion, /gradeHeadingTag = options\.history \? "h2" : "h1"/, "T
 assert.doesNotMatch(completion, /categoryScores|internalScore|confidence|plan|adherence|achievement|hypertrophy|volume/i, "Completion must remain concise and free of deleted analytics");
 
 const history = functionSource(analysis, "renderHistory", "normalizeSetTypeCode");
-assert.match(history, /filter\(\(session\) => isSessionSubmitted\(session\)\)[\s\S]*sessionCompletionDate\(right\)\.localeCompare\(sessionCompletionDate\(left\)\)/, "Workout history must be chronological and submitted-only");
+assert.match(history, /filter\(\(session\) => isSessionSubmitted\(session\)\)[\s\S]*date: sessionCompletionDate\(session\)[\s\S]*String\(right\.date \|\| ""\)\.localeCompare\(String\(left\.date \|\| ""\)\)/, "Workout history must contain only submitted sessions and remain chronological");
 assert.match(history, /Every submitted session remains available in chronological order/, "Progress must state the full-history contract with current terminology");
 assert.match(history, /storedWorkoutGradeProjection\(session\)/, "History must decode stored grades rather than recalculate them");
 

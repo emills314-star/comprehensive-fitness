@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const contract = require("../backup-contract.js");
+const { syntheticCoachBackup } = require("../tests/fixtures/synthetic-coach-backup.js");
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
 function validBackup() {
@@ -188,9 +189,114 @@ function strictImportValidator() {
     BACKUP_IMPORT_LIMITS: importLimits,
     validateBackupJsonShape,
     TextEncoder,
-    window: { FitnessExceptionResolver: null },
+    window: { FitnessExceptionResolver: null, FitnessBackupContract: contract },
     WORKOUT_DURATION_SEMANTICS_VERSION: "test-duration/1"
   });
+}
+
+for (const reason of ["role_changed", "evaluation_failed", "coach_off"]) {
+  const source = syntheticCoachBackup();
+  source.sessions[0].coachingSuspensions = [
+    { scope: "exercise", exerciseId: "coach-exercise", reason, at: "2026-11-02T18:05:00.000Z" },
+    { scope: "session", reason, at: "2026-11-02T18:06:00.000Z" }
+  ];
+  const before = JSON.stringify(source);
+  const draft = {
+    ...validActiveWorkoutDraft(), workoutId: "coach-session", dataRevision: source.dataRevision,
+    session: source.sessions[0], exercises: source.exercises, sets: source.sets
+  };
+  const serialized = contract.serializeBackupExport(source, { activeWorkoutDraft: draft });
+  const decoded = contract.decodeLegacyBackup(JSON.parse(serialized));
+  const { backupSchemaVersion, activeWorkoutDraft, ...appData } = plain(decoded);
+  const imported = strictImportValidator()(appData);
+  assert.deepEqual(plain(decoded.sessions[0].coachingSuspensions), source.sessions[0].coachingSuspensions, reason + " survives backup serialization");
+  assert.deepEqual(plain(imported.sessions[0].coachingSuspensions), source.sessions[0].coachingSuspensions, reason + " survives strict import");
+  assert.deepEqual(plain(activeWorkoutDraft.session.coachingSuspensions), source.sessions[0].coachingSuspensions, reason + " survives the exported active draft");
+  contract.validateCoachDraft(activeWorkoutDraft, imported);
+  assert.equal(JSON.stringify(source), before, reason + " round trips must not mutate source observations");
+}
+
+{
+  const source = syntheticCoachBackup();
+  const before = JSON.stringify(source);
+  const exported = contract.createBackupExport(source);
+  const decoded = contract.decodeLegacyBackup(JSON.parse(contract.serializeBackupExport(source)));
+  const { backupSchemaVersion, ...appData } = plain(decoded);
+  const imported = strictImportValidator()(appData);
+  for (const collection of ["sessions", "exercises", "sets", "templates", "skippedSessions", "settings"]) {
+    assert.deepEqual(plain(decoded[collection]), source[collection], `${collection} coach facts must survive validated backup serialization`);
+    assert.deepEqual(plain(imported[collection]), source[collection], `${collection} coach facts must survive strict import`);
+  }
+  assert.equal(JSON.stringify(source), before, "Export and strict import must leave the source candidate unchanged");
+  assert.equal(exported.sessions.length, source.sessions.length, "Injury skips must remain outside the workout collection");
+  const malformedCases = [
+    ["coach mode", (value) => { value.settings.coachMode = "live"; }],
+    ["revision flag", (value) => { value.settings.coachBetweenSetRevisions = "true"; }],
+    ["bar weight", (value) => { value.settings.barWeight.lb = -1; }],
+    ["duplicate plates", (value) => { value.settings.plateInventory.lb = [45, 45]; }],
+    ["equipment identity", (value) => { value.settings.equipmentCorrections.push({ ...value.settings.equipmentCorrections[0] }); }],
+    ["increment fallback unit", (value) => { value.settings.routineIncrementUnit = "lbs"; }],
+    ["role increment unit", (value) => { value.templates[0].exercises[0].setTypes[0].incrementUnit = "lbs"; }],
+    ["role default load", (value) => { value.templates[0].exercises[0].setTypes[0].defaultLoad = 100; }],
+    ["role default load unit", (value) => { value.templates[0].exercises[0].setTypes[0].defaultLoad.unit = "lbs"; }],
+    ["role default reps", (value) => { value.templates[0].exercises[0].setTypes[0].defaultReps = 10.5; }],
+    ["session deload", (value) => { value.sessions[0].isDeload = 1; }],
+    ["prescription version", (value) => { value.sessions[0].coachingPrescription.engineVersion = "future"; }],
+    ["suspension bound", (value) => { value.sessions[0].coachingSuspensions = Array(51).fill(value.sessions[0].coachingSuspensions[0]); }],
+    ["suspension scope", (value) => { value.sessions[0].coachingSuspensions[0].scope = "routine"; }],
+    ["suspension reason", (value) => { value.sessions[0].coachingSuspensions[0].reason = "rebase"; }],
+    ["suspension timestamp", (value) => { value.sessions[0].coachingSuspensions[0].at = "invalid"; }],
+    ["session suspension exercise id", (value) => { value.sessions[0].coachingSuspensions[0].exerciseId = "coach-exercise"; }],
+    ["exercise suspension missing id", (value) => { delete value.sessions[0].coachingSuspensions[1].exerciseId; }],
+    ["suspension exercise ownership", (value) => { value.sessions.push({ id: "other-session" }); value.exercises.push({ id: "other-exercise", sessionId: "other-session" }); value.sessions[0].coachingSuspensions[1].exerciseId = "other-exercise"; }],
+    ["load source", (value) => { value.sets[0].loadSource = "automatic"; }],
+    ["reps source", (value) => { value.sets[0].repsSource = "automatic"; }],
+    ["RPE source", (value) => { value.sets[0].rpeSource = "prefilled"; }],
+    ["load touched", (value) => { value.sets[0].loadTouched = "true"; }],
+    ["reps touched", (value) => { value.sets[0].repsTouched = 1; }],
+    ["RPE touched", (value) => { value.sets[0].rpeTouched = null; }],
+    ["completion order", (value) => { value.sets[0].completionOrder = 0; }],
+    ["completed timestamp", (value) => { value.sets[0].completedAt = "invalid"; }],
+    ["schedule", (value) => { value.templates[0].scheduledWeekdays = ["tuesday", "tuesday"]; }],
+    ["skip occurrence", (value) => { value.skippedSessions.push({ ...value.skippedSessions[0], id: "second-skip" }); }],
+    ["skip routine name", (value) => { delete value.skippedSessions[0].routineName; }],
+    ["blank skip routine name", (value) => { value.skippedSessions[0].routineName = "  "; }],
+    ["skip day ownership", (value) => { value.skippedSessions[0].dayId = "friday"; }],
+    ["prescription exercise ownership", (value) => { value.exercises[0].sessionId = "other-session"; value.sessions.push({ id: "other-session" }); }],
+    ["prescription set ownership", (value) => { value.exercises.push({ id: "other-exercise", sessionId: "coach-session" }); value.sets[0].exerciseId = "other-exercise"; }]
+  ];
+  const validateImport = strictImportValidator();
+  for (const [label, corrupt] of malformedCases) {
+    const invalid = plain(source);
+    corrupt(invalid);
+    const unchanged = JSON.stringify(invalid);
+    assert.throws(() => contract.createBackupExport(invalid), undefined, `Backup export must reject malformed ${label}`);
+    assert.throws(() => contract.validateAndSanitizeBackup(invalid), undefined, `Backup validation must reject malformed ${label}`);
+    assert.throws(() => validateImport(invalid), undefined, `Strict import must reject malformed ${label}`);
+    assert.equal(JSON.stringify(invalid), unchanged, `${label} rejection must leave all candidate records untouched`);
+  }
+  const deletedRows = plain(source);
+  deletedRows.exercises = [];
+  deletedRows.sets = [];
+  const { backupSchemaVersion: deletedRowsSchemaVersion, ...deletedRowsData } = plain(contract.createBackupExport(deletedRows));
+  const deletedRowsImport = validateImport(deletedRowsData);
+  assert.deepEqual(plain(deletedRowsImport.sessions[0].coachingPrescription), source.sessions[0].coachingPrescription, "Deleted exercise/set ids must not invalidate an archived prescription");
+  assert.deepEqual(plain(deletedRowsImport.sessions[0].coachingSuspensions), source.sessions[0].coachingSuspensions, "An exercise suspension may retain a deleted exercise id");
+  const deletedRoutine = plain(source);
+  deletedRoutine.templates = [];
+  delete deletedRoutine.sessions[0].templateId;
+  const deletedRoutineExport = contract.createBackupExport(deletedRoutine);
+  const { backupSchemaVersion: deletedRoutineSchemaVersion, ...deletedRoutineData } = plain(deletedRoutineExport);
+  assert.deepEqual(plain(validateImport(deletedRoutineData).skippedSessions), source.skippedSessions, "Injury skip names must survive routine deletion independently of live templates");
+  const nullableDefaults = plain(source);
+  nullableDefaults.templates[0].exercises[0].setTypes[0].defaultLoad = null;
+  nullableDefaults.templates[0].exercises[0].setTypes[0].defaultReps = null;
+  const nullableExport = contract.createBackupExport(nullableDefaults);
+  const { backupSchemaVersion: nullableSchemaVersion, ...nullableData } = plain(nullableExport);
+  const nullableImport = validateImport(nullableData);
+  assert.equal(nullableImport.templates[0].exercises[0].setTypes[0].defaultLoad, null, "Null canonical role load remains null");
+  assert.equal(nullableImport.templates[0].exercises[0].setTypes[0].defaultReps, null, "Null canonical role reps remain null");
+  assert.equal(nullableImport.templates[0].exercises[0].defaultLoad, 100, "Legacy exercise default load scalars are preserved without inferred units");
 }
 
 function strongCsvRow({ exerciseName = "Synthetic Squat", weight = "100", reps = "5", rpe = "8" } = {}) {
@@ -252,6 +358,16 @@ async function verifyStrongCandidateValidation() {
   const prepareStrongCsvImport = prepareStrongHarness();
   const valid = prepareStrongCsvImport(strongCsvRow(), "lb", "valid.csv");
   assert.equal(valid.candidate.sets[0].weight, 100, "A valid Strong candidate must survive strict validation");
+  assert.equal(valid.candidate.sets[0].rpe, 8, "A supplied Strong RPE must remain the actual supplied value");
+  assert.equal(valid.candidate.sets[0].rpeSource, "typed", "Finite supplied Strong RPE is a typed observation");
+  for (const rpe of ["", " ", "unknown", "NaN", "Infinity"]) {
+    const missing = prepareStrongCsvImport(strongCsvRow({ rpe }), "lb", "missing-rpe.csv").candidate.sets[0];
+    assert.equal(missing.rpe, "", "Missing or malformed Strong RPE must remain blank");
+    assert.equal(missing.rpeSource, "unknown", "Missing or malformed Strong RPE is unknown");
+  }
+  const zeroRpe = prepareStrongCsvImport(strongCsvRow({ rpe: "0" }), "lb", "zero-rpe.csv").candidate.sets[0];
+  assert.equal(zeroRpe.rpe, 0, "An explicit numeric Strong zero must stay distinct from blank");
+  assert.equal(zeroRpe.rpeSource, "typed");
   assert.equal(valid.candidate.rawImports[0].originalText, strongCsvRow(), "Strict validation must retain Strong source provenance");
   assert.throws(
     () => prepareStrongCsvImport(strongCsvRow({ weight: "-5" }), "lb", "negative-weight.csv"),

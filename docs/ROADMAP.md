@@ -1,6 +1,27 @@
 # Roadmap
 
-## 2026-08-15 Quiet Control progress refresh — IMPLEMENTED LOCALLY; REVIEW-READY
+## Per-session coach - PARTIALLY IMPLEMENTED locally, 2026-11-03
+
+- **Step 1 — done:** the 2026-08-15 Quiet Control refresh is committed locally as `6d89b6e` (owner-authorized, not pushed). Re-verified on Node 24.18.0: lint, workflows, privacy, public tests 53/53, research validation, PWA packaging. Playwright not rerun.
+- **NEEDS REVIEW:** the full-tree dependency audit now fails on advisories published since August: critical in `@capacitor/android` and `@capacitor/ios` 7.0.0–7.6.8; high in `tar`, `brace-expansion`, `@xmldom/xmldom`. Production subset clean; fixes available. Separate change pending owner approval.
+- **Step 2 — done:** [D-028](redesign/DECISION_LOG.md) and [`redesign/coach/COACH_V1_CONTRACT.md`](redesign/coach/COACH_V1_CONTRACT.md), reviewed by Astra (approve with changes, incorporated), including Erik's deload and injury-skip requests.
+- **Step 3 — PARTIALLY IMPLEMENTED (wired in shadow):** pure `coach-engine.js`, `scripts/test-coach-engine.js` (67 tests), `scripts/coach-replay.js` and `scripts/test-coach-replay.js` (16 tests) with a synthetic fixture. Implemented by Codex (GPT-6.1 Sol) over five correction rounds driven by three Astra code reviews (12 defects, then 4, then 2), each fix re-probed by Claude. Astra's final review identified issues subsequently addressed locally; final acceptance remains pending.
+- **Step 3b — calibration, NEEDS REVIEW:** a local replay over the pipeline's history through 2026-07-07 (aggregates only) evaluates 836 of 849 sessions with zero oscillations, zero bound violations, and a passing leakage check. Session-start targets average about 2.7 reps above what Erik actually did and are missed at the target load 37% of the time, versus 12% for repeating last time, mainly because sets without RPE are treated as ready for +1 rep. The 10% increase cap also blocks load jumps on light dumbbell work. Both are calibration decisions for the full history once a fresh Strong export arrives. Replay on Erik's real history is pending a fresh Strong export.
+- **Step 4 - IMPLEMENTED locally:** S1a, S1b, S2, S3a, S3b, S4a and S4b are complete; polish, browser-test reconciliation and final fixes are in source. This integration has not been committed.
+- **Owner-reported verification:** `npm test` passed 66/66, `sync:web` regenerated `www`, `verify:pwa` passed for 29 assets, and `check:privacy` passed. Full Playwright on Node 24.18.0 (not the pinned 22.x): 295 passed, 2 failed, 33 configured skips; the one failing test (both projects) dispatched only a pointerdown on the set check, which no longer completes a set by design (activation waits for the matching release so a drag can cancel), and passes after the test also dispatches the release. The 33 skips include the appearance baselines (`CF_APPEARANCE_PROTECTION=1`), which were not run or accepted and now differ on Today and the rest rail.
+- **PENDING for Erik:** visual review and baseline acceptance, a device check on his iPhone, and explicit authorization before any commit. Merge, deployment and publication require their own authorization and gates.
+- **PLANNED:** activation gate remains closed until calibration, 2-3 weeks of shadow evaluation, independent parameter review and owner opt-in. Erik delegated this call on 2026-11-04 and Claude kept it closed: replay currently misses its own targets at the target load 37% of the time versus 12% for repeating last time, so showing targets before calibration would mislead.
+- **NEEDS REVIEW:** adoption of Strong/pre-coach history as proven coaching evidence; current rules do not silently assume it.
+- **NEEDS REVIEW:** the mid-session suspension policy is stricter than contract sections 6.1 and 7; Erik and the coach workstream must decide before activation.
+- **NEEDS REVIEW:** `app-history.js` grade denominator counts edited or manually classified incomplete rows as attempted; valid completed-work metrics exclude them.
+- **NEEDS REVIEW:** count-only reason comparison metadata when compatible previous-plan evidence is unavailable; count changes with compatible metadata can already receive a reason.
+- **NEEDS REVIEW:** the coach engine `freezeOrder` fix exists only in the coach workstream scratchpad and requires integration and verification.
+- **PLANNED:** Last night follows the Google Health step; the "outside your normal" bounds flag follows calibration.
+- **Step 5:** Google Health API feasibility spike (encrypted refresh token in existing Upstash, values passed through).
+- **Step 6:** shadow mode, independent review of calibrated parameters, opt-in coaching, five-workout field test.
+- Every coaching parameter is an ASSUMPTION until calibrated. No push, merge, deployment, or publication is authorized.
+
+## 2026-08-15 Quiet Control progress refresh — IMPLEMENTED LOCALLY; COMMITTED 2026-10-31 AS `6d89b6e`
 
 - Added the no-session workout chooser and honest rolling ten-completed-session score with equal distinct-lift weighting.
 - Moved the sole Ready/rest countdown into the centered active-session header and removed the duplicate rendered rest bar.

@@ -13,15 +13,643 @@
     "settings"
   ],
   "properties": {
-    "appDataVersion": { "const": 3 },
-    "sessions": { "type": "array", "items": { "type": "object" } },
-    "exercises": { "type": "array", "items": { "type": "object" } },
-    "sets": { "type": "array", "items": { "type": "object", "properties": { "targetRestSeconds": { "type": "integer", "minimum": 15, "maximum": 3600 } }, "additionalProperties": true } },
-    "templates": { "type": "array", "items": { "type": "object", "properties": { "scheduledWeekdays": { "type": "array", "uniqueItems": true, "items": { "enum": ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] } } }, "additionalProperties": true } },
-    "dataRevision": { "type": "integer", "minimum": 0 },
-    "settings": { "type": "object" }
+    "appDataVersion": {
+      "const": 3
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/session"
+      }
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "sets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/set"
+      }
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/template"
+      }
+    },
+    "dataRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "settings": {
+      "$ref": "#/$defs/settings"
+    },
+    "skippedSessions": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": {
+        "$ref": "#/$defs/skippedSession"
+      }
+    }
   },
   "additionalProperties": true,
   "x-contract-version": "comprehensive-fitness-app-data/3.0.0",
-  "x-boundary": "Target active domain. Legacy planning/equipment fields are compatibility input, not active state."
+  "x-boundary": "Target active domain. Legacy planning/equipment fields are compatibility input, not active state.",
+  "$defs": {
+    "coachingPrescription": {
+      "type": "object",
+      "required": [
+        "contractVersion",
+        "engineVersion",
+        "parameterVersion",
+        "evaluationId",
+        "createdAt",
+        "inputDigest",
+        "stableTargets",
+        "exercises",
+        "sets"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "comprehensive-fitness-coach/1.0.0"
+        },
+        "engineVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameterVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evaluationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "inputDigest": {
+          "type": "string",
+          "pattern": "^fnv1a64:[a-f0-9]{16}$"
+        },
+        "stableTargets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "exerciseId",
+              "variantIdentity",
+              "resistanceType",
+              "targetVersion",
+              "roles"
+            ],
+            "properties": {
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "variantIdentity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "targetVersion": {
+                "type": "string",
+                "minLength": 1
+              },
+              "roles": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "exercises": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "exerciseId"
+            ],
+            "properties": {
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "sets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "setId",
+              "exerciseId",
+              "role",
+              "position",
+              "sequenceIndex",
+              "anchor",
+              "targetRpe",
+              "target",
+              "revisions"
+            ],
+            "properties": {
+              "setId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "position": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sequenceIndex": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "revisions": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-runtime-validation": "ComprehensiveFitnessCoach.validatePrescription plus current-model cross-ownership validation. Deleted exercise/set ids and engine virtual rows are allowed; other owners are rejected. Strict import rejects invalid coaching atomically; local recovery suppresses it and preserves logging."
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "isDeload": {
+          "type": "boolean"
+        },
+        "coachingPrescription": {
+          "$ref": "#/$defs/coachingPrescription"
+        },
+        "coachingSuspensions": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": [
+              "scope",
+              "reason",
+              "at"
+            ],
+            "properties": {
+              "scope": {
+                "enum": [
+                  "session",
+                  "exercise"
+                ]
+              },
+              "exerciseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "reason": {
+                "enum": [
+                  "deload_changed",
+                  "readiness_changed",
+                  "exception_overridden",
+                  "exercise_substituted",
+                  "row_removed",
+                  "role_changed",
+                  "evaluation_failed",
+                  "coach_off"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "scope": {
+                      "const": "exercise"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "exerciseId"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "exerciseId"
+                    ]
+                  }
+                }
+              }
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "set": {
+      "type": "object",
+      "properties": {
+        "targetRestSeconds": {
+          "type": "integer",
+          "minimum": 15,
+          "maximum": 3600
+        },
+        "loadSource": {
+          "enum": [
+            "accepted_target",
+            "entered",
+            "prefill_previous"
+          ]
+        },
+        "repsSource": {
+          "enum": [
+            "accepted_target",
+            "entered",
+            "prefill_previous"
+          ]
+        },
+        "rpeSource": {
+          "enum": [
+            "typed",
+            "unknown"
+          ]
+        },
+        "completionOrder": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "loadTouched": {
+          "type": "boolean"
+        },
+        "repsTouched": {
+          "type": "boolean"
+        },
+        "rpeTouched": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "templateRole": {
+      "type": "object",
+      "properties": {
+        "incrementUnit": {
+          "enum": [
+            "lb",
+            "kg"
+          ]
+        },
+        "defaultLoad": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "value",
+                "unit"
+              ],
+              "properties": {
+                "value": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "unit": {
+                  "enum": [
+                    "lb",
+                    "kg"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "targetLoad": {
+          "type": "number",
+          "minimum": 0
+        },
+        "defaultReps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "weightUnit": {
+          "enum": [
+            "lb",
+            "kg"
+          ]
+        },
+        "reps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "restSeconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600
+        }
+      },
+      "additionalProperties": true
+    },
+    "template": {
+      "type": "object",
+      "properties": {
+        "scheduledWeekdays": {
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ]
+          }
+        },
+        "exercises": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "incrementUnit": {
+                "enum": [
+                  "lb",
+                  "kg"
+                ]
+              },
+              "defaultLoad": {
+                "type": "number",
+                "minimum": 0
+              },
+              "targetLoad": {
+                "type": "number",
+                "minimum": 0
+              },
+              "defaultReps": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0
+              },
+              "weightUnit": {
+                "enum": [
+                  "lb",
+                  "kg"
+                ]
+              },
+              "reps": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "restSeconds": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 3600
+              },
+              "setTypes": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "$ref": "#/$defs/templateRole"
+                }
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "coachMode": {
+          "enum": [
+            "shadow",
+            "off",
+            "show"
+          ],
+          "default": "shadow"
+        },
+        "coachBetweenSetRevisions": {
+          "type": "boolean",
+          "default": true
+        },
+        "routineIncrementUnit": {
+          "enum": [
+            "lb",
+            "kg",
+            null
+          ],
+          "default": null
+        },
+        "barWeight": {
+          "type": "object",
+          "required": [
+            "lb",
+            "kg"
+          ],
+          "properties": {
+            "lb": {
+              "type": "number",
+              "minimum": 0
+            },
+            "kg": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "lb": 45,
+            "kg": 20
+          }
+        },
+        "plateInventory": {
+          "type": "object",
+          "required": [
+            "lb",
+            "kg"
+          ],
+          "properties": {
+            "lb": {
+              "type": "array",
+              "maxItems": 64,
+              "uniqueItems": true,
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "kg": {
+              "type": "array",
+              "maxItems": 64,
+              "uniqueItems": true,
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
+          },
+          "additionalProperties": false,
+          "default": {
+            "lb": [
+              45,
+              35,
+              25,
+              10,
+              5,
+              2.5
+            ],
+            "kg": [
+              25,
+              20,
+              15,
+              10,
+              5,
+              2.5,
+              1.25
+            ]
+          }
+        },
+        "equipmentCorrections": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": [
+              "exerciseIdentity",
+              "equipmentClass"
+            ],
+            "properties": {
+              "exerciseIdentity": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "equipmentClass": {
+                "enum": [
+                  "barbell",
+                  "dumbbell",
+                  "stack",
+                  "plate_loaded",
+                  "bodyweight",
+                  "generic"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": true
+    },
+    "skippedSession": {
+      "type": "object",
+      "required": [
+        "id",
+        "date",
+        "routineId",
+        "routineName",
+        "dayId",
+        "reason",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "routineId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "dayId": {
+          "enum": [
+            "sunday",
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "unscheduled"
+          ]
+        },
+        "reason": {
+          "const": "injury"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "routineName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false,
+      "x-occurrence-key": "routineId + local date; unique across skippedSessions. routineName is the captured display name, independent of later routine deletion/rename. dayId records the scheduled weekday or unscheduled at creation."
+    }
+  }
 }
